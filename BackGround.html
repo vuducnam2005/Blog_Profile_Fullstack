@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Siêu Thực: Dải Ngân Hà 3D (Three.js)</title>
+    <style>
+        /* CSS Reset & Cơ bản */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden; /* Ẩn thanh cuộn */
+            background-color: #000000;
+            /* Ánh sáng mờ góc trên trái (Xanh sâu) và góc trên phải (Vàng ấm) */
+            background: 
+                radial-gradient(circle at top right, rgba(160, 120, 30, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at top left, #0b1a1c 0%, #000000 70%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Canvas bao phủ toàn bộ màn hình */
+        #webgl-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* Lớp phủ UI cho tiêu đề hoặc hướng dẫn (Tùy chọn) */
+        .overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.7);
+            z-index: 2;
+            pointer-events: none; /* Tránh cản trở tương tác chuột với canvas */
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+        }
+
+        .overlay h1 {
+            font-size: 24px;
+            font-weight: 300;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+        }
+
+        .overlay p {
+            font-size: 14px;
+            font-weight: 100;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- <div class="overlay">
+        <h1>Bí Ẩn Dải Ngân Hà</h1>
+        <p>Di chuyển chuột để chiêm ngưỡng không gian 3D. Cuộn chuột để Thu phóng.</p>
+    </div> -->
+
+    <!-- Canvas dành cho Three.js -->
+    <canvas id="webgl-canvas"></canvas>
+
+    <!-- Thêm thư viện Three.js và OrbitControls từ CDN -->
+    <!-- Sử dụng cấu trúc ES Module -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // ==========================================
+        // 1. CẤU HÌNH CƠ BẢN (TRUYỀN THÔNG SỐ)
+        // ==========================================
+        const parameters = {
+            count: 200000,
+            size: 0.015,
+            radius: 17,
+            branches: 2,            
+            spin: 1.8,              // Tăng lực cuộn để ép dải sáng cuộn chặt và tròn hơn nhiều
+            randomness: 0.4,        
+            randomnessPower: 3.5,   
+            insideColor: '#ffffff', // Trắng xóa ở tâm điểm
+            midColor: '#F1D89E',    // Chuyển sang Vàng chói ở đoạn giữa
+            outsideColor: '#000000' // Pha dần sang Đen ở cực rìa râu vút (Black Mode trong Additive Blending sẽ làm hạt Mờ Tịt/Tàng Hình)
+        };
+
+        // ==========================================
+        // 2. KHỞI TẠO SCENE, KHUNG NHÌN VÀ RENDERER
+        // ==========================================
+        const canvas = document.querySelector('#webgl-canvas');
+        const scene = new THREE.Scene();
+        // Sương mù nhẹ để tạo chiều sâu và làm mờ các vì sao ở xa
+        scene.fog = new THREE.FogExp2(0x000000, 0.02);
+
+        // Kích thước màn hình
+        const sizes = {
+            width: window.innerWidth,
+            height: window.innerHeight
+        };
+
+        // Camera (Góc nhìn)
+        const camera = new THREE.PerspectiveCamera(60, sizes.width / sizes.height, 0.1, 100);
+        // Nâng góc nhìn camera cao hơn một chút để quan sát trọng vẹn các tầng vành đai sao
+        camera.position.set(0, 7, 12);
+        scene.add(camera);
+
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({
+            canvas: canvas,
+            antialias: true, // Khử răng cưa
+            alpha: true // Cho phép trong suốt để lộ CSS background
+        });
+        renderer.setSize(sizes.width, sizes.height);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Tối ưu hiệu năng cho màn Retina
+
+        // OrbitControls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; // Mượt mà hơn
+        controls.enablePan = false; // Tắt di chuyển 
+        controls.enableRotate = false; // Khóa khung hình (Không cho xoay bằng chuột kéo)
+        controls.maxDistance = 14; // Giới hạn tầm nhìn xa
+        controls.minDistance = 1;
+
+        // ==========================================
+        // 3. TẠO TEXTURE CHO NGÔI SAO BẰNG CANVAS NỘI BỘ 
+        // Thay vì dùng ảnh (tối ưu hóa load mượt hơn)
+        // ==========================================
+        const createStarTexture = () => {
+            const ctxCanvas = document.createElement('canvas');
+            ctxCanvas.width = 32;
+            ctxCanvas.height = 32;
+            const ctx = ctxCanvas.getContext('2d');
+
+            // Tạo luồng ánh sáng radial gradient
+            const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');     // Lõi trắng xóa (Khôi phục vì màu vàng đã được tính thẳng vào Shader Additive)
+            gradient.addColorStop(0.1, 'rgba(255, 255, 255, 0.8)'); // Lõi sáng
+            gradient.addColorStop(0.4, 'rgba(255, 255, 255, 0.2)'); // Toả hào quang
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');           // Viền trong suốt (Hòa với màu đen)
+
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 32, 32);
+
+            return new THREE.CanvasTexture(ctxCanvas);
+        };
+
+        const starTexture = createStarTexture();
+
+        // ==========================================
+        // 4. HÀM TẠO DẢI NGÂN HÀ CHÍNH
+        // ==========================================
+        let geometry = null;
+        let material = null;
+        let points = null;
+
+        const generateGalaxy = () => {
+            // Hủy/xóa ngân hà cũ nếu có (dành cho hàm điều chỉnh tham số real-time sau này)
+            if (points !== null) {
+                geometry.dispose();
+                material.dispose();
+                scene.remove(points);
+            }
+
+            // TẠO HÌNH CỤ THỂ (Geometry)
+            geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(parameters.count * 3);
+            const colors = new Float32Array(parameters.count * 3);
+
+            const colorInside = new THREE.Color(parameters.insideColor);
+            const colorMid = new THREE.Color(parameters.midColor);
+            const colorOutside = new THREE.Color(parameters.outsideColor);
+
+            for (let i = 0; i < parameters.count; i++) {
+                const i3 = i * 3; // Vì mỗi vị trí chứa 1 mảng 3 (x,y,z)
+
+                // Tập trung sao đặc hơn một chút ở trung tâm để sợi dây phát sáng rực tại nếp gấp
+                const radius = Math.pow(Math.random(), 1.2) * parameters.radius;
+
+                // Giảm nhẹ độ vút giãn (từ lũy thừa 0.6 lên 0.85) để các vòng cuộn không bị ném ra ngoài quá nhanh
+                // Kết quả: Vành đai vẫn tăng dần khoảng cách nhưng giữ được hình dáng cung tròn (ôm sát tâm) ôm chặt và xoáy nhiều vòng hơn
+                const spinAngle = Math.pow(radius, 0.85) * parameters.spin;
+
+                // Đi đúng bản chất toán học: 2 đường xuất phát ngược hướng (0 độ và 180 độ)
+                // Tại r=0, chúng gặp nhau. Khi r tăng, chúng lượn xoáy và tạo thành 1 dải liền mạch duy nhất uốn khúc!
+                const branchAngle = ((i % parameters.branches) / parameters.branches) * Math.PI * 2;
+5
+                // Tăng độ nảy (Randomness) cho hiệu ứng tự nhiên mờ ảo
+                const randomX = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
+                const randomY = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
+                const randomZ = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
+
+                // Tính toán Vị Trí (Position)
+                // Thiết lập mặt phẳng X-Z cho cấu trúc dải, Y tạo độ phồng lên nhẹ
+                positions[i3] = Math.cos(branchAngle + spinAngle) * radius + randomX;
+                positions[i3 + 1] = randomY * 0.1; // Làm cực dẹt ngân hà theo trục Y tạo mặt đĩa phẳng
+                positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
+
+                // Tính toán Màu Sắc (Color Interpolation theo 3 Cấp Độ)
+                // Lõi Trắng Xóa -> Vàng -> Rìa Đen (Mờ Tịt)
+                const ratio = radius / parameters.radius;
+                const mixedColor = new THREE.Color();
+                
+                if (ratio < 0.4) {
+                    // Từ tâm (0%) ra 40%: Đổi từ Trắng Xóa sang Vàng
+                    mixedColor.copy(colorInside).lerp(colorMid, ratio / 0.4);
+                } else {
+                    // Từ 40% ra xa 100%: Nhạt dần lượng màu Vàng sang Đen (Sự tàng hình nhờ Additive)
+                    mixedColor.copy(colorMid).lerp(colorOutside, (ratio - 0.4) / 0.6);
+                }
+
+                colors[i3] = mixedColor.r;
+                colors[i3 + 1] = mixedColor.g;
+                colors[i3 + 2] = mixedColor.b;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            // CHẤT LIỆU (Material)
+            material = new THREE.PointsMaterial({
+                size: parameters.size,
+                sizeAttenuation: true,       // Nhỏ dần khi ở xa cam
+                depthWrite: false,           // Bỏ ghi Z-buffer giúp các hạt sáng phát quang (Glow) chồng lên nhau
+                blending: THREE.AdditiveBlending, // Chế độ hòa trộn cộng sáng: Càng nhiều hạt xếp chồng càng rực
+                vertexColors: true,          // Yêu cầu sử dụng màu được gán ở Buffer
+                transparent: true,
+                alphaMap: starTexture        // Texture chấm tròn làm mờ viền hạt
+            });
+
+            // TẠO ĐỐI TƯỢNG VÀ THÊM VÀO SCENE
+            points = new THREE.Points(geometry, material);
+            scene.add(points);
+        };
+
+        generateGalaxy();
+
+        // ==========================================
+        // 5. TƯƠNG TÁC CUỘN CHUỘT (SCROLL EFFECT)
+        // ==========================================
+        let galaxyAngle = 0;
+        let extraRotationSpeed = 0;
+
+        // Bắt sự kiện lăn chuột
+        window.addEventListener('wheel', (event) => {
+            // deltaY âm khi cuộn lên -> thêm dấu - để tạo giá trị dương -> xoay ngược chiều kim đồng hồ
+            // deltaY dương khi cuộn xuống -> tạo giá trị âm -> xoay thuận chiều kim đồng hồ
+            extraRotationSpeed += -event.deltaY * 0.00015;
+        });
+
+        // ==========================================
+        // 6. XỬ LÝ RESIZE WINDOW TỰ ĐỘNG
+        // ==========================================
+        window.addEventListener('resize', () => {
+            // Cập nhật lại kích thước
+            sizes.width = window.innerWidth;
+            sizes.height = window.innerHeight;
+
+            // Cập nhật Camera và tỷ lệ hiển thị
+            camera.aspect = sizes.width / sizes.height;
+            camera.updateProjectionMatrix();
+
+            // Cập nhật Renderer
+            renderer.setSize(sizes.width, sizes.height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        });
+
+        // ==========================================
+        // 7. VÒNG LẶP ANIMATION (TICK)
+        // ==========================================
+
+        const tick = () => {
+            // Giảm dần tốc độ cuộn tăng cấp trở lại 0 (Hiệu ứng quán tính quay)
+            extraRotationSpeed *= 0.92;
+
+            // Xoay Dải Ngân Hà mềm mại + Tốc độ bùng phát khi lăn chuột
+            galaxyAngle += 0.001 + extraRotationSpeed;
+
+            if (points) {
+                points.rotation.y = galaxyAngle;
+            }
+
+            // Luôn hướng mắt cam về tâm vũ trụ
+            camera.lookAt(scene.position);
+
+            // Cập nhật góc nhìn OrbitControl (Giúp thao tác scroll wheel tạo hiệu ứng Thu/Phóng)
+            controls.update();
+
+            renderer.render(scene, camera);
+            window.requestAnimationFrame(tick);
+        };
+
+        tick();
+    </script>
+</body>
+</html>

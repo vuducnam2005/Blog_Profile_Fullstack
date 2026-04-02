@@ -1,0 +1,94 @@
+{
+  "nav": {
+    "home": "Trang chủ",
+    "about": "Giới thiệu",
+    "experience": "Kinh nghiệm",
+    "projects": "Dự án",
+    "blog": "Bài viết",
+    "contact": "Liên hệ",
+    "back": "Quay lại",
+    "download": "Tải xuống"
+  },
+  "hero": {
+    "viewProjects": "Xem Dự án",
+    "downloadCv": "Tải CV",
+    "techSkills": "Kỹ năng công nghệ"
+  },
+  "about": {
+    "title": "Giới thiệu",
+    "p1_1": "Tôi là một ",
+    "p1_2": "Backend Developer (Fresher)",
+    "p1_3": " đầy nhiệt huyết với đam mê tạo ra các hệ thống web tối ưu và ổn định. Hiện đang theo học ngành CNTT tại Đại học Đại Nam (2023-2025), tôi lập tức tập trung sâu vào ",
+    "p1_4": "Python, C# .NET, SQL Server và phát triển REST API",
+    "p2": "Mục tiêu hướng tới của tôi là kiến thiết các giải pháp web backend linh hoạt, cho phép xử lý dữ liệu phức tạp, qua đó giúp các doanh nghiệp luôn nổi bật nhờ hệ thống cốt lõi vững vàng đằng sau.",
+    "stat1_label": "Năm mài dũa code",
+    "stat2_label": "Dự án hoàn thành",
+    "stat3_label": "Công nghệ nền tảng",
+    "skills_title": "Kỹ năng & Công nghệ",
+    "skills_backend": "Backend & Database",
+    "skills_frontend": "Frontend",
+    "skills_other": "Khác (Tools/Soft)",
+    "soft_Word/Excel": "Word/Excel",
+    "soft_Giao tiếp tốt": "Giao tiếp tốt",
+    "soft_Tư duy Logic": "Tư duy Logic",
+    "soft_Đọc hiểu English": "Đọc hiểu English",
+    "soft_Làm việc nhóm": "Làm việc nhóm"
+  },
+  "exp": {
+    "title": "Kinh nghiệm & Học vấn",
+    "journey": "Hành trình Thực chiến",
+    "awards": "Chứng chỉ & Giải thưởng",
+    "award1_title": "Giải Nhì - Cuộc thi Tài năng Lập trình cơ bản Khoa CNTT",
+    "award1_desc": "Thiết kế Algorithms (C/C++, Python)",
+    "award2_title": "Chứng chỉ Gemini University Student",
+    "award2_desc": "Top sinh viên nổi bật tiếp cận công nghệ học máy Gemini",
+    "award3_title": "Học bổng Xuất sắc ĐH Đại Nam (Nhiều kỳ liên tiếp)",
+    "award3_desc": "Thành tích học tập (GPA Top Đại Nam)"
+  },
+  "projects": {
+    "title": "Dự án Nổi bật"
+  },
+  "contact": {
+    "title": "Liên hệ",
+    "subtitle": "Hãy cùng nhau tạo nên điều gì đó tuyệt vời! 🚀",
+    "desc": "Tôi luôn sẵn sàng thảo luận về các dự án mới, ý tưởng sáng tạo hoặc đơn giản là chia sẻ kiến thức. Đừng ngần ngại liên hệ với tôi!",
+    "emailBtn": "Gửi Email Cho Tôi",
+    "socials": "Hoặc kết nối qua:"
+  },
+  "blog": {
+    "networkErrorTitle": "Lỗi kết nối - Vui lòng bật C# Server",
+    "networkErrorDesc": "Đang chờ kết nối C# Backend từ localhost:5020...",
+    "title": "Góc Chia Sẻ (Blog)",
+    "searchPlaceholder": "Tìm kiếm bài viết...",
+    "readMore": "Đọc thêm",
+    "empty": "Bạn chưa có bài viết kỹ thuật nào."
+  },
+  "cv": {
+    "loading": "Đang tải CV...",
+    "emptyTitle": "Không có CV",
+    "emptyDesc": "CV chưa được tải lên. Vui lòng quay lại sau khi admin đã cập nhật CV mới.",
+    "homeBtn": "Quay lại Trang chủ",
+    "error": "Không thể hiển thị CV trực tiếp trong trình duyệt này.",
+    "openNewTab": "Mở trong tab mới"
+  },
+  "detail": {
+    "deleteConfirm": "Hành động này sẽ xóa vĩnh viễn dữ liệu. Tiếp tục?",
+    "deleteError": "Lỗi khi xóa bài viết",
+    "loading": "Đang tải bài viết...",
+    "backToHome": "Quay lại Trang chủ",
+    "postedOn": "Đăng vào:",
+    "edit": "Chỉnh sửa",
+    "delete": "Xóa"
+  },
+  "admin": {
+    "loginTitle": "Xác Thực Quản Trị Hệ Thống",
+    "phoneLabel": "Tài Khoản (SĐT)",
+    "phonePlaceholder": "Nhập tên tài khoản...",
+    "passwordLabel": "Mật Khẩu",
+    "passwordPlaceholder": "Nhập mật khẩu...",
+    "authError": "Tài khoản hoặc mật khẩu không chính xác!",
+    "loginBtn": "ĐĂNG NHẬP",
+    "tabBlog": "Bài Viết Báo Mới",
+    "tabConfig": "Giao diện Trang Chủ"
+  }
+}

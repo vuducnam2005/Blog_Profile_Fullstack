@@ -1,0 +1,94 @@
+{
+  "nav": {
+    "home": "Home",
+    "about": "About",
+    "experience": "Experience",
+    "projects": "Projects",
+    "blog": "Blog",
+    "contact": "Contact",
+    "back": "Go back",
+    "download": "Download"
+  },
+  "hero": {
+    "viewProjects": "View Projects",
+    "downloadCv": "Download CV",
+    "techSkills": "Tech Skills"
+  },
+  "about": {
+    "title": "About Me",
+    "p1_1": "I am a passionate ",
+    "p1_2": "Backend Developer (Fresher)",
+    "p1_3": " dedicated to building optimized and stable web systems. Currently studying IT at Dai Nam University (2023-2025), I heavily focus on ",
+    "p1_4": "Python, C# .NET, SQL Server, and REST API development",
+    "p2": "My goal is to architect flexible backend web solutions capable of processing complex data, thereby helping businesses stand out with a solid core system.",
+    "stat1_label": "Years Coding",
+    "stat2_label": "Completed Projects",
+    "stat3_label": "Core Technologies",
+    "skills_title": "Skills & Technologies",
+    "skills_backend": "Backend & Database",
+    "skills_frontend": "Frontend",
+    "skills_other": "Others (Tools/Soft)",
+    "soft_Word/Excel": "Word/Excel",
+    "soft_Giao tiếp tốt": "Good Communication",
+    "soft_Tư duy Logic": "Logical Thinking",
+    "soft_Đọc hiểu English": "English Reading",
+    "soft_Làm việc nhóm": "Teamwork"
+  },
+  "exp": {
+    "title": "Experience & Education",
+    "journey": "Practical Journey",
+    "awards": "Certificates & Awards",
+    "award1_title": "Second Prize - Basic Programming Talent Contest (IT Faculty)",
+    "award1_desc": "Algorithms Design (C/C++, Python)",
+    "award2_title": "Gemini University Student Certificate",
+    "award2_desc": "Top outstanding student approaching Gemini machine learning technology",
+    "award3_title": "Dai Nam University Excellence Scholarship (Multiple consecutive semesters)",
+    "award3_desc": "Academic Achievement (Top GPA)"
+  },
+  "projects": {
+    "title": "Featured Projects"
+  },
+  "contact": {
+    "title": "Contact",
+    "subtitle": "Let's create something amazing together! 🚀",
+    "desc": "I am always open to discussing new projects, creative ideas, or simply sharing knowledge. Don't hesitate to reach out!",
+    "emailBtn": "Send Me An Email",
+    "socials": "Or connect via:"
+  },
+  "blog": {
+    "networkErrorTitle": "Network Error - Please turn on C# Server",
+    "networkErrorDesc": "Waiting for C# Backend connection from localhost:5020...",
+    "title": "Personal Insights (Blog)",
+    "searchPlaceholder": "Search for posts...",
+    "readMore": "Read more",
+    "empty": "You don't have any technical posts yet."
+  },
+  "cv": {
+    "loading": "Loading CV...",
+    "emptyTitle": "No CV Available",
+    "emptyDesc": "The CV has not been uploaded yet. Please check back later after the admin has updated the new CV.",
+    "homeBtn": "Back to Home",
+    "error": "Unable to display CV directly in this browser.",
+    "openNewTab": "Open in new tab"
+  },
+  "detail": {
+    "deleteConfirm": "This action will permanently delete the data. Continue?",
+    "deleteError": "Error deleting post",
+    "loading": "Loading post...",
+    "backToHome": "Back to Home",
+    "postedOn": "Posted on:",
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "admin": {
+    "loginTitle": "System Admin Authentication",
+    "phoneLabel": "Account (Phone)",
+    "phonePlaceholder": "Enter username...",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Enter password...",
+    "authError": "Incorrect username or password!",
+    "loginBtn": "LOGIN",
+    "tabBlog": "News Articles",
+    "tabConfig": "Homepage Interface"
+  }
+}

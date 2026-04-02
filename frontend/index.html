@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vũ Đức Nam | Personal Blog</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body, html {
+            width: 100vw;
+            min-height: 100vh;
+            overflow-x: hidden; 
+            background-color: #000000;
+            background: 
+                radial-gradient(circle at top right, rgba(160, 120, 30, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at top left, #0b1a1c 0%, #000000 70%);
+            background-attachment: fixed;
+            background-size: cover;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Canvas bao phủ toàn bộ màn hình CỐ ĐỊNH PHÍA SAU */
+        #webgl-canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 0; /* Nằm dưới dùng */
+        }
+        
+        /* Cục DOM của React */
+        #root {
+            position: relative;
+            z-index: 10;
+            min-height: 100vh;
+            /* CẮT EVENT CỦA BACKGROUND ĐỂ CHUỘT XUYÊN XUỐNG DƯỚI CANVAS (giúp OrbitControls quay galaxy) */
+            pointer-events: none; 
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Canvas dành cho Three.js nằm cố định -->
+    <canvas id="webgl-canvas"></canvas>
+
+    <!-- App React đè lên trên -->
+    <!-- App React đè lên trên (Bắt buộc phải có thẻ tên root này) -->
+    <div id="root"></div>
+
+    <!-- Khởi chạy ứng dụng React -->
+    <script type="module" src="/src/main.jsx"></script>
+
+    <!-- Nhúng logic Three.js (Sẽ được công cụ Vite tự động load từ node_modules) -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+
+        // Phát hiện mobile để giảm tải GPU
+        const isMobile = window.innerWidth < 768;
+
+        const parameters = {
+            count: isMobile ? 60000 : 200000,
+            size: isMobile ? 0.02 : 0.015,
+            radius: 17,
+            branches: 2,            
+            spin: 1.8,              
+            randomness: 0.6,        
+            randomnessPower: 3.5,   
+            insideColor: '#ffffff', 
+            midColor: '#F1D89E',    
+            outsideColor: '#000000' 
+        };
+
+        const canvas = document.querySelector('#webgl-canvas');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x000000, 0.02);
+
+        const sizes = {
+            width: window.innerWidth,
+            height: window.innerHeight
+        };
+
+        const camera = new THREE.PerspectiveCamera(60, sizes.width / sizes.height, 0.1, 100);
+        camera.position.set(0, isMobile ? 12 : 10, isMobile ? 20 : 18);
+        scene.add(camera);
+
+        const renderer = new THREE.WebGLRenderer({
+            canvas: canvas,
+            antialias: true, 
+            alpha: true 
+        });
+        renderer.setSize(sizes.width, sizes.height);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2)); 
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.enablePan = false; 
+        controls.enableRotate = false; 
+        
+        controls.maxDistance = 17; 
+        controls.minDistance = 3;
+
+        // TẠO TEXTURE CHO NGÔI SAO
+        const createStarTexture = () => {
+            const ctxCanvas = document.createElement('canvas');
+            ctxCanvas.width = 32;
+            ctxCanvas.height = 32;
+            const ctx = ctxCanvas.getContext('2d');
+
+            const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');     
+            gradient.addColorStop(0.1, 'rgba(255, 255, 255, 0.8)'); 
+            gradient.addColorStop(0.4, 'rgba(255, 255, 255, 0.2)'); 
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');           
+
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 32, 32);
+
+            return new THREE.CanvasTexture(ctxCanvas);
+        };
+
+        const starTexture = createStarTexture();
+
+        // TẠO DẢI NGÂN HÀ CHÍNH
+        let geometry = null;
+        let material = null;
+        let points = null;
+
+        const generateGalaxy = () => {
+            if (points !== null) {
+                geometry.dispose();
+                material.dispose();
+                scene.remove(points);
+            }
+
+            geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(parameters.count * 3);
+            const colors = new Float32Array(parameters.count * 3);
+
+            const colorInside = new THREE.Color(parameters.insideColor);
+            const colorPurple = new THREE.Color('#8a2be2');
+            const colorCyan = new THREE.Color('#00ffff');
+            const colorMid = new THREE.Color(parameters.midColor);
+            const colorOutside = new THREE.Color(parameters.outsideColor);
+
+            for (let i = 0; i < parameters.count; i++) {
+                const i3 = i * 3; 
+
+                const radius = Math.pow(Math.random(), 1.2) * parameters.radius;
+                const spinAngle = Math.pow(radius, 0.85) * parameters.spin;
+                const branchAngle = ((i % parameters.branches) / parameters.branches) * Math.PI * 2;
+
+                const randomX = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
+                const randomY = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
+                const randomZ = Math.pow(Math.random(), parameters.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * parameters.randomness * radius;
+
+                positions[i3] = Math.cos(branchAngle + spinAngle) * radius + randomX;
+                positions[i3 + 1] = randomY * 0.1; 
+                positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
+
+                const ratio = radius / parameters.radius;
+                const mixedColor = new THREE.Color();
+                
+                if (ratio < 0.08) {
+                    mixedColor.copy(colorInside).lerp(colorPurple, ratio / 0.08);
+                } else if (ratio < 0.20) {
+                    mixedColor.copy(colorPurple).lerp(colorCyan, (ratio - 0.08) / 0.12);
+                } else if (ratio < 0.40) {
+                    mixedColor.copy(colorCyan).lerp(colorMid, (ratio - 0.20) / 0.20);
+                } else {
+                    mixedColor.copy(colorMid).lerp(colorOutside, (ratio - 0.40) / 0.60);
+                }
+
+                colors[i3] = mixedColor.r;
+                colors[i3 + 1] = mixedColor.g;
+                colors[i3 + 2] = mixedColor.b;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            material = new THREE.PointsMaterial({
+                size: parameters.size,
+                sizeAttenuation: true,       
+                depthWrite: false,           
+                blending: THREE.AdditiveBlending, 
+                vertexColors: true,          
+                transparent: true,
+                alphaMap: starTexture        
+            });
+
+            points = new THREE.Points(geometry, material);
+            scene.add(points);
+        };
+
+        
+        generateGalaxy();
+
+        // TẠO SAO BAY TRONG TÌNH KHÔNG (FLYING STARS)
+        const flyingStarsCount = isMobile ? 500 : 1500;
+        const flyingStarsGeometry = new THREE.BufferGeometry();
+        const flyingStarsPositions = new Float32Array(flyingStarsCount * 3);
+        const flyingStarsSpeeds = new Float32Array(flyingStarsCount);
+
+        for(let i = 0; i < flyingStarsCount; i++) {
+            flyingStarsPositions[i*3] = (Math.random() - 0.5) * 50; 
+            flyingStarsPositions[i*3+1] = (Math.random() - 0.5) * 50; 
+            flyingStarsPositions[i*3+2] = (Math.random() - 0.5) * 60; 
+            
+            flyingStarsSpeeds[i] = 0.02 + Math.random() * 0.05; 
+        }
+
+        flyingStarsGeometry.setAttribute('position', new THREE.BufferAttribute(flyingStarsPositions, 3));
+        flyingStarsGeometry.setAttribute('speed', new THREE.BufferAttribute(flyingStarsSpeeds, 1));
+
+        const flyingStarsMaterial = new THREE.PointsMaterial({
+            size: 0.08,
+            color: '#ffffff',
+            transparent: true,
+            opacity: 0.6,
+            alphaMap: starTexture, 
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        const flyingStars = new THREE.Points(flyingStarsGeometry, flyingStarsMaterial);
+        scene.add(flyingStars);
+
+
+        // ĐỒNG BỘ XOAY BACKGROUND VỚI MỌI THAO TÁC CUỘN (Scroll, Menu, Wheel)
+        let timeAngle = 0;
+        let currentScrollY = window.scrollY || 0;
+
+        // RESIZE
+        window.addEventListener('resize', () => {
+            sizes.width = window.innerWidth;
+            sizes.height = window.innerHeight;
+
+            camera.aspect = sizes.width / sizes.height;
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(sizes.width, sizes.height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        });
+
+        const tick = () => {
+            // 1. Dải ngân hà tự quay từ từ theo thời gian
+            timeAngle += 0.001;
+
+                        // 2. Tính mô men xoắn cho vòng lặp xoay mượt mà
+            currentScrollY += (window.scrollY - currentScrollY) * 0.02;
+
+            if (points) {
+                points.rotation.y = timeAngle + (currentScrollY * -0.001);
+            }
+
+            // Di chuyển các ngôi sao bay tạo cảm giác đang lướt trong tàu vũ trụ
+            const fsPositions = flyingStarsGeometry.attributes.position.array;
+            const fsSpeeds = flyingStarsGeometry.attributes.speed.array;
+            for(let i=0; i<flyingStarsCount; i++) {
+                const i3 = i * 3;
+                fsPositions[i3 + 2] += fsSpeeds[i]; 
+                
+                if(fsPositions[i3 + 2] > 25) {
+                    fsPositions[i3 + 2] = -40; // Reset về xa
+                    fsPositions[i3] = (Math.random() - 0.5) * 50; 
+                    fsPositions[i3+1] = (Math.random() - 0.5) * 50; 
+                }
+            }
+            flyingStarsGeometry.attributes.position.needsUpdate = true;
+
+            /* ------------------------------------------------------------------
+             * XỬ LÝ ZOOM VÀ TẠO HIỆU ỨNG PHANH MƯỢT MÀ KHI CHẠM ĐÁY:
+             * Tính toán vị trí Z, Y muốn đến dựa vào vị trí cuộn.
+             * ------------------------------------------------------------------ */
+            // SỬ DỤNG HÀM MŨ (EXPONENTIAL DECAY) ĐỂ XÓA TƯỜNG TÀNG HÌNH
+            // Càng cuộn sâu, camera càng trượt chậm lại và lọt thỏm vào lõi hoàn toàn không có điểm dừng cứng.
+            const expFactor = Math.exp(-window.scrollY * 0.0008); 
+            
+            const baseTargetY = 1.5 + 8.5 * expFactor; 
+            const baseTargetZ = 3.0 + 15.0 * expFactor;
+
+            // TẠO HIỆU ỨNG TRÔI DẠT (IDLE FLOATING) KHI ĐỨNG IM
+            // Sử dụng sóng sin/cos theo thời gian (timeAngle) để tạo nhịp thở (nhấp nhô nhẹ 0.4) và zoom nhẹ (0.8)
+            const idleDriftY = Math.sin(timeAngle * 15) * 0.4;
+            const idleDriftZ = Math.cos(timeAngle * 10) * 0.8;
+
+            const targetCamY = baseTargetY + idleDriftY;
+            const targetCamZ = baseTargetZ + idleDriftZ;
+
+            // Lerp tới vị trí đích -> Cực kỳ mượt luôn lướt theo nhịp thở trôi dạt
+            camera.position.y += (targetCamY - camera.position.y) * 0.02;
+            camera.position.z += (targetCamZ - camera.position.z) * 0.02;
+
+            camera.lookAt(scene.position);
+            controls.update();
+
+            renderer.render(scene, camera);
+            window.requestAnimationFrame(tick);
+        };
+
+        tick();
+    </script>
+</body>
+</html>
