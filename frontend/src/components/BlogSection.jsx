@@ -8,7 +8,10 @@ import { useTranslation } from 'react-i18next';
 
 export default function BlogSection() {
   const { t } = useTranslation();
-  const [posts, setPosts] = useState([]);
+  const [posts, setPosts] = useState(() => {
+    const saved = localStorage.getItem('portfolioPosts');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [search, setSearch] = useState("");
 
   const fetchPosts = async () => {
@@ -17,6 +20,7 @@ export default function BlogSection() {
       // Sắp xếp mới nhất lên đầu
       const sorted = res.data.sort((a,b) => new Date(b.ngayDang) - new Date(a.ngayDang));
       setPosts(sorted);
+      localStorage.setItem('portfolioPosts', JSON.stringify(sorted));
     } catch (error) {
       console.error(error);
       // Dữ liệu mẫu nếu server lỗi
