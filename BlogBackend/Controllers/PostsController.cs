@@ -79,7 +79,7 @@ namespace BlogBackend.Controllers
         public async Task<ActionResult<BlogPost>> PostBlogPost(BlogPost blogPost)
         {
             if (blogPost.NgayDang == default) {
-                blogPost.NgayDang = DateTime.Now;
+                blogPost.NgayDang = DateTime.UtcNow;
             }
             _context.BlogPosts.Add(blogPost);
             await _context.SaveChangesAsync();

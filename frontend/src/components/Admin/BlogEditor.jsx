@@ -73,8 +73,9 @@ export default function BlogEditor() {
         navigate(`/post/${res.data.maBaiViet}`);
       }
     } catch (err) {
-      alert("Kết nối CSDL thất bại! Vui lòng kiểm tra lại quá trình Update-Database.");
-      console.error(err);
+      console.error("Chi tiết lỗi:", err);
+      const errorMsg = err.response?.data?.message || err.response?.data?.title || err.message;
+      alert(`[${isEdit ? "CẬP NHẬT" : "XUẤT BẢN"} THẤT BẠI] Chi tiết lỗi: ${errorMsg}\n\nVui lòng kiểm tra console log (F12) hoặc phía Backend.`);
     }
     setLoading(false);
   };

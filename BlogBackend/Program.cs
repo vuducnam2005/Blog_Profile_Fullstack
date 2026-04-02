@@ -1,6 +1,9 @@
 using BlogBackend.Data;
 using Microsoft.EntityFrameworkCore;
 
+// Bật cờ tương thích cho PostgreSQL nếu CSDL đã lỡ lưu dạng Local Time trước đó, hoặc để không báo lỗi
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -9,7 +12,8 @@ builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "";
+var envDbUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+var connectionString = !string.IsNullOrEmpty(envDbUrl) ? envDbUrl : builder.Configuration.GetConnectionString("DefaultConnection") ?? "";
 
 // Xử lý tự động chuyển đổi định dạng URI của Render sang chuẩn của Npgsql (sửa lỗi Port = -1)
 if (connectionString.StartsWith("postgres"))
