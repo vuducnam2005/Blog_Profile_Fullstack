@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Save, ArrowLeft, Image as ImageIcon } from 'lucide-react';
 import { API_BASE_URL } from '../../config';
+import { ADMIN_API_KEY } from '../../context/AuthContext';
 
 // import ReactQuill from 'react-quill';
 // import 'react-quill/dist/quill.snow.css';
@@ -64,12 +65,16 @@ export default function BlogEditor() {
     const payload = { tieuDe, noiDung, tomTat, theLoai, hinhAnhBia };
 
     try {
+      const config = {
+        headers: { "X-Admin-Key": ADMIN_API_KEY }
+      };
+
       if (isEdit) {
         payload.maBaiViet = parseInt(id, 10);
-        await axios.put(`${API_BASE_URL}/api/posts/${id}`, payload);
+        await axios.put(`${API_BASE_URL}/api/posts/${id}`, payload, config);
         navigate(`/post/${id}`);
       } else {
-        const res = await axios.post(`${API_BASE_URL}/api/posts`, payload);
+        const res = await axios.post(`${API_BASE_URL}/api/posts`, payload, config);
         navigate(`/post/${res.data.maBaiViet}`);
       }
     } catch (err) {
