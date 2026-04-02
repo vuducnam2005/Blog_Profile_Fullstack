@@ -12,8 +12,8 @@ if (typeof window !== "undefined") {
         // Trường hợp 1: Chạy qua Chia sẻ Online của VS Code (Dev Tunnels)
         // Kỹ thuật tự động đổi đuôi port -5173 của web thành port -5020 của C#
         apiUrl = origin.replace("-5173", "-5020");
-    } else if (hostname === "ducnamdev.site" || hostname === "www.ducnamdev.site") {
-        // Trường hợp Production: Triển khai trên Vercel & Render
+    } else if (hostname === "ducnamdev.site" || hostname === "www.ducnamdev.site" || hostname.includes("vercel.app")) {
+        // Trường hợp Production (Custom Domain hoặc Vercel URL)
         apiUrl = "https://api.ducnamdev.site";
     } else if (hostname !== "localhost" && hostname !== "127.0.0.1") {
         // Trường hợp 2: Chạy qua mạng LAN (dùng điện thoại bắt chung WiFi)

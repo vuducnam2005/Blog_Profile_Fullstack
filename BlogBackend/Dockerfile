@@ -15,9 +15,10 @@ FROM mcr.microsoft.com/dotnet/aspnet:9.0
 WORKDIR /app
 COPY --from=build-env /app/out .
 
-# Expose the port the app will run on
+# Expose the port the app will run on và tắt Globalization (Sửa lỗi Status 139 trên Linux)
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true
 
 # Start the app
 ENTRYPOINT ["dotnet", "BlogBackend.dll"]
