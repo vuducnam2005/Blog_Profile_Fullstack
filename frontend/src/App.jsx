@@ -4,9 +4,11 @@ import Detail from './pages/Detail';
 import Admin from './pages/Admin';
 import CvViewer from './pages/CvViewer';
 import { PortfolioProvider } from './context/PortfolioContext';
+import { AuthProvider } from './context/AuthContext';
 
 function App() {
   return (
+    <AuthProvider>
     <PortfolioProvider>
       <Router>
       <div className="min-h-screen font-sans tracking-wide">
@@ -23,6 +25,7 @@ function App() {
       </div>
       </Router>
     </PortfolioProvider>
+    </AuthProvider>
   );
 }
 

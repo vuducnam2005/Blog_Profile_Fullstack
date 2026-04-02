@@ -4,15 +4,16 @@ import { ArrowLeft, Lock, FileText, Settings } from 'lucide-react';
 import BlogEditor from '../components/Admin/BlogEditor';
 import ConfigEditor from '../components/Admin/ConfigEditor';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../context/AuthContext';
 
 export default function Admin() {
   const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = !!id;
+  const { isAdmin, login } = useAuth();
 
   // Authentication State
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [hasAuthError, setHasAuthError] = useState(false);
@@ -22,14 +23,14 @@ export default function Admin() {
   const handleLogin = (e) => {
     e.preventDefault();
     if (username === "0362183511" && password === "Vuducnam2005@") {
-      setIsAuthenticated(true);
+      login();
       setHasAuthError(false);
     } else {
       setHasAuthError(true);
     }
   };
 
-  if (!isAuthenticated) {
+  if (!isAdmin) {
     return (
       <div className="min-h-screen flex flex-col justify-center items-center px-4 relative z-20">
         <div className="max-w-md w-full glass rounded-3xl p-8 bg-black/60 shadow-2xl relative border border-[#F1D89E]/20">

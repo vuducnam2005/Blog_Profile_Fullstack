@@ -5,9 +5,11 @@ import { format } from 'date-fns';
 import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 import { useTranslation } from 'react-i18next';
+import { useAuth, ADMIN_API_KEY } from '../context/AuthContext';
 
 export default function Detail() {
   const { t } = useTranslation();
+  const { isAdmin } = useAuth();
   const { id } = useParams();
   const navigate = useNavigate();
   const [post, setPost] = useState(null);
@@ -27,7 +29,9 @@ export default function Detail() {
   const handleDelete = async () => {
     if (window.confirm(t('detail.deleteConfirm', "Hành động này sẽ xóa vĩnh viễn dữ liệu. Tiếp tục?"))) {
       try {
-        await axios.delete(`${API_BASE_URL}/api/posts/${id}`);
+        await axios.delete(`${API_BASE_URL}/api/posts/${id}`, {
+          headers: { 'X-Admin-Key': ADMIN_API_KEY }
+        });
         navigate("/");
       } catch(e) {
         alert(t('detail.deleteError', "Lỗi khi xóa bài"));
@@ -72,14 +76,16 @@ export default function Detail() {
       <div className="flex max-md:flex-col justify-between items-start md:items-center border-b border-white/20 pb-4 md:pb-6 mb-6 md:mb-8 text-[#F1D89E]/60 text-xs md:text-sm gap-3 md:gap-4">
         <span>{t('detail.postedOn', 'Ngày đăng:')} {format(new Date(post.ngayDang), 'dd/MM/yyyy HH:mm')}</span>
         
-        <div className="flex gap-4 border border-white/10 px-4 py-2 rounded-full glass">
-          <button onClick={() => navigate(`/admin/edit/${post.maBaiViet}`)} className="flex items-center hover:text-blue-400 transition-colors">
-            <Edit className="w-4 h-4 mr-2"/> {t('detail.edit', 'Sửa')}
-          </button>
-          <button onClick={handleDelete} className="flex items-center hover:text-red-400 transition-colors">
-            <Trash2 className="w-4 h-4 mr-2"/> {t('detail.delete', 'Xóa')}
-          </button>
-        </div>
+        {isAdmin && (
+          <div className="flex gap-4 border border-white/10 px-4 py-2 rounded-full glass">
+            <button onClick={() => navigate(`/admin/edit/${post.maBaiViet}`)} className="flex items-center hover:text-blue-400 transition-colors">
+              <Edit className="w-4 h-4 mr-2"/> {t('detail.edit', 'Sửa')}
+            </button>
+            <button onClick={handleDelete} className="flex items-center hover:text-red-400 transition-colors">
+              <Trash2 className="w-4 h-4 mr-2"/> {t('detail.delete', 'Xóa')}
+            </button>
+          </div>
+        )}
       </div>
 
       <div 
