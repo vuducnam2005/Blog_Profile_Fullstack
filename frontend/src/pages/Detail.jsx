@@ -48,11 +48,17 @@ export default function Detail() {
       </Link>
       
       {post.hinhAnhBia && (
-        <div className="w-full mb-6 md:mb-10 rounded-xl md:rounded-2xl shadow-[0_0_30px_rgba(241,216,158,0.1)] overflow-hidden border border-white/10">
+        <div className="w-full max-h-[450px] md:max-h-[600px] mb-6 md:mb-10 rounded-xl md:rounded-2xl shadow-[0_0_30px_rgba(241,216,158,0.1)] overflow-hidden border border-white/10 relative flex items-center justify-center bg-black/80">
+          {/* Lớp nền làm mờ cho ảnh tỷ lệ dọc (Cinematic Blur) */}
+          <div 
+             className="absolute inset-0 bg-cover bg-center blur-xl opacity-40 scale-125" 
+             style={{ backgroundImage: `url(${post.hinhAnhBia.startsWith('http') ? post.hinhAnhBia : `${API_BASE_URL}${post.hinhAnhBia.startsWith('/') ? '' : '/'}${post.hinhAnhBia}`})` }}
+          />
+          {/* Ảnh chính giữ nguyên tỷ lệ */}
           <img 
               src={post.hinhAnhBia.startsWith('http') ? post.hinhAnhBia : `${API_BASE_URL}${post.hinhAnhBia.startsWith('/') ? '' : '/'}${post.hinhAnhBia}`} 
               alt={post.tieuDe} 
-              className="w-full h-auto object-cover hover:scale-[1.02] transition-transform duration-700" 
+              className="relative z-10 w-full h-full max-h-[450px] md:max-h-[600px] object-contain hover:scale-[1.02] transition-transform duration-700" 
           />
         </div>
       )}
