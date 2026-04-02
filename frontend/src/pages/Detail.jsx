@@ -50,7 +50,7 @@ export default function Detail() {
       {post.hinhAnhBia && (
         <div className="w-full mb-6 md:mb-10 rounded-xl md:rounded-2xl shadow-[0_0_30px_rgba(241,216,158,0.1)] overflow-hidden border border-white/10">
           <img 
-              src={post.hinhAnhBia.startsWith('http') ? post.hinhAnhBia : `${API_BASE_URL}${post.hinhAnhBia}`} 
+              src={post.hinhAnhBia.startsWith('http') ? post.hinhAnhBia : `${API_BASE_URL}${post.hinhAnhBia.startsWith('/') ? '' : '/'}${post.hinhAnhBia}`} 
               alt={post.tieuDe} 
               className="w-full h-auto object-cover hover:scale-[1.02] transition-transform duration-700" 
           />

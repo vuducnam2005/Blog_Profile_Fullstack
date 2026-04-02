@@ -21,6 +21,12 @@ namespace BlogBackend.Controllers
             _context = context;
         }
 
+        private bool IsAuthorized()
+        {
+            var key = Request.Headers["X-Admin-Key"].FirstOrDefault();
+            return key == "DucNamAdmin2005SecretKey";
+        }
+
         // GET: api/Posts
         [HttpGet]
         public async Task<ActionResult<IEnumerable<BlogPost>>> GetBlogPosts()
@@ -48,6 +54,8 @@ namespace BlogBackend.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutBlogPost(int id, BlogPost blogPost)
         {
+            if (!IsAuthorized()) return Unauthorized(new { message = "Bạn không có quyền thực hiện chức năng này." });
+
             if (id != blogPost.MaBaiViet)
             {
                 return BadRequest();
@@ -78,6 +86,8 @@ namespace BlogBackend.Controllers
         [HttpPost]
         public async Task<ActionResult<BlogPost>> PostBlogPost(BlogPost blogPost)
         {
+            if (!IsAuthorized()) return Unauthorized(new { message = "Bạn không có quyền thực hiện chức năng này." });
+
             if (blogPost.NgayDang == default) {
                 blogPost.NgayDang = DateTime.UtcNow;
             }
@@ -91,6 +101,8 @@ namespace BlogBackend.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteBlogPost(int id)
         {
+            if (!IsAuthorized()) return Unauthorized(new { message = "Bạn không có quyền thực hiện chức năng này." });
+
             var blogPost = await _context.BlogPosts.FindAsync(id);
             if (blogPost == null)
             {

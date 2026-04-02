@@ -60,7 +60,7 @@ export default function BlogSection() {
             <div key={post.maBaiViet} className="glass rounded-2xl transition-all hover:-translate-y-2 hover:shadow-[0_0_20px_rgba(241,216,158,0.2)] hover:border-[#F1D89E]/50 flex flex-col items-start bg-black/40 border border-[#F1D89E]/20 overflow-hidden group">
               {post.hinhAnhBia && (
                 <div className="w-full h-40 md:h-56 relative border-b border-white/10 bg-black/80 flex items-center justify-center overflow-hidden">
-                   <img src={post.hinhAnhBia.startsWith('http') ? post.hinhAnhBia : `${API_BASE_URL}${post.hinhAnhBia}`} alt="Cover" className="max-w-full max-h-full object-contain transition-transform duration-700 group-hover:scale-105" />
+                   <img src={post.hinhAnhBia.startsWith('http') ? post.hinhAnhBia : `${API_BASE_URL}${post.hinhAnhBia.startsWith('/') ? '' : '/'}${post.hinhAnhBia}`} alt="Cover" className="max-w-full max-h-full object-contain transition-transform duration-700 group-hover:scale-105" />
                    {post.theLoai && (
                      <span className="absolute top-4 left-4 px-3 py-1.5 bg-black/60 backdrop-blur-md text-[#F1D89E] border border-[#F1D89E]/30 text-xs font-bold rounded-lg mb-3 uppercase tracking-wider">{post.theLoai}</span>
                    )}
