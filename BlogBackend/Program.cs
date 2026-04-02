@@ -24,13 +24,19 @@ if (connectionString.StartsWith("postgres"))
 builder.Services.AddDbContext<BlogDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// Cấu hình CORS cho phép React Vite và VS Code Forwarding truy cập API
+// Cấu hình CORS bảo mật: Chỉ cho phép các tên miền được chỉ định
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.AllowAnyOrigin()
+            policy.SetIsOriginAllowed(origin => 
+                    origin.Contains("localhost") || 
+                    origin.Contains("192.168.") || // Cho phép mạng LAN khi test Mobile
+                    origin.Contains("devtunnels.ms") || // Cho phép VS Code Tunnels
+                    origin.Contains("ducnamdev.site") || // CHÍNH THỨC: Cho phép tên miền của bạn
+                    origin.Contains("vercel.app") // Cho phép link dự phòng của Vercel
+                  )
                   .AllowAnyHeader()
                   .AllowAnyMethod();
         });

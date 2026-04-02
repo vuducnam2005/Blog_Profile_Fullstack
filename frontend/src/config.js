@@ -13,8 +13,8 @@ if (typeof window !== "undefined") {
         // Kỹ thuật tự động đổi đuôi port -5173 của web thành port -5020 của C#
         apiUrl = origin.replace("-5173", "-5020");
     } else if (hostname === "ducnamdev.site" || hostname === "www.ducnamdev.site" || hostname.includes("vercel.app")) {
-        // Môi trường Production: Gọi trực tiếp vào máy chủ gốc của Render
-        apiUrl = "https://blog-api-ducnam.onrender.com";
+        // Môi trường Production: Gọi qua Subdomain API
+        apiUrl = "https://api.ducnamdev.site";
     } else if (hostname !== "localhost" && hostname !== "127.0.0.1") {
         // Trường hợp 2: Chạy qua mạng LAN (dùng điện thoại bắt chung WiFi)
         apiUrl = `http://${hostname}:5020`;
