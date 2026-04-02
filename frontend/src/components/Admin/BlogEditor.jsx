@@ -151,7 +151,7 @@ export default function BlogEditor() {
                 <label className="block text-sm font-semibold text-[#F1D89E] uppercase tracking-wider mb-2">Ảnh bìa (Thumbnail)</label>
                 <div className="w-full aspect-[16/9] border-2 border-dashed border-gray-600 rounded-2xl flex flex-col items-center justify-center relative overflow-hidden bg-black/60 hover:border-[#F1D89E]/50 transition-colors">
                     {hinhAnhBia ? (
-                        <img src={hinhAnhBia.startsWith('http') ? hinhAnhBia : `${API_BASE_URL}${hinhAnhBia}`} alt="Cover Preview" className="absolute inset-0 w-full h-full object-contain" />
+                        <img src={hinhAnhBia.startsWith('http') ? hinhAnhBia : `${API_BASE_URL}${hinhAnhBia.startsWith('/') ? '' : '/'}${hinhAnhBia}`} alt="Cover Preview" className="absolute inset-0 w-full h-full object-contain" />
                     ) : (
                         <div className="text-gray-400 flex flex-col items-center">
                             <ImageIcon className="w-10 h-10 mb-2 opacity-50" />

@@ -13,40 +13,10 @@ export default function Navbar() {
     localStorage.setItem('appLang', newLang);
   };
 
-  const customSmoothScroll = (targetId, duration = 1200) => {
-    const targetElement = document.getElementById(targetId);
-    if (!targetElement) return;
-
-    // Lấy vị trí đích hiện tại cộng với độ cuộn hiện thời
-    const targetPosition = targetElement.getBoundingClientRect().top + window.pageYOffset;
-    const startPosition = window.pageYOffset;
-    const distance = targetPosition - startPosition;
-    let startTime = null;
-
-    // Hàm tạo độ mượt (chậm ở đầu cuối, lướt nhanh ở giữa)
-    const easeInOutCubic = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-
-    const animation = (currentTime) => {
-      if (startTime === null) startTime = currentTime;
-      const timeElapsed = currentTime - startTime;
-      let progress = timeElapsed / duration;
-      
-      if (progress > 1) progress = 1;
-
-      window.scrollTo(0, startPosition + distance * easeInOutCubic(progress));
-
-      if (progress < 1) {
-        requestAnimationFrame(animation);
-      }
-    };
-
-    requestAnimationFrame(animation);
-  };
-
   const scrollTo = (id) => {
     setMobileOpen(false);
-    // Thay duration (1200ms) để tùy chỉnh tốc độ, số càng lớn cuộn càng chậm
-    customSmoothScroll(id, 1200);
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
   const navItems = [
@@ -63,8 +33,8 @@ export default function Navbar() {
       {/* ===== TOP BAR ===== */}
       <div className="px-4 md:px-8 py-4 md:py-5 flex justify-between items-center bg-black/50 backdrop-blur-md border-b border-[#F1D89E]/20">
         {/* Logo */}
-        <div 
-          onClick={() => scrollTo('hero')} 
+        <div
+          onClick={() => scrollTo('hero')}
           className="text-xl md:text-2xl font-bold tracking-widest text-[#F1D89E] cursor-pointer hover:scale-105 transition-transform"
         >
           Vũ Đức Nam
@@ -81,25 +51,25 @@ export default function Navbar() {
               {item.label}
             </button>
           ))}
-          
+
           <div className="flex gap-4 ml-4">
             <button
               onClick={toggleLanguage}
               className="flex items-center gap-2 border border-[#F1D89E]/40 text-[#F1D89E] px-4 py-1.5 rounded-full hover:bg-[#F1D89E]/10 transition-colors font-bold text-xs"
             >
-              <Globe className="w-4 h-4"/> {i18n.language === 'vi' ? 'EN' : 'VI'}
+              <Globe className="w-4 h-4" /> {i18n.language === 'vi' ? 'EN' : 'VI'}
             </button>
-            <Link 
+            <Link
               to="/cv"
               className="flex items-center gap-2 border border-[#F1D89E] text-[#F1D89E] px-4 py-1.5 rounded-full hover:bg-[#F1D89E] hover:text-black transition-colors"
             >
-              <FileText className="w-4 h-4"/> CV
+              <FileText className="w-4 h-4" /> CV
             </Link>
-            <Link 
-              to="/admin/create" 
+            <Link
+              to="/admin/create"
               className="border border-[#F1D89E]/40 text-[#F1D89E] px-4 py-1.5 rounded-full hover:bg-[#F1D89E]/10 transition-colors flex items-center gap-2"
             >
-               <User className="w-4 h-4"/> Admin
+              <User className="w-4 h-4" /> Admin
             </Link>
           </div>
         </div>
@@ -116,9 +86,8 @@ export default function Navbar() {
 
       {/* ===== MOBILE DROPDOWN MENU ===== */}
       <div
-        className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
-          mobileOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
-        }`}
+        className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${mobileOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
+          }`}
       >
         <div className="bg-black/80 backdrop-blur-xl border-b border-[#F1D89E]/20 px-6 py-4 flex flex-col gap-1">
           {/* Các tab điều hướng */}
@@ -141,21 +110,21 @@ export default function Navbar() {
               onClick={() => { toggleLanguage(); setMobileOpen(false); }}
               className="flex items-center gap-2 border border-[#F1D89E]/40 text-[#F1D89E] px-4 py-2 rounded-full hover:bg-[#F1D89E]/10 transition-colors font-bold text-xs"
             >
-              <Globe className="w-4 h-4"/> {i18n.language === 'vi' ? 'EN' : 'VI'}
+              <Globe className="w-4 h-4" /> {i18n.language === 'vi' ? 'EN' : 'VI'}
             </button>
-            <Link 
+            <Link
               to="/cv"
               onClick={() => setMobileOpen(false)}
               className="flex items-center gap-2 border border-[#F1D89E] text-[#F1D89E] px-4 py-2 rounded-full hover:bg-[#F1D89E] hover:text-black transition-colors text-xs font-bold"
             >
-              <FileText className="w-4 h-4"/> CV
+              <FileText className="w-4 h-4" /> CV
             </Link>
-            <Link 
-              to="/admin/create" 
+            <Link
+              to="/admin/create"
               onClick={() => setMobileOpen(false)}
               className="border border-[#F1D89E]/40 text-[#F1D89E] px-4 py-2 rounded-full hover:bg-[#F1D89E]/10 transition-colors flex items-center gap-2 text-xs font-bold"
             >
-              <User className="w-4 h-4"/> Admin
+              <User className="w-4 h-4" /> Admin
             </Link>
           </div>
         </div>
