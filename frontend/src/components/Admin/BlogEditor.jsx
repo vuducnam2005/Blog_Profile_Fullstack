@@ -45,7 +45,10 @@ export default function BlogEditor() {
       const res = await axios.post(`${API_BASE_URL}/api/uploads`, formData, {
         headers: { "Content-Type": "multipart/form-data" }
       });
-      setHinhAnhBia(`${API_BASE_URL}${res.data.url}`);
+      // Nếu Cloudinary được dùng, nó trả về URL dạng "https://..."
+      // Nếu dùng ổ cứng Local, nó trả về URL dạng "/uploads/..."
+      // Lỗi ở đây là tôi đã nối nhầm API_BASE_URL vào thẳng kết quả dù nó đã là dạng "https"
+      setHinhAnhBia(res.data.url);
     } catch (err) {
       alert("Lỗi tải ảnh lên!");
       console.error(err);
