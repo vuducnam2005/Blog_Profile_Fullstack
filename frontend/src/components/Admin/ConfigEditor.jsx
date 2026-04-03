@@ -213,6 +213,14 @@ export default function ConfigEditor() {
                             <input value={config.hero?.phone || ""} onChange={e => handleChange("hero", "phone", e.target.value)} className="w-full bg-black/40 border border-white/20 p-3 rounded-xl text-white outline-none focus:border-[#F1D89E]" />
                         </div>
                         <div>
+                            <label className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2 block">Quê quán</label>
+                            <input value={config.hero?.hometown || ""} onChange={e => handleChange("hero", "hometown", e.target.value)} className="w-full bg-black/40 border border-white/20 p-3 rounded-xl text-white outline-none focus:border-[#F1D89E]" placeholder="Nam Định" />
+                        </div>
+                        <div>
+                            <label className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2 block">Nơi ở hiện tại</label>
+                            <input value={config.hero?.residence || ""} onChange={e => handleChange("hero", "residence", e.target.value)} className="w-full bg-black/40 border border-white/20 p-3 rounded-xl text-white outline-none focus:border-[#F1D89E]" placeholder="Hà Nội" />
+                        </div>
+                        <div>
                             <label className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2 block">GitHub / Website Link</label>
                             <input value={config.hero?.github || ""} onChange={e => handleChange("hero", "github", e.target.value)} className="w-full bg-black/40 border border-white/20 p-3 rounded-xl text-white outline-none focus:border-[#F1D89E]" placeholder="/vuducnam2005" />
                         </div>

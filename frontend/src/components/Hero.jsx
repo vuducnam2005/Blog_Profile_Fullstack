@@ -1,4 +1,4 @@
-import { Mail, Phone, Globe, GraduationCap, Code } from 'lucide-react';
+import { Mail, Phone, Globe, GraduationCap, Code, MapPin, Home } from 'lucide-react';
 import fallbackAvatarImg from '../assets/avatar.png';
 import { useContext } from 'react';
 import { PortfolioContext } from '../context/PortfolioContext';
@@ -71,6 +71,14 @@ export default function Hero() {
                     <div className="flex items-center gap-5 text-gray-300 hover:text-white transition-colors">
                         <div className="text-[#F1D89E] bg-[#F1D89E]/10 p-2.5 rounded-lg"><Phone className="w-5 h-5"/></div>
                         <span className="text-sm md:text-base tracking-wide">{hero.phone || "0362 183 511"}</span>
+                    </div>
+                    <div className="flex items-center gap-5 text-gray-300 hover:text-white transition-colors">
+                        <div className="text-[#F1D89E] bg-[#F1D89E]/10 p-2.5 rounded-lg"><MapPin className="w-5 h-5"/></div>
+                        <span className="text-sm md:text-base tracking-wide">{hero.hometown || "Quê quán: Nam Định"}</span>
+                    </div>
+                    <div className="flex items-center gap-5 text-gray-300 hover:text-white transition-colors">
+                        <div className="text-[#F1D89E] bg-[#F1D89E]/10 p-2.5 rounded-lg"><Home className="w-5 h-5"/></div>
+                        <span className="text-sm md:text-base tracking-wide">{hero.residence || "Nơi ở hiện tại: Hà Nội"}</span>
                     </div>
                     <div className="flex items-center gap-5 text-gray-300 hover:text-white transition-colors">
                         <div className="text-[#F1D89E] bg-[#F1D89E]/10 p-2.5 rounded-lg"><Globe className="w-5 h-5"/></div>
