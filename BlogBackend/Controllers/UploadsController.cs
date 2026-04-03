@@ -24,6 +24,8 @@ namespace BlogBackend.Controllers
         }
 
         [HttpPost]
+        [RequestSizeLimit(104857600)] // 100 MB Limit
+        [RequestFormLimits(MultipartBodyLengthLimit = 104857600)]
         public async Task<IActionResult> UploadImage(IFormFile file)
         {
             if (file == null || file.Length == 0)
