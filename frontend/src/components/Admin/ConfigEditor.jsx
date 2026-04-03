@@ -399,28 +399,39 @@ export default function ConfigEditor() {
                                 <input 
                                     type="file" 
                                     accept="image/*,video/*"
+                                    multiple
                                     className="hidden"
                                     disabled={uploadingMedia}
                                     onChange={async (e) => {
-                                        const file = e.target.files[0];
-                                        if (!file) return;
+                                        const files = Array.from(e.target.files);
+                                        if (!files.length) return;
                                         setUploadingMedia(true);
-                                        const formData = new FormData();
-                                        formData.append('file', file);
+                                        
                                         try {
-                                            const res = await axios.post(`${API_BASE_URL}/api/uploads`, formData);
-                                            const url = res.data.url;
-                                            const ext = url.split('.').pop().toLowerCase();
-                                            const type = ['mp4', 'webm', 'ogg', 'mov', 'avi'].includes(ext) ? 'video' : 'image';
-
-                                            handleAddArrayItem('album', {
-                                                id: Date.now(),
-                                                url: url,
-                                                type: type
+                                            const uploadPromises = files.map(async (file, index) => {
+                                                const formData = new FormData();
+                                                formData.append('file', file);
+                                                const res = await axios.post(`${API_BASE_URL}/api/uploads`, formData);
+                                                const url = res.data.url;
+                                                const ext = url.split('.').pop().toLowerCase();
+                                                const type = ['mp4', 'webm', 'ogg', 'mov', 'avi'].includes(ext) ? 'video' : 'image';
+                                                
+                                                return {
+                                                    id: Date.now() + index + Math.random(),
+                                                    url: url,
+                                                    type: type
+                                                };
                                             });
+
+                                            const uploadedItems = await Promise.all(uploadPromises);
+                                            
+                                            setConfig(prev => ({
+                                                ...prev,
+                                                album: [...uploadedItems, ...(prev.album || [])]
+                                            }));
                                         } catch (err) {
                                             console.error("Lỗi tải media:", err);
-                                            alert("Lỗi khi tải file lên máy chủ. Hãy thử lại sau giây lát.");
+                                            alert("Có lỗi khi tải ảnh/video lên máy chủ. Bạn hãy thử tải lên số lượng ít hơn hoặc kiểm tra mạng nhé.");
                                         } finally {
                                             setUploadingMedia(false);
                                             e.target.value = null;
