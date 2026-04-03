@@ -74,7 +74,7 @@ export default function Hero() {
                     </div>
                     <div className="flex items-center gap-5 text-gray-300 hover:text-white transition-colors">
                         <div className="text-[#F1D89E] bg-[#F1D89E]/10 p-2.5 rounded-lg"><MapPin className="w-5 h-5"/></div>
-                        <span className="text-sm md:text-base tracking-wide">{hero.hometown || "Quê quán: Nam Định"}</span>
+                        <span className="text-sm md:text-base tracking-wide">{hero.hometown || "Quê quán: Hợp Nhất, Đoan Hùng, Phú Thọ"}</span>
                     </div>
                     <div className="flex items-center gap-5 text-gray-300 hover:text-white transition-colors">
                         <div className="text-[#F1D89E] bg-[#F1D89E]/10 p-2.5 rounded-lg"><Home className="w-5 h-5"/></div>
