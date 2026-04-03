@@ -4,6 +4,9 @@ using Microsoft.EntityFrameworkCore;
 // Bật cờ tương thích cho PostgreSQL nếu CSDL đã lỡ lưu dạng Local Time trước đó, hoặc để không báo lỗi
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
+// Fix lỗi sập Render (inotify instances limit) bằng cách tắt giám sát thay đổi file cấu hình
+Environment.SetEnvironmentVariable("DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE", "false");
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
