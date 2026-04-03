@@ -10,5 +10,18 @@ namespace BlogBackend.Data
         }
 
         public DbSet<BlogPost> BlogPosts { get; set; }
+        public DbSet<PortfolioConfig> PortfolioConfigs { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // Seed dữ liệu mặc định cho PortfolioConfig (Id = 1, chỉ dùng 1 dòng duy nhất)
+            modelBuilder.Entity<PortfolioConfig>().HasData(new PortfolioConfig
+            {
+                Id = 1,
+                JsonData = "{}"
+            });
+        }
     }
 }

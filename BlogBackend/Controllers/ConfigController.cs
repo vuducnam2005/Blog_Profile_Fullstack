@@ -1,4 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using BlogBackend.Data;
+using BlogBackend.Models;
 using System.Text.Json;
 
 namespace BlogBackend.Controllers
@@ -7,29 +10,28 @@ namespace BlogBackend.Controllers
     [ApiController]
     public class ConfigController : ControllerBase
     {
-        private readonly IWebHostEnvironment _env;
-        private readonly string _configFilePath;
+        private readonly BlogDbContext _context;
 
-        public ConfigController(IWebHostEnvironment env)
+        public ConfigController(BlogDbContext context)
         {
-            _env = env;
-            // Trỏ vào wwwroot/data/portfolio_data.json
-            _configFilePath = Path.Combine(_env.WebRootPath, "data", "portfolio_data.json");
+            _context = context;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetConfig()
         {
-            if (!System.IO.File.Exists(_configFilePath))
+            // Lấy dòng cấu hình duy nhất (Id = 1) từ Database
+            var config = await _context.PortfolioConfigs.FirstOrDefaultAsync();
+
+            if (config == null || string.IsNullOrWhiteSpace(config.JsonData) || config.JsonData == "{}")
             {
-                // Nếu không có, tạo một JSON trắng cơ bản để không lỗi Client
-                var initialConfig = new { hero = new { }, about = new { }, projects = new object[]{}, experiences = new object[]{} };
+                // Nếu chưa có dữ liệu, trả về JSON mặc định cơ bản
+                var initialConfig = new { hero = new { }, about = new { }, projects = new object[] { }, experiences = new object[] { } };
                 return Ok(initialConfig);
             }
 
-            var jsonContent = await System.IO.File.ReadAllTextAsync(_configFilePath);
-            // Parse thành JsonDocument thay vì trả về String thường
-            return Content(jsonContent, "application/json");
+            // Trả về JSON string đã lưu trong DB
+            return Content(config.JsonData, "application/json");
         }
 
         [HttpPost]
@@ -40,14 +42,25 @@ namespace BlogBackend.Controllers
                 return BadRequest("Data is empty");
             }
 
-            var uploadsFolder = Path.GetDirectoryName(_configFilePath);
-            if (uploadsFolder != null && !Directory.Exists(uploadsFolder))
-                Directory.CreateDirectory(uploadsFolder);
-
-            // Serialize and Save
+            // Serialize JSON đẹp
             var options = new JsonSerializerOptions { WriteIndented = true };
             var jsonString = JsonSerializer.Serialize(configData, options);
-            await System.IO.File.WriteAllTextAsync(_configFilePath, jsonString);
+
+            // Lấy dòng config duy nhất, hoặc tạo mới nếu chưa có
+            var config = await _context.PortfolioConfigs.FirstOrDefaultAsync();
+
+            if (config == null)
+            {
+                config = new PortfolioConfig { JsonData = jsonString };
+                _context.PortfolioConfigs.Add(config);
+            }
+            else
+            {
+                config.JsonData = jsonString;
+                _context.PortfolioConfigs.Update(config);
+            }
+
+            await _context.SaveChangesAsync();
 
             return Ok(new { message = "Portfolio configuration saved successfully!" });
         }
