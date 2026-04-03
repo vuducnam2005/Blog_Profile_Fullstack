@@ -23,11 +23,33 @@ export default function AlbumViewer() {
     return item.type === filter;
   });
 
-  const resolveUrl = (item) => {
+  const resolveUrl = (item, isThumbnail = false) => {
     let url = item.url.startsWith('http') ? item.url : `${API_BASE_URL}${item.url}`;
-    if (item.type === 'video' && url.includes('cloudinary.com')) {
-      url = url.replace(/\.[^/.]+$/, '.mp4');
+
+    // Tối ưu hóa qua Cloudinary nếu đang sử dụng
+    if (url.includes('cloudinary.com')) {
+      const parts = url.split('/upload/');
+      if (parts.length === 2) {
+        let transformation = isThumbnail 
+          ? 'c_fill,g_auto,h_600,w_600,f_auto,q_auto' 
+          : 'f_auto,q_auto';
+        
+        if (isThumbnail && item.type === 'video') {
+          // Đối với video, lấy frame ở giây thứ 0.5 làm ảnh thumbnail tĩnh
+          transformation += ',so_0.5';
+          const thumbUrl = parts[0] + '/upload/' + transformation + '/' + parts[1];
+          return thumbUrl.replace(/\.[^/.]+$/, '.jpg');
+        }
+        
+        if (item.type === 'video') {
+          // Luôn ép đuôi .mp4 cho video full size để tương thích tốt nhất
+          return (parts[0] + '/upload/' + transformation + '/' + parts[1]).replace(/\.[^/.]+$/, '.mp4');
+        }
+        
+        return parts[0] + '/upload/' + transformation + '/' + parts[1];
+      }
     }
+
     return url;
   };
 
@@ -190,7 +212,6 @@ export default function AlbumViewer() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
               {filteredAlbums.map((item, index) => {
-                const url = resolveUrl(item);
                 return (
                   <div
                     key={index}
@@ -199,11 +220,10 @@ export default function AlbumViewer() {
                   >
                     {item.type === 'video' ? (
                       <div className="relative">
-                        <video
-                          src={`${url}#t=0.5`}
-                          preload="metadata"
-                          muted
-                          playsInline
+                        <img
+                          src={resolveUrl(item, true)}
+                          alt={`Album video thumbnail ${index + 1}`}
+                          loading="lazy"
                           className="w-full album-thumb-video rounded-xl"
                         />
                         {/* Play overlay */}
@@ -215,7 +235,7 @@ export default function AlbumViewer() {
                       </div>
                     ) : (
                       <img
-                        src={url}
+                        src={resolveUrl(item, true)}
                         alt={`Album ${index + 1}`}
                         loading="lazy"
                         className="w-full album-thumb rounded-xl group-hover:scale-105 transition-transform duration-500"

@@ -434,19 +434,37 @@ export default function ConfigEditor() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {config.album?.map((item, index) => {
                             let url = item.url.startsWith('http') ? item.url : `${API_BASE_URL}${item.url}`;
-                            if (item.type === 'video' && url.includes('cloudinary.com')) {
-                                url = url.replace(/\.[^/.]+$/, ".mp4");
-                            }
+                            
+                            // Hàm tạo thumbnail tối ưu qua Cloudinary
+                            const getOptimizedThumb = (sourceUrl, type) => {
+                                if (!sourceUrl.includes('cloudinary.com')) return sourceUrl;
+                                const parts = sourceUrl.split('/upload/');
+                                if (parts.length !== 2) return sourceUrl;
+                                
+                                // Thumbnail nhỏ (300x300), nén mạnh, định dạng tự động
+                                let transformation = 'c_fill,g_auto,h_300,w_300,f_auto,q_auto';
+                                if (type === 'video') {
+                                    // Video thumbnail là ảnh JPG từ frame ở giây 0.5
+                                    transformation += ',so_0.5';
+                                    return (parts[0] + '/upload/' + transformation + '/' + parts[1]).replace(/\.[^/.]+$/, '.jpg');
+                                }
+                                return parts[0] + '/upload/' + transformation + '/' + parts[1];
+                            };
+
+                            const thumbUrl = getOptimizedThumb(url, item.type);
+
                             return (
                                 <div key={item.id || index} className="relative group rounded-xl overflow-hidden glass border border-white/10 bg-black/40 aspect-square">
-                                    {item.type === 'video' ? (
-                                        <video src={url} className="relative z-10 w-full h-full object-cover" controls preload="metadata" />
-                                    ) : (
-                                        <img src={url} className="w-full h-full object-cover" alt="Album" />
-                                    )}
+                                    {/* Sử dụng ảnh thumbnail cho cả video và image ở trang quản trị để load cực nhanh */}
+                                    <img 
+                                        src={thumbUrl} 
+                                        className="w-full h-full object-cover" 
+                                        alt="Album preview" 
+                                        loading="lazy"
+                                    />
                                     
-                                    <div className="absolute inset-0 pointer-events-none bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
-                                        <span className="text-white text-xs font-bold uppercase py-1 px-3 bg-white/20 rounded-full mb-8">{item.type}</span>
+                                    <div className="absolute inset-0 pointer-events-none bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
+                                        <span className="text-white text-[10px] font-bold uppercase py-1 px-3 bg-white/20 rounded-full mb-8">{item.type}</span>
                                     </div>
 
                                     <button 
