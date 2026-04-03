@@ -24,6 +24,7 @@ export default function Navbar() {
     { id: 'about', label: t('nav.about') },
     { id: 'experience', label: t('nav.experience') },
     { id: 'projects', label: t('nav.projects') },
+    { id: 'album', label: t('nav.album') },
     { id: 'blog', label: t('nav.blog') },
     { id: 'contact', label: t('nav.contact') },
   ];

@@ -30,7 +30,8 @@ namespace BlogBackend.Controllers
                 return BadRequest("Không tìm thấy file hợp lệ.");
 
             var extension = Path.GetExtension(file.FileName).ToLower();
-            if (extension != ".jpg" && extension != ".jpeg" && extension != ".png" && extension != ".gif" && extension != ".webp" && extension != ".pdf")
+            if (extension != ".jpg" && extension != ".jpeg" && extension != ".png" && extension != ".gif" && extension != ".webp" && extension != ".pdf" &&
+                extension != ".mp4" && extension != ".mov" && extension != ".avi" && extension != ".webm")
             {
                 return BadRequest("Định dạng file không được hỗ trợ.");
             }
@@ -45,6 +46,18 @@ namespace BlogBackend.Controllers
                     var uploadParams = new RawUploadParams()
                     {
                         File = new FileDescription(file.FileName, stream)
+                    };
+                    var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+                    return Ok(new { url = uploadResult.SecureUrl.ToString() });
+                }
+                else if (extension == ".mp4" || extension == ".mov" || extension == ".avi" || extension == ".webm")
+                {
+                    var uploadParams = new VideoUploadParams()
+                    {
+                        File = new FileDescription(file.FileName, stream),
+                        UseFilename = true,
+                        UniqueFilename = true,
+                        Overwrite = false
                     };
                     var uploadResult = await _cloudinary.UploadAsync(uploadParams);
                     return Ok(new { url = uploadResult.SecureUrl.ToString() });

@@ -385,6 +385,82 @@ export default function ConfigEditor() {
                     </div>
                 </section>
 
+                {/* 5. QUẢN LÝ ALBUM (ẢNH & VIDEO) */}
+                <section className="mt-14">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                            <span className="w-8 h-8 rounded-full bg-[#F1D89E] text-black flex items-center justify-center">5</span>
+                            Quản Lý Album (Ảnh & Video)
+                        </h2>
+                        <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-lg hover:bg-emerald-500/40 transition-colors cursor-pointer">
+                                <Plus className="w-4 h-4"/> Thêm Media
+                                <input 
+                                    type="file" 
+                                    accept="image/*,video/*"
+                                    className="hidden"
+                                    onChange={async (e) => {
+                                        const file = e.target.files[0];
+                                        if (!file) return;
+                                        const formData = new FormData();
+                                        formData.append('file', file);
+                                        try {
+                                            // Upload lên file UploadsController.cs (C# Backend)
+                                            const res = await axios.post(`${API_BASE_URL}/api/uploads`, formData);
+                                            const url = res.data.url;
+                                            
+                                            // Xác định type
+                                            const ext = url.split('.').pop().toLowerCase();
+                                            const type = ['mp4', 'webm', 'ogg', 'mov', 'avi'].includes(ext) ? 'video' : 'image';
+
+                                            handleAddArrayItem('album', {
+                                                id: Date.now(),
+                                                url: url,
+                                                type: type
+                                            });
+                                        } catch (err) {
+                                            console.error("Lỗi tải media:", err);
+                                            alert("Lỗi khi tải file lên máy chủ.");
+                                        }
+                                        e.target.value = null; // reset
+                                    }}
+                                />
+                            </label>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {config.album?.map((item, index) => (
+                            <div key={item.id || index} className="relative group rounded-xl overflow-hidden glass border border-white/10 bg-black/40 aspect-square">
+                                {item.type === 'video' ? (
+                                    <video src={item.url.startsWith('http') ? item.url : `${API_BASE_URL}${item.url}`} className="w-full h-full object-cover" muted preload="metadata" />
+                                ) : (
+                                    <img src={item.url.startsWith('http') ? item.url : `${API_BASE_URL}${item.url}`} className="w-full h-full object-cover" alt="Album" />
+                                )}
+                                
+                                {/* Overlay hover */}
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <span className="text-white text-xs font-bold uppercase py-1 px-3 bg-white/20 rounded-full mb-8">{item.type}</span>
+                                </div>
+
+                                {/* Nút Xóa */}
+                                <button 
+                                    onClick={() => handleRemoveArrayItem('album', index)} 
+                                    className="absolute top-2 right-2 text-white bg-red-500/80 p-2 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:scale-110 transition-all z-10"
+                                >
+                                    <Trash2 className="w-4 h-4"/>
+                                </button>
+                            </div>
+                        ))}
+                        {(!config.album || config.album.length === 0) && (
+                            <div className="col-span-2 md:col-span-4 p-8 text-center border border-dashed border-gray-600 rounded-2xl">
+                                <p className="text-gray-500 italic">Chưa có Hình ảnh hoặc Video nào trong Album.</p>
+                                <p className="text-xs text-gray-600 mt-2">Hỗ trợ các định dạng: .jpg, .png, .mp4, .webm...</p>
+                            </div>
+                        )}
+                    </div>
+                </section>
+
                 {/* 5. THỐNG KÊ SỐ LIỆU */}
                 <section className="mt-14">
                     <div className="flex justify-between items-center mb-6">

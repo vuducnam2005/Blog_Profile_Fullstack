@@ -7,7 +7,8 @@
     "blog": "Bài viết",
     "contact": "Liên hệ",
     "back": "Quay lại",
-    "download": "Tải xuống"
+    "download": "Tải xuống",
+    "album": "Album"
   },
   "hero": {
     "viewProjects": "Xem Dự án",
@@ -90,5 +91,12 @@
     "loginBtn": "ĐĂNG NHẬP",
     "tabBlog": "Bài Viết Báo Mới",
     "tabConfig": "Giao diện Trang Chủ"
+  },
+  "album": {
+    "title": "Khoảnh Khắc Đáng Nhớ (Album)",
+    "filter_all": "Tất cả",
+    "filter_images": "Ảnh",
+    "filter_videos": "Video",
+    "empty": "Chưa có hình ảnh hoặc video."
   }
 }

@@ -3,6 +3,7 @@ import About from '../components/About';
 import Experience from '../components/Experience';
 import Projects from '../components/Projects';
 import BlogSection from '../components/BlogSection';
+import Album from '../components/Album';
 import Navbar from '../components/Navbar';
 import Contact from '../components/Contact';
 
@@ -15,6 +16,7 @@ export default function Home() {
         <About />
         <Experience />
         <Projects />
+        <Album />
         <BlogSection />
         <Contact />
       </div>

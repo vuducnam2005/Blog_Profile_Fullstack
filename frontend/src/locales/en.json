@@ -7,7 +7,8 @@
     "blog": "Blog",
     "contact": "Contact",
     "back": "Go back",
-    "download": "Download"
+    "download": "Download",
+    "album": "Album"
   },
   "hero": {
     "viewProjects": "View Projects",
@@ -90,5 +91,12 @@
     "loginBtn": "LOGIN",
     "tabBlog": "News Articles",
     "tabConfig": "Homepage Interface"
+  },
+  "album": {
+    "title": "Memorable Moments (Album)",
+    "filter_all": "All",
+    "filter_images": "Images",
+    "filter_videos": "Videos",
+    "empty": "No images or videos yet."
   }
 }
