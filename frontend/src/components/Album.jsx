@@ -20,8 +20,7 @@ export default function Album() {
     return item.type === filter;
   });
 
-  if (!albums || albums.length === 0) return null;
-
+  // Removed early return to ensure the #album section always renders
   return (
     <section id="album" className="min-h-screen pt-20 pb-16 px-4 md:px-12 lg:px-24">
       <div className="max-w-6xl mx-auto">
@@ -58,7 +57,12 @@ export default function Album() {
         ) : (
           <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
             {filteredAlbums.map((item, index) => {
-              const url = item.url.startsWith('http') ? item.url : `${API_BASE_URL}${item.url}`;
+              let url = item.url.startsWith('http') ? item.url : `${API_BASE_URL}${item.url}`;
+              
+              // Nếu dùng Cloudinary, ép định dạng đuôi thành .mp4 để mọi trình duyệt (Chrome, Cốc Cốc...) đều đọc được kể cả video tải lên từ iPhone (.mov)
+              if (item.type === 'video' && url.includes('cloudinary.com')) {
+                  url = url.replace(/\.[^/.]+$/, ".mp4");
+              }
               
               return (
                 <div key={index} className="break-inside-avoid relative group rounded-2xl overflow-hidden glass border border-white/10 bg-black/40 shadow-xl">
@@ -68,7 +72,7 @@ export default function Album() {
                       controls
                       playsInline
                       preload="metadata"
-                      className="w-full object-cover transition-transform duration-500 rounded-2xl"
+                      className="relative z-10 w-full object-cover transition-transform duration-500 rounded-2xl"
                     />
                   ) : (
                     <img

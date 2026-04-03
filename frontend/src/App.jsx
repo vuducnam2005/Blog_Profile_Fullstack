@@ -3,6 +3,7 @@ import Home from './pages/Home';
 import Detail from './pages/Detail';
 import Admin from './pages/Admin';
 import CvViewer from './pages/CvViewer';
+import AlbumViewer from './pages/AlbumViewer';
 import { PortfolioProvider } from './context/PortfolioContext';
 import { AuthProvider } from './context/AuthContext';
 
@@ -17,6 +18,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/post/:id" element={<Detail />} />
             <Route path="/cv" element={<CvViewer />} />
+            <Route path="/album" element={<AlbumViewer />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/create" element={<Admin />} />
             <Route path="/admin/edit/:id" element={<Admin />} />

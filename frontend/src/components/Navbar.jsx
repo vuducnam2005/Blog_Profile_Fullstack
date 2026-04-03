@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { User, FileText, Globe, Menu, X } from 'lucide-react';
+import { User, FileText, Globe, Menu, X, Camera } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export default function Navbar() {
@@ -24,7 +24,6 @@ export default function Navbar() {
     { id: 'about', label: t('nav.about') },
     { id: 'experience', label: t('nav.experience') },
     { id: 'projects', label: t('nav.projects') },
-    { id: 'album', label: t('nav.album') },
     { id: 'blog', label: t('nav.blog') },
     { id: 'contact', label: t('nav.contact') },
   ];
@@ -60,6 +59,12 @@ export default function Navbar() {
             >
               <Globe className="w-4 h-4" /> {i18n.language === 'vi' ? 'EN' : 'VI'}
             </button>
+            <Link
+              to="/album"
+              className="flex items-center gap-2 border border-[#F1D89E] text-[#F1D89E] px-4 py-1.5 rounded-full hover:bg-[#F1D89E] hover:text-black transition-colors"
+            >
+              <Camera className="w-4 h-4" /> Album
+            </Link>
             <Link
               to="/cv"
               className="flex items-center gap-2 border border-[#F1D89E] text-[#F1D89E] px-4 py-1.5 rounded-full hover:bg-[#F1D89E] hover:text-black transition-colors"
@@ -113,6 +118,13 @@ export default function Navbar() {
             >
               <Globe className="w-4 h-4" /> {i18n.language === 'vi' ? 'EN' : 'VI'}
             </button>
+            <Link
+              to="/album"
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center gap-2 border border-[#F1D89E] text-[#F1D89E] px-4 py-2 rounded-full hover:bg-[#F1D89E] hover:text-black transition-colors text-xs font-bold"
+            >
+              <Camera className="w-4 h-4" /> Album
+            </Link>
             <Link
               to="/cv"
               onClick={() => setMobileOpen(false)}

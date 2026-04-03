@@ -11,6 +11,7 @@ export default function ConfigEditor() {
     const [config, setConfig] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [uploadingMedia, setUploadingMedia] = useState(false);
 
     useEffect(() => {
         axios.get(`${API_BASE_URL}/api/config`)
@@ -393,23 +394,22 @@ export default function ConfigEditor() {
                             Quản Lý Album (Ảnh & Video)
                         </h2>
                         <div className="flex items-center gap-4">
-                            <label className="flex items-center gap-2 bg-emerald-500/20 text-emerald-400 px-4 py-2 rounded-lg hover:bg-emerald-500/40 transition-colors cursor-pointer">
-                                <Plus className="w-4 h-4"/> Thêm Media
+                            <label className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors cursor-pointer ${uploadingMedia ? 'bg-gray-500/20 text-gray-400' : 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/40'}`}>
+                                {uploadingMedia ? <span className="animate-pulse">⏳ Đang tải...</span> : <><Plus className="w-4 h-4"/> Thêm Media</>}
                                 <input 
                                     type="file" 
                                     accept="image/*,video/*"
                                     className="hidden"
+                                    disabled={uploadingMedia}
                                     onChange={async (e) => {
                                         const file = e.target.files[0];
                                         if (!file) return;
+                                        setUploadingMedia(true);
                                         const formData = new FormData();
                                         formData.append('file', file);
                                         try {
-                                            // Upload lên file UploadsController.cs (C# Backend)
                                             const res = await axios.post(`${API_BASE_URL}/api/uploads`, formData);
                                             const url = res.data.url;
-                                            
-                                            // Xác định type
                                             const ext = url.split('.').pop().toLowerCase();
                                             const type = ['mp4', 'webm', 'ogg', 'mov', 'avi'].includes(ext) ? 'video' : 'image';
 
@@ -420,9 +420,11 @@ export default function ConfigEditor() {
                                             });
                                         } catch (err) {
                                             console.error("Lỗi tải media:", err);
-                                            alert("Lỗi khi tải file lên máy chủ.");
+                                            alert("Lỗi khi tải file lên máy chủ. Hãy thử lại sau giây lát.");
+                                        } finally {
+                                            setUploadingMedia(false);
+                                            e.target.value = null;
                                         }
-                                        e.target.value = null; // reset
                                     }}
                                 />
                             </label>
@@ -430,32 +432,35 @@ export default function ConfigEditor() {
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {config.album?.map((item, index) => (
-                            <div key={item.id || index} className="relative group rounded-xl overflow-hidden glass border border-white/10 bg-black/40 aspect-square">
-                                {item.type === 'video' ? (
-                                    <video src={item.url.startsWith('http') ? item.url : `${API_BASE_URL}${item.url}`} className="w-full h-full object-cover" muted preload="metadata" />
-                                ) : (
-                                    <img src={item.url.startsWith('http') ? item.url : `${API_BASE_URL}${item.url}`} className="w-full h-full object-cover" alt="Album" />
-                                )}
-                                
-                                {/* Overlay hover */}
-                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                    <span className="text-white text-xs font-bold uppercase py-1 px-3 bg-white/20 rounded-full mb-8">{item.type}</span>
-                                </div>
+                        {config.album?.map((item, index) => {
+                            let url = item.url.startsWith('http') ? item.url : `${API_BASE_URL}${item.url}`;
+                            if (item.type === 'video' && url.includes('cloudinary.com')) {
+                                url = url.replace(/\.[^/.]+$/, ".mp4");
+                            }
+                            return (
+                                <div key={item.id || index} className="relative group rounded-xl overflow-hidden glass border border-white/10 bg-black/40 aspect-square">
+                                    {item.type === 'video' ? (
+                                        <video src={url} className="relative z-10 w-full h-full object-cover" controls preload="metadata" />
+                                    ) : (
+                                        <img src={url} className="w-full h-full object-cover" alt="Album" />
+                                    )}
+                                    
+                                    <div className="absolute inset-0 pointer-events-none bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
+                                        <span className="text-white text-xs font-bold uppercase py-1 px-3 bg-white/20 rounded-full mb-8">{item.type}</span>
+                                    </div>
 
-                                {/* Nút Xóa */}
-                                <button 
-                                    onClick={() => handleRemoveArrayItem('album', index)} 
-                                    className="absolute top-2 right-2 text-white bg-red-500/80 p-2 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:scale-110 transition-all z-10"
-                                >
-                                    <Trash2 className="w-4 h-4"/>
-                                </button>
-                            </div>
-                        ))}
+                                    <button 
+                                        onClick={() => handleRemoveArrayItem('album', index)} 
+                                        className="absolute top-2 right-2 text-white bg-red-500/80 p-2 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:scale-110 transition-all z-30"
+                                    >
+                                        <Trash2 className="w-4 h-4"/>
+                                    </button>
+                                </div>
+                            );
+                        })}
                         {(!config.album || config.album.length === 0) && (
                             <div className="col-span-2 md:col-span-4 p-8 text-center border border-dashed border-gray-600 rounded-2xl">
                                 <p className="text-gray-500 italic">Chưa có Hình ảnh hoặc Video nào trong Album.</p>
-                                <p className="text-xs text-gray-600 mt-2">Hỗ trợ các định dạng: .jpg, .png, .mp4, .webm...</p>
                             </div>
                         )}
                     </div>
