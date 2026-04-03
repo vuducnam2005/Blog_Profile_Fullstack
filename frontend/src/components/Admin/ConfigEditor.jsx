@@ -215,7 +215,7 @@ export default function ConfigEditor() {
                         </div>
                         <div>
                             <label className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2 block">Quê quán</label>
-                            <input value={config.hero?.hometown || ""} onChange={e => handleChange("hero", "hometown", e.target.value)} className="w-full bg-black/40 border border-white/20 p-3 rounded-xl text-white outline-none focus:border-[#F1D89E]" placeholder="Nam Định" />
+                            <input value={config.hero?.hometown || ""} onChange={e => handleChange("hero", "hometown", e.target.value)} className="w-full bg-black/40 border border-white/20 p-3 rounded-xl text-white outline-none focus:border-[#F1D89E]" placeholder="Hợp Nhất, Đoan Hùng, Phú Thọ" />
                         </div>
                         <div>
                             <label className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2 block">Nơi ở hiện tại</label>
