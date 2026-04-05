@@ -9,7 +9,17 @@ export const AudioProvider = ({ children }) => {
     
     // get audio url
     const backgroundMusic = data?.hero?.backgroundMusic;
-    const audioUrl = backgroundMusic ? (backgroundMusic.startsWith('http') ? backgroundMusic : `${API_BASE_URL}${backgroundMusic}`) : null;
+    let audioUrl = backgroundMusic ? (backgroundMusic.startsWith('http') ? backgroundMusic : `${API_BASE_URL}${backgroundMusic}`) : null;
+
+    // Tối ưu hóa Audio qua Cloudinary nếu có thể
+    if (audioUrl && audioUrl.includes('cloudinary.com')) {
+        const parts = audioUrl.split('/upload/');
+        if (parts.length === 2) {
+            // f_auto: tự động định dạng (mp3, opus, etc)
+            // q_auto: tự động nén chất lượng (bitrate)
+            audioUrl = `${parts[0]}/upload/f_auto,q_auto/${parts[1]}`;
+        }
+    }
 
     const [isPlaying, setIsPlaying] = useState(false);
     const [showPrompt, setShowPrompt] = useState(false);
@@ -117,6 +127,7 @@ export const AudioProvider = ({ children }) => {
                     src={audioUrl}
                     loop
                     preload="auto"
+                    onLoadedData={() => setIsAudioLoaded(true)}
                     onCanPlay={() => setIsAudioLoaded(true)}
                 />
             )}
