@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useRef } from 'react';
 import axios from 'axios';
 import { Save, Plus, Trash2, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -12,6 +12,30 @@ export default function ConfigEditor() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [uploadingMedia, setUploadingMedia] = useState(false);
+
+    const heroRef = useRef(null);
+    const projectsRef = useRef(null);
+    const experiencesRef = useRef(null);
+    const skillsRef = useRef(null);
+    const albumRef = useRef(null);
+    const statsRef = useRef(null);
+
+    const scrollToSection = (ref) => {
+        if (ref.current) {
+            const offset = 100;
+            const top = ref.current.getBoundingClientRect().top + window.scrollY - offset;
+            window.scrollTo({ top, behavior: 'smooth' });
+        }
+    };
+
+    const tabs = [
+        { id: 'hero', label: 'Thông tin cốt lõi', ref: heroRef },
+        { id: 'projects', label: 'Dự án mẫu', ref: projectsRef },
+        { id: 'experiences', label: 'Kinh nghiệm', ref: experiencesRef },
+        { id: 'skills', label: 'Kỹ năng', ref: skillsRef },
+        { id: 'album', label: 'Quản lý Album', ref: albumRef },
+        { id: 'stats', label: 'Thống kê', ref: statsRef },
+    ];
 
     useEffect(() => {
         axios.get(`${API_BASE_URL}/api/config`)
@@ -123,10 +147,26 @@ export default function ConfigEditor() {
                     </button>
                 </div>
 
+                {/* --- SUB TABS THAO TÁC NHANH --- */}
+                <div className="flex flex-wrap gap-3 mb-10 sticky top-[80px] z-[60] bg-black/80 backdrop-blur-md p-4 rounded-xl shadow-[0_4px_30px_rgba(0,0,0,0.5)] border border-[#F1D89E]/20">
+                    <span className="text-[#F1D89E] w-full md:w-auto text-sm font-bold flex items-center mr-2 uppercase tracking-wide">
+                        Đi nhanh đến:
+                    </span>
+                    {tabs.map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => scrollToSection(tab.ref)}
+                            className="px-4 py-2 rounded-lg bg-black/60 border border-white/20 text-gray-300 hover:text-[#F1D89E] hover:bg-white/10 hover:border-[#F1D89E]/50 transition-all font-bold text-sm shadow-sm"
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+
                 {/* --- SECTIONS --- */}
                 
                 {/* 1. HERO & INFO */}
-                <section className="mb-14">
+                <section ref={heroRef} className="mb-14 scroll-mt-24">
                     <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
                         <span className="w-8 h-8 rounded-full bg-[#F1D89E] text-black flex items-center justify-center">1</span> 
                         Thông Tin Cốt Lõi (Khu vực Top & Giới thiệu)
@@ -255,7 +295,7 @@ export default function ConfigEditor() {
                 </section>
 
                 {/* 2. DỰ ÁN */}
-                <section className="mb-14">
+                <section ref={projectsRef} className="mb-14 scroll-mt-24">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-2xl font-bold text-white flex items-center gap-3">
                             <span className="w-8 h-8 rounded-full bg-[#F1D89E] text-black flex items-center justify-center">2</span> 
@@ -304,7 +344,7 @@ export default function ConfigEditor() {
                 </section>
 
                 {/* 3. EXPERIENCE */}
-                <section>
+                <section ref={experiencesRef} className="mb-14 scroll-mt-24">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-2xl font-bold text-white flex items-center gap-3">
                             <span className="w-8 h-8 rounded-full bg-[#F1D89E] text-black flex items-center justify-center">3</span> 
@@ -349,7 +389,7 @@ export default function ConfigEditor() {
                 </section>
 
                 {/* 4. KỸ NĂNG & CÔNG NGHỆ */}
-                <section className="mt-14">
+                <section ref={skillsRef} className="mb-14 scroll-mt-24">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-2xl font-bold text-white flex items-center gap-3">
                             <span className="w-8 h-8 rounded-full bg-[#F1D89E] text-black flex items-center justify-center">4</span> 
@@ -387,7 +427,7 @@ export default function ConfigEditor() {
                 </section>
 
                 {/* 5. QUẢN LÝ ALBUM (ẢNH & VIDEO) */}
-                <section className="mt-14">
+                <section ref={albumRef} className="mb-14 scroll-mt-24">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-2xl font-bold text-white flex items-center gap-3">
                             <span className="w-8 h-8 rounded-full bg-[#F1D89E] text-black flex items-center justify-center">5</span>
@@ -497,8 +537,8 @@ export default function ConfigEditor() {
                     </div>
                 </section>
 
-                {/* 5. THỐNG KÊ SỐ LIỆU */}
-                <section className="mt-14">
+                {/* 6. THỐNG KÊ SỐ LIỆU */}
+                <section ref={statsRef} className="mb-14 scroll-mt-24">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-2xl font-bold text-white flex items-center gap-3">
                             <span className="w-8 h-8 rounded-full bg-[#F1D89E] text-black flex items-center justify-center">5</span>

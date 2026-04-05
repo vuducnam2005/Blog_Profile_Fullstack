@@ -1,5 +1,6 @@
 using BlogBackend.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Http.Features;
 
 // Bật cờ tương thích cho PostgreSQL nếu CSDL đã lỡ lưu dạng Local Time trước đó, hoặc để không báo lỗi
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -8,6 +9,18 @@ AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 Environment.SetEnvironmentVariable("DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE", "false");
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Cấu hình Kestrel để tăng giới hạn kích thước Request lên 100MB
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.MaxRequestBodySize = 104857600; // 100 MB = 100 * 1024 * 1024 bytes
+});
+
+// Cấu hình FormOptions để tăng giới hạn kích thước Multipart Body lên 100MB
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 104857600; // 100 MB
+});
 
 // Add services to the container.
 
