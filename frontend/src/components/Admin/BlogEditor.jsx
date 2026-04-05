@@ -4,6 +4,7 @@ import axios from 'axios';
 import { Save, ArrowLeft, Image as ImageIcon } from 'lucide-react';
 import { API_BASE_URL } from '../../config';
 import { ADMIN_API_KEY } from '../../context/AuthContext';
+import { uploadFile } from '../../utils/upload';
 
 // import ReactQuill from 'react-quill';
 // import 'react-quill/dist/quill.snow.css';
@@ -42,13 +43,10 @@ export default function BlogEditor() {
     formData.append("file", file);
 
     try {
-      const res = await axios.post(`${API_BASE_URL}/api/uploads`, formData, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
-      // Nếu Cloudinary được dùng, nó trả về URL dạng "https://..."
-      // Nếu dùng ổ cứng Local, nó trả về URL dạng "/uploads/..."
-      // Lỗi ở đây là tôi đã nối nhầm API_BASE_URL vào thẳng kết quả dù nó đã là dạng "https"
-      setHinhAnhBia(res.data.url);
+      const url = await uploadFile(file);
+      // Nếu Cloudinary được dùng, URL trả về dạng https://
+      // Nếu dùng ổ cứng Local, nó trả về URL dạng /uploads/
+      setHinhAnhBia(url);
     } catch (err) {
       alert("Lỗi tải ảnh lên!");
       console.error(err);

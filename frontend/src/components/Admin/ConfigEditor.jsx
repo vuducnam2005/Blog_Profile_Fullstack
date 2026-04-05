@@ -4,6 +4,7 @@ import { Save, Plus, Trash2, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../../config';
 import { PortfolioContext } from '../../context/PortfolioContext';
+import { uploadFile } from '../../utils/upload';
 
 export default function ConfigEditor() {
     const navigate = useNavigate();
@@ -192,8 +193,8 @@ export default function ConfigEditor() {
                                         const formData = new FormData();
                                         formData.append('file', file);
                                         try {
-                                            const res = await axios.post(`${API_BASE_URL}/api/uploads`, formData);
-                                            handleChange("hero", "avatar", res.data.url);
+                                            const url = await uploadFile(file);
+                                            handleChange("hero", "avatar", url);
                                         } catch (err) {
                                             console.error("Lỗi tải ảnh:", err);
                                             alert("Lỗi khi tải ảnh lên máy chủ. Bạn nhớ bật Server C# Backend nhé!");
@@ -217,8 +218,8 @@ export default function ConfigEditor() {
                                             const formData = new FormData();
                                             formData.append('file', file);
                                             try {
-                                                const res = await axios.post(`${API_BASE_URL}/api/uploads`, formData);
-                                                handleChange("hero", "cvUrl", res.data.url);
+                                                const url = await uploadFile(file);
+                                                handleChange("hero", "cvUrl", url);
                                             } catch (err) {
                                                 console.error("Lỗi tải CV:", err);
                                                 alert("Lỗi khi tải CV lên máy chủ.");
@@ -454,8 +455,7 @@ export default function ConfigEditor() {
                                                 formData.append('file', file);
                                                 
                                                 try {
-                                                    const res = await axios.post(`${API_BASE_URL}/api/uploads`, formData);
-                                                    const url = res.data.url;
+                                                    const url = await uploadFile(file);
                                                     const ext = url.split('.').pop().toLowerCase();
                                                     const type = ['mp4', 'webm', 'ogg', 'mov', 'avi'].includes(ext) ? 'video' : 'image';
                                                     

@@ -92,5 +92,31 @@ namespace BlogBackend.Controllers
 
             return Ok(new { url = $"/uploads/{fileName}" });
         }
+
+        [HttpGet("signature")]
+        public IActionResult GetSignature()
+        {
+            if (_cloudinary == null)
+            {
+                return Ok(new { useLocal = true });
+            }
+
+            var timestamp = ((DateTimeOffset)DateTime.UtcNow).ToUnixTimeSeconds().ToString();
+            var parameters = new SortedDictionary<string, object>
+            {
+                { "timestamp", timestamp }
+            };
+
+            var signature = _cloudinary.Api.SignParameters(parameters);
+            
+            return Ok(new 
+            { 
+                useLocal = false,
+                signature = signature, 
+                timestamp = timestamp, 
+                cloudName = _cloudinary.Api.Account.Cloud, 
+                apiKey = _cloudinary.Api.Account.ApiKey 
+            });
+        }
     }
 }
