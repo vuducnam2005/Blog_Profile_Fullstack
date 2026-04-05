@@ -51,7 +51,7 @@ export default function Contact() {
             href={hero.github?.startsWith('http') ? hero.github : `https://github.com${hero.github || "/vuducnam2005"}`}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white/80 hover:text-white hover:bg-white/20 hover:border-white/40 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-all duration-300 hover:scale-110"
+            className="flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white hover:bg-white/20 hover:border-white/40 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] transition-all duration-300 hover:scale-110"
           >
             <GithubIcon className="w-6 h-6 md:w-7 md:h-7" />
           </a>
@@ -60,7 +60,7 @@ export default function Contact() {
               href={hero.facebook}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white/80 hover:text-[#1877F2] hover:bg-[#1877F2]/15 hover:border-[#1877F2]/40 hover:shadow-[0_0_20px_rgba(24,119,242,0.4)] transition-all duration-300 hover:scale-110"
+              className="flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#1877F2]/10 backdrop-blur-sm border border-[#1877F2]/30 text-[#1877F2] hover:bg-[#1877F2]/20 hover:border-[#1877F2]/50 hover:shadow-[0_0_20px_rgba(24,119,242,0.4)] transition-all duration-300 hover:scale-110"
             >
               <FacebookIcon className="w-6 h-6 md:w-7 md:h-7" />
             </a>
@@ -70,14 +70,14 @@ export default function Contact() {
               href={hero.instagram}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white/80 hover:text-[#E4405F] hover:bg-[#E4405F]/15 hover:border-[#E4405F]/40 hover:shadow-[0_0_20px_rgba(228,64,95,0.4)] transition-all duration-300 hover:scale-110"
+              className="flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#E4405F]/10 backdrop-blur-sm border border-[#E4405F]/30 text-[#E4405F] hover:bg-[#E4405F]/20 hover:border-[#E4405F]/50 hover:shadow-[0_0_20px_rgba(228,64,95,0.4)] transition-all duration-300 hover:scale-110"
             >
               <InstagramIcon className="w-6 h-6 md:w-7 md:h-7" />
             </a>
           )}
           <a
             href={`mailto:${hero.email || "vuducnam12345678@gmail.com"}`}
-            className="flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white/80 hover:text-[#EA4335] hover:bg-[#EA4335]/15 hover:border-[#EA4335]/40 hover:shadow-[0_0_20px_rgba(234,67,53,0.4)] transition-all duration-300 hover:scale-110"
+            className="flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#EA4335]/10 backdrop-blur-sm border border-[#EA4335]/30 text-[#EA4335] hover:bg-[#EA4335]/20 hover:border-[#EA4335]/50 hover:shadow-[0_0_20px_rgba(234,67,53,0.4)] transition-all duration-300 hover:scale-110"
           >
             <Mail className="w-6 h-6 md:w-7 md:h-7" />
           </a>
