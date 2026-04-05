@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
-import { User, FileText, Globe, Menu, X, Camera } from 'lucide-react';
+import { User, FileText, Globe, Menu, X, Camera, Music, Volume2, VolumeX } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { AudioContext } from '../context/AudioContext';
 
 export default function Navbar() {
   const { t, i18n } = useTranslation();
+  const { isPlaying, toggleAudio, audioUrl } = useContext(AudioContext);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const toggleLanguage = () => {
@@ -53,6 +55,15 @@ export default function Navbar() {
           ))}
 
           <div className="flex gap-4 ml-4">
+            {audioUrl && (
+              <button
+                onClick={toggleAudio}
+                className="flex items-center justify-center border border-[#F1D89E]/40 text-[#F1D89E] w-8 h-8 rounded-full hover:bg-[#F1D89E]/10 transition-colors shadow-sm"
+                title={isPlaying ? "Tạm dừng nhạc" : "Phát nhạc"}
+              >
+                {isPlaying ? <Volume2 className="w-4 h-4 animate-pulse text-[#00D0C8]"/> : <VolumeX className="w-4 h-4 text-gray-400"/>}
+              </button>
+            )}
             <button
               onClick={toggleLanguage}
               className="flex items-center gap-2 border border-[#F1D89E]/40 text-[#F1D89E] px-4 py-1.5 rounded-full hover:bg-[#F1D89E]/10 transition-colors font-bold text-xs"
@@ -112,6 +123,15 @@ export default function Navbar() {
 
           {/* Nút chức năng */}
           <div className="flex flex-wrap gap-3 px-4 py-2">
+            {audioUrl && (
+              <button
+                onClick={toggleAudio}
+                className="flex items-center gap-2 border border-[#F1D89E]/40 text-[#F1D89E] px-4 py-2 rounded-full hover:bg-[#F1D89E]/10 transition-colors font-bold text-xs"
+              >
+                {isPlaying ? <Volume2 className="w-4 h-4 text-[#00D0C8] animate-pulse"/> : <VolumeX className="w-4 h-4 text-gray-400"/>}
+                {isPlaying ? "TẮT NHẠC" : "BẬT NHẠC"}
+              </button>
+            )}
             <button
               onClick={() => { toggleLanguage(); setMobileOpen(false); }}
               className="flex items-center gap-2 border border-[#F1D89E]/40 text-[#F1D89E] px-4 py-2 rounded-full hover:bg-[#F1D89E]/10 transition-colors font-bold text-xs"

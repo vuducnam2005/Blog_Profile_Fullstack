@@ -28,7 +28,7 @@ export const uploadFile = async (file) => {
         // Determine Cloudinary resource type
         const fileType = file.type || '';
         let resourceType = 'image';
-        if (fileType.startsWith('video/')) {
+        if (fileType.startsWith('video/') || fileType.startsWith('audio/')) {
             resourceType = 'video';
         } else if (fileType === 'application/pdf') {
             resourceType = 'raw';

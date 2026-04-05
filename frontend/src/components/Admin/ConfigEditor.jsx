@@ -233,6 +233,51 @@ export default function ConfigEditor() {
                                 )}
                             </div>
                         </div>
+                        {/* Khu vực Upload Nhạc Nền (Audio) */}
+                        <div className="md:col-span-2 flex flex-col md:flex-row items-center gap-6 mb-2 bg-black/40 p-5 rounded-2xl border border-[#F1D89E]/20 shadow-[0_0_15px_rgba(241,216,158,0.1)]">
+                            <div className="flex-1 w-full">
+                                <label className="text-[10px] text-[#F1D89E] font-bold uppercase tracking-wider mb-2 block">Tải Lên Nhạc Nền Trang Web (.mp3, .wav)</label>
+                                <div className="flex items-center gap-4">
+                                    <input 
+                                        type="file" 
+                                        accept="audio/*"
+                                        onChange={async (e) => {
+                                            const file = e.target.files[0];
+                                            if (!file) return;
+                                            // Validate size < 100MB
+                                            if (file.size > 100 * 1024 * 1024) {
+                                                alert("File nhạc quá lớn. Vui lòng chọn file dưới 100MB.");
+                                                e.target.value = '';
+                                                return;
+                                            }
+                                            
+                                            // Handle upload
+                                            setUploadingMedia(true);
+                                            try {
+                                                const url = await uploadFile(file);
+                                                handleChange("hero", "backgroundMusic", url);
+                                            } catch (err) {
+                                                console.error("Lỗi tải Audio:", err);
+                                                alert("Lỗi khi tải Nhạc lên máy chủ.");
+                                            } finally {
+                                                setUploadingMedia(false);
+                                            }
+                                        }}
+                                        disabled={uploadingMedia}
+                                        className="w-full text-sm text-gray-400 file:mr-4 file:py-2.5 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-black file:bg-[#F1D89E] file:text-black hover:file:bg-white transition-all file:cursor-pointer cursor-pointer bg-black/40 border border-white/10 rounded-xl"
+                                    />
+                                </div>
+                                {uploadingMedia ? (
+                                    <p className="text-xs text-emerald-400 mt-3 font-semibold animate-pulse flex items-center gap-2">
+                                        <span className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></span>
+                                        Đang đưa nhạc lên đám mây, vui lòng chờ...
+                                    </p>
+                                ) : config.hero?.backgroundMusic ? (
+                                    <p className="text-xs text-[#F1D89E] mt-3 font-semibold">🎵 Đã lưu Nhạc nền: {config.hero.backgroundMusic.split('/').pop()}</p>
+                                ) : null}
+                                <p className="text-[10px] text-gray-500 mt-2 italic">Trang web sẽ hiện popup hỏi khách khi vòng đời Audio bắt đầu. Max: 100MB, upload chạy thẳng lên server qua trình duyệt (Direct Upload).</p>
+                            </div>
+                        </div>
                         <div>
                             <label className="text-xs text-[#F1D89E] font-bold uppercase tracking-wider mb-2 block">Tên Hiển Thị</label>
                             <input value={config.hero?.name || ""} onChange={e => handleChange("hero", "name", e.target.value)} className="w-full bg-black/40 border border-white/20 p-3 rounded-xl text-white outline-none focus:border-[#F1D89E]" />

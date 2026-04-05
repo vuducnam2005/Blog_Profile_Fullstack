@@ -1,6 +1,7 @@
 import { useState, useContext, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PortfolioContext } from '../context/PortfolioContext';
+import { AudioContext } from '../context/AudioContext';
 import { API_BASE_URL } from '../config';
 
 export default function Album() {
@@ -8,6 +9,7 @@ export default function Album() {
   const { data } = useContext(PortfolioContext);
   const [filter, setFilter] = useState('all'); // 'all', 'image', 'video'
   const [albums, setAlbums] = useState([]);
+  const { pauseAudioThmporarily, resumeAudioAfterTempPause } = useContext(AudioContext);
 
   useEffect(() => {
     if (data?.album) {
@@ -73,6 +75,9 @@ export default function Album() {
                       playsInline
                       preload="metadata"
                       className="relative z-10 w-full object-cover transition-transform duration-500 rounded-2xl"
+                      onPlay={pauseAudioThmporarily}
+                      onPause={resumeAudioAfterTempPause}
+                      onEnded={resumeAudioAfterTempPause}
                     />
                   ) : (
                     <img
