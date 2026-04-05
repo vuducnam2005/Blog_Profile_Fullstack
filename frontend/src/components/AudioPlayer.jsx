@@ -35,14 +35,9 @@ export default function AudioPlayer() {
                     <div className="flex flex-col w-full gap-3">
                         <button 
                             onClick={handleAccept}
-                            disabled={!isAudioLoaded}
-                            className={`font-bold py-3 px-6 rounded-xl transition-all shadow-[0_0_20px_rgba(241,216,158,0.3)] flex justify-center items-center gap-3 ${isAudioLoaded ? 'bg-[#F1D89E] text-black hover:bg-white hover:scale-105' : 'bg-[#F1D89E]/50 text-black/50 cursor-not-allowed'}`}
+                            className="bg-[#F1D89E] text-black hover:bg-white font-bold py-3 px-6 rounded-xl transition-all shadow-[0_0_20px_rgba(241,216,158,0.3)] flex justify-center items-center gap-2 hover:scale-105"
                         >
-                            {isAudioLoaded ? (
-                                <><Volume2 className="w-5 h-5"/> Phát Nhạc Ngay</>
-                            ) : (
-                                <><span className="w-4 h-4 border-2 border-black/50 border-t-transparent rounded-full animate-spin"></span> Đang tải bài hát...</>
-                            )}
+                            <Volume2 className="w-5 h-5"/> Phát Nhạc Ngay
                         </button>
                         <button 
                             onClick={handleDecline}
