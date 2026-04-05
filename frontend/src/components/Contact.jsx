@@ -23,29 +23,30 @@ export default function Contact() {
 
   return (
     <section id="contact" className="py-16 md:py-24 px-3 md:px-12 lg:px-24 relative z-10 w-full mb-6 md:mb-10">
-      <h2 className="text-3xl md:text-5xl font-extrabold text-[#F1D89E] mb-8 md:mb-12 flex items-center">
+      <h2 className="text-3xl md:text-5xl font-extrabold text-[#F1D89E] mb-8 md:mb-12 flex items-center" data-aos="fade-right">
         <span className="bg-[#F1D89E] w-8 md:w-12 h-1 mr-3 md:mr-4"></span> {t('contact.title', 'Liên hệ')}
       </h2>
 
       <div className="flex flex-col items-center justify-center text-center mt-4 md:mt-8">
-        <p className="text-lg md:text-2xl text-white font-semibold mb-3 md:mb-4 tracking-wide">
+        <p className="text-lg md:text-2xl text-white font-semibold mb-3 md:mb-4 tracking-wide" data-aos="fade-up" data-aos-delay="200">
           {t('contact.subtitle', 'Hãy cùng nhau tạo nên điều gì đó tuyệt vời! 🚀')}
         </p>
 
-        <p className="text-gray-400 max-w-2xl mb-8 md:mb-12 text-xs md:text-base leading-relaxed">
+        <p className="text-gray-400 max-w-2xl mb-8 md:mb-12 text-xs md:text-base leading-relaxed" data-aos="fade-up" data-aos-delay="300">
           {t('contact.desc', 'Tôi luôn sẵn sàng thảo luận về các dự án mới, ý tưởng sáng tạo hoặc đơn giản là chia sẻ kiến thức. Đừng ngần ngại liên hệ với tôi!')}
         </p>
 
         <a
           href={`mailto:${hero.email || "vuducnam12345678@gmail.com"}`}
           className="bg-[#00D0C8] hover:bg-white text-black font-extrabold text-base md:text-lg px-6 md:px-8 py-3 md:py-4 rounded-full shadow-[0_0_20px_rgba(0,208,200,0.5)] transition-all hover:scale-105 mb-8 md:mb-12"
+          data-aos="zoom-in" data-aos-delay="400"
         >
           {t('contact.emailBtn', 'Gửi Email Cho Tôi')}
         </a>
 
-        <p className="text-gray-500 mb-6 text-sm uppercase tracking-widest font-semibold">{t('contact.socials', 'Hoặc kết nối qua:')}</p>
+        <p className="text-gray-500 mb-6 text-sm uppercase tracking-widest font-semibold" data-aos="fade-up" data-aos-delay="400">{t('contact.socials', 'Hoặc kết nối qua:')}</p>
 
-        <div className="flex gap-5 justify-center">
+        <div className="flex gap-5 justify-center" data-aos="fade-up" data-aos-delay="500">
           <a
             href={hero.github?.startsWith('http') ? hero.github : `https://github.com${hero.github || "/vuducnam2005"}`}
             target="_blank"

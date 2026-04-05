@@ -23,27 +23,27 @@ export default function Hero() {
             <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-[#F1D89E]/10 rounded-full blur-[120px] pointer-events-none"></div>
 
             {/* ================= CỘT TRÁI: AVATAR & TIỂU SỬ ================= */}
-            <div className="flex-1 flex flex-col items-center lg:items-start text-center lg:text-left z-10 w-full pl-0 lg:pl-4">
+            <div className="flex-1 flex flex-col items-center lg:items-start text-center lg:text-left z-10 w-full pl-0 lg:pl-4" data-aos="fade-right">
                 {/* Avatar Tròn Vàng */}
-                <div className="w-24 h-24 md:w-36 md:h-36 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(241,216,158,0.5)] mb-6 md:mb-8 tracking-tighter overflow-hidden border border-[#F1D89E]/40 shrink-0">
+                <div className="w-24 h-24 md:w-36 md:h-36 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(241,216,158,0.5)] mb-6 md:mb-8 tracking-tighter overflow-hidden border border-[#F1D89E]/40 shrink-0" data-aos="zoom-in" data-aos-delay="200">
                     <img src={hero.avatar ? (hero.avatar.startsWith('http') ? hero.avatar : `${API_BASE_URL}${hero.avatar}`) : fallbackAvatarImg} alt="Avatar Vũ Đức Nam" className="w-full h-full object-cover" />
                 </div>
                 
                 {/* Tên & Chức vụ */}
-                <h1 className="text-3xl md:text-5xl lg:text-5xl font-black text-white tracking-tight mb-2 md:mb-3">
+                <h1 className="text-3xl md:text-5xl lg:text-5xl font-black text-white tracking-tight mb-2 md:mb-3" data-aos="fade-up" data-aos-delay="300">
                     {hero.name || "VŨ ĐỨC NAM"}
                 </h1>
-                <h2 className="text-xs md:text-lg font-bold text-[#F1D89E] mb-4 md:mb-6 tracking-[0.15em] md:tracking-[0.2em] uppercase">
+                <h2 className="text-xs md:text-lg font-bold text-[#F1D89E] mb-4 md:mb-6 tracking-[0.15em] md:tracking-[0.2em] uppercase" data-aos="fade-up" data-aos-delay="400">
                     {hero.title || "Backend Developer Fresher"}
                 </h2>
                 
                 {/* Trích dẫn */}
-                <p className="text-gray-300 text-sm md:text-lg mb-6 md:mb-10 italic font-light leading-relaxed max-w-lg">
+                <p className="text-gray-300 text-sm md:text-lg mb-6 md:mb-10 italic font-light leading-relaxed max-w-lg" data-aos="fade-up" data-aos-delay="500">
                     {hero.bio || '"Sinh viên CNTT. Mong muốn phát triển chuyên sâu về Backend."'}
                 </p>
                 
                 {/* Nút thao tác (Giữ lại nút tải CV gốc) */}
-                <div className="flex flex-wrap gap-4 justify-center lg:justify-start w-full">
+                <div className="flex flex-wrap gap-4 justify-center lg:justify-start w-full" data-aos="fade-up" data-aos-delay="600">
                     <button 
                       onClick={() => scrollTo('projects')} 
                       className="bg-[#F1D89E] hover:bg-white text-black font-bold px-6 md:px-8 py-2.5 md:py-3 rounded-full transition-all hover:scale-105 shadow-[0_0_15px_rgba(241,216,158,0.4)] text-xs md:text-sm"
@@ -61,7 +61,7 @@ export default function Hero() {
             </div>
 
             {/* ================= CỘT PHẢI: INFO & SKILLS ================= */}
-            <div className="flex-[1.2] w-full bg-white/5 border border-white/10 p-5 md:p-10 rounded-2xl md:rounded-3xl z-10 shadow-inner">
+            <div className="flex-[1.2] w-full bg-white/5 border border-white/10 p-5 md:p-10 rounded-2xl md:rounded-3xl z-10 shadow-inner" data-aos="fade-left" data-aos-delay="200">
                 {/* Thông tin liên hệ */}
                 <div className="flex flex-col gap-4 md:gap-6 mb-6 md:mb-10">
                     <div className="flex items-center gap-5 text-gray-300 hover:text-white transition-colors">

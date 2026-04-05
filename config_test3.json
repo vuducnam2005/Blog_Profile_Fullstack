@@ -1,0 +1,80 @@
+{
+  "hero": {
+    "facebook": "https://www.facebook.com/ucnam.382441",
+    "instagram": "https://www.instagram.com/duc_nam205/?hl=en"
+  },
+  "about": {},
+  "projects": [],
+  "experiences": [],
+  "skillsCategories": [
+    {
+      "id": 1,
+      "title": "Backend \u0026 Database",
+      "items": [
+        "C# / .NET 9",
+        "Python",
+        "SQL Server",
+        "RESTful API",
+        "Entity Framework",
+        "C\u002B\u002B"
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Frontend",
+      "items": [
+        "ReactJS",
+        "Vite",
+        "Three.js",
+        "TailwindCSS",
+        "HTML / CSS",
+        "JavaScript"
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Kh\u00E1c (Tools/Soft)",
+      "items": [
+        "Word/Excel",
+        "Giao ti\u1EBFp t\u1ED1t",
+        "T\u01B0 duy Logic",
+        "\u0110\u1ECDc hi\u1EC3u English",
+        "L\u00E0m vi\u1EC7c nh\u00F3m"
+      ]
+    }
+  ],
+  "stats": [
+    {
+      "id": 1,
+      "value": "1\u002B",
+      "label": "N\u0103m m\u00E0i d\u0169a code"
+    },
+    {
+      "id": 2,
+      "value": "3\u002B",
+      "label": "D\u1EF1 \u00E1n ho\u00E0n th\u00E0nh"
+    },
+    {
+      "id": 3,
+      "value": "10\u002B",
+      "label": "C\u00F4ng ngh\u1EC7 n\u1EC1n t\u1EA3ng"
+    }
+  ],
+  "album": [
+    {
+      "id": 1775204402601.1191,
+      "url": "https://res.cloudinary.com/dspafkist/video/upload/v1775204402/7686003054916_eu4xxl.mp4",
+      "type": "video"
+    },
+    {
+      "id": 1775201001159.5632,
+      "url": "https://res.cloudinary.com/dspafkist/image/upload/v1775201001/V\u0169_\u0110\u1EE9c_Nam_CNTT_17-10_b2ejt1.jpg",
+      "type": "image"
+    },
+    {
+      "id": 1775200938662.3787,
+      "url": "https://res.cloudinary.com/dspafkist/image/upload/v1775200938/123_gs6lru.jpg",
+      "type": "image"
+    }
+  ]
+}

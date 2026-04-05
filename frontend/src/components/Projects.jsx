@@ -10,7 +10,7 @@ export default function Projects() {
 
   return (
     <section id="projects" className="min-h-screen pt-20 md:pt-24 pb-12 md:pb-16 px-3 md:px-12 lg:px-24">
-       <h2 className="text-3xl md:text-5xl font-extrabold text-[#F1D89E] mb-8 md:mb-12 flex items-center">
+       <h2 className="text-3xl md:text-5xl font-extrabold text-[#F1D89E] mb-8 md:mb-12 flex items-center" data-aos="fade-right">
         <span className="bg-[#F1D89E] w-8 md:w-12 h-1 mr-3 md:mr-4"></span> {t('projects.title', 'Dự án Nổi bật')}
       </h2>
 
@@ -26,7 +26,7 @@ export default function Projects() {
           ];
           const c = projectColors[idx % projectColors.length];
           return (
-            <div key={p.id} className={`bg-gradient-to-br ${c.bg} border ${c.border} rounded-xl md:rounded-2xl p-5 md:p-8 ${c.hover} transition-all duration-300 hover:-translate-y-2 group relative overflow-hidden`}>
+            <div key={p.id} className={`bg-gradient-to-br ${c.bg} border ${c.border} rounded-xl md:rounded-2xl p-5 md:p-8 ${c.hover} transition-all duration-300 hover:-translate-y-2 group relative overflow-hidden`} data-aos="zoom-in" data-aos-delay={200 + (idx * 50)}>
                <div className="flex justify-between items-start mb-6">
                   <h3 className="text-xl md:text-2xl font-bold text-white group-hover:text-[#F1D89E] transition-colors">{p.title}</h3>
                   <div className="flex gap-3">

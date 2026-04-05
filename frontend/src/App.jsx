@@ -6,8 +6,18 @@ import CvViewer from './pages/CvViewer';
 import AlbumViewer from './pages/AlbumViewer';
 import { PortfolioProvider } from './context/PortfolioContext';
 import { AuthProvider } from './context/AuthContext';
+import { useEffect } from 'react';
+import AOS from 'aos';
+import 'aos/dist/aos.css';
 
 function App() {
+  useEffect(() => {
+    AOS.init({
+      duration: 1000,
+      once: false,
+    });
+  }, []);
+
   return (
     <AuthProvider>
     <PortfolioProvider>
