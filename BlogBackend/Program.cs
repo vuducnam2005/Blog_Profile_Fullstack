@@ -80,6 +80,10 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// Health check endpoint cho UptimeRobot (để không bị sleep trên Render)
+app.MapGet("/", () => "Backend is awake!");
+app.MapGet("/api/health", () => "Backend is alive and kicking!");
+
 // Tự động chạy Migration khi khởi động (Hữu ích khi deploy lên Cloud)
 using (var scope = app.Services.CreateScope())
 {
