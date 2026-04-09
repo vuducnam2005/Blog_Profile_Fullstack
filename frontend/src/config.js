@@ -14,14 +14,14 @@ if (typeof window !== "undefined") {
         apiUrl = origin.replace("-5173", "-5020");
     } else if (hostname === "ducnamdev.site" || hostname === "www.ducnamdev.site" || hostname.includes("vercel.app")) {
         // Môi trường Production: Gọi qua Subdomain API
-        apiUrl = "https://api.ducnamdev.site";
+        apiUrl = "https://blog-api-ducnam.onrender.com";
     } else if (hostname !== "localhost" && hostname !== "127.0.0.1") {
         // Trường hợp 2: Chạy qua mạng LAN (dùng điện thoại bắt chung WiFi)
         apiUrl = `http://${hostname}:5020`;
     } else {
         // Trường hợp 3: Thay vì gọi localhost:5020 vốn cần chạy backend phức tạp,
         // giờ nối thẳng lên Backend thật để dễ dàng test UI, CSS.
-        apiUrl = "https://api.ducnamdev.site";
+        apiUrl = "https://blog-api-ducnam.onrender.com";
     }
 }
 
