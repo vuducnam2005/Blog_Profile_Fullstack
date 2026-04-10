@@ -11,6 +11,7 @@ namespace BlogBackend.Data
 
         public DbSet<BlogPost> BlogPosts { get; set; }
         public DbSet<PortfolioConfig> PortfolioConfigs { get; set; }
+        public DbSet<Comment> Comments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

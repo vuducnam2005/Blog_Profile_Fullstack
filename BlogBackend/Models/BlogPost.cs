@@ -20,5 +20,7 @@ namespace BlogBackend.Models
         public string TheLoai { get; set; } = string.Empty;
         
         public DateTime NgayDang { get; set; } = DateTime.UtcNow;
+
+        public int LuotTim { get; set; } = 0;
     }
 }

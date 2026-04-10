@@ -115,6 +115,22 @@ namespace BlogBackend.Controllers
             return NoContent();
         }
 
+        // PATCH: api/Posts/5/like
+        [HttpPatch("{id}/like")]
+        public async Task<ActionResult<object>> LikePost(int id)
+        {
+            var blogPost = await _context.BlogPosts.FindAsync(id);
+            if (blogPost == null)
+            {
+                return NotFound();
+            }
+
+            blogPost.LuotTim += 1;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { luotTim = blogPost.LuotTim });
+        }
+
         private bool BlogPostExists(int id)
         {
             return _context.BlogPosts.Any(e => e.MaBaiViet == id);
