@@ -51,6 +51,7 @@ function CommentSection({ postId, isOpen }) {
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showAllComments, setShowAllComments] = useState(false);
   const anonymousName = getAnonymousName();
 
   const fetchComments = useCallback(async () => {
@@ -129,34 +130,44 @@ function CommentSection({ postId, isOpen }) {
             {t('blog.noComments', 'Chưa có bình luận nào. Hãy là người đầu tiên! 💬')}
           </p>
         ) : (
-          comments.map((c, idx) => (
-            <div
-              key={c.id || idx}
-              className="comment-item-appear flex gap-2.5 group/comment"
-              style={{ animationDelay: `${idx * 0.05}s` }}
-            >
-              {/* Avatar */}
-              <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/30 border border-white/10 flex items-center justify-center text-[10px] text-white/70 font-bold">
-                {c.tenNguoiDung?.charAt(c.tenNguoiDung.length - 1) || '?'}
-              </div>
-              {/* Content */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2 mb-0.5">
-                  <span className="text-xs font-semibold text-[#F1D89E]/80 truncate">
-                    {c.tenNguoiDung}
-                  </span>
-                  <span className="text-[10px] text-gray-600 flex-shrink-0">
-                    {c.ngayBinhLuan
-                      ? format(new Date(c.ngayBinhLuan), 'dd/MM HH:mm')
-                      : ''}
-                  </span>
+          <>
+            {(showAllComments ? comments : comments.slice(0, 3)).map((c, idx) => (
+              <div
+                key={c.id || idx}
+                className="comment-item-appear flex gap-2.5 group/comment"
+                style={{ animationDelay: `${idx * 0.05}s` }}
+              >
+                {/* Avatar */}
+                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/30 border border-white/10 flex items-center justify-center text-[10px] text-white/70 font-bold">
+                  {c.tenNguoiDung?.charAt(c.tenNguoiDung.length - 1) || '?'}
                 </div>
-                <p className="text-sm text-gray-300 leading-relaxed break-words">
-                  {c.noiDung}
-                </p>
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-2 mb-0.5">
+                    <span className="text-xs font-semibold text-[#F1D89E]/80 truncate">
+                      {c.tenNguoiDung}
+                    </span>
+                    <span className="text-[10px] text-gray-600 flex-shrink-0">
+                      {c.ngayBinhLuan
+                        ? format(new Date(c.ngayBinhLuan), 'dd/MM HH:mm')
+                        : ''}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-300 leading-relaxed break-words">
+                    {c.noiDung}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))
+            ))}
+            {comments.length > 3 && (
+              <button
+                onClick={(e) => { e.preventDefault(); setShowAllComments(!showAllComments); }}
+                className="w-full text-center text-xs text-[#F1D89E]/80 hover:text-[#F1D89E] py-2 mt-2 border-t border-white/5 transition-colors"
+              >
+                {showAllComments ? t('blog.hideComments', 'Thu gọn') : `${t('blog.viewAllComments', 'Xem tất cả')} ${comments.length} ${t('blog.commentsCount', 'bình luận')}`}
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>
