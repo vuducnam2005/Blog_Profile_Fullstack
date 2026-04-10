@@ -327,7 +327,7 @@ export default function BlogSection() {
         <span className="bg-[#F1D89E] w-8 md:w-12 h-1 mr-3 md:mr-4"></span> {t('blog.title', 'Góc Cá Nhân (Blog)')}
       </h2>
 
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="glass flex items-center p-3 md:p-4 rounded-full mb-8 md:mb-12 w-full focus-within:ring-2 ring-[#F1D89E] transition-all bg-black/40 border-white/10" data-aos="fade-up" data-aos-delay="200">
           <Search className="text-gray-400 w-6 h-6 ml-3" />
           <input 
@@ -339,7 +339,7 @@ export default function BlogSection() {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-8">
           {filteredPosts.map((post, idx) => (
             <div key={post.maBaiViet} className="glass rounded-2xl transition-all hover:-translate-y-2 hover:shadow-[0_0_20px_rgba(241,216,158,0.2)] hover:border-[#F1D89E]/50 flex flex-col items-start bg-black/40 border border-[#F1D89E]/20 overflow-hidden group" data-aos="fade-up" data-aos-delay={200 + (idx * 100)}>
               {post.hinhAnhBia && (
