@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { Search, Heart, MessageCircle, Send, User } from 'lucide-react';
+import { Search, Heart, MessageCircle, Send, User, ChevronRight } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 import { useTranslation } from 'react-i18next';
 
@@ -51,8 +51,9 @@ function CommentSection({ postId, isOpen }) {
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [showAllComments, setShowAllComments] = useState(false);
   const anonymousName = getAnonymousName();
+
+  const PREVIEW_COUNT = 2; // Chỉ hiện 2 bình luận trên card
 
   const fetchComments = useCallback(async () => {
     setLoading(true);
@@ -96,7 +97,7 @@ function CommentSection({ postId, isOpen }) {
   return (
     <div className="comment-section-enter mt-4 border-t border-white/10 pt-4">
       {/* Form nhập bình luận */}
-      <form onSubmit={handleSubmit} className="flex gap-2 mb-4">
+      <form onSubmit={handleSubmit} className="flex gap-2 mb-3">
         <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-[#F1D89E]/30 to-[#F1D89E]/10 border border-[#F1D89E]/20 flex items-center justify-center">
           <User className="w-4 h-4 text-[#F1D89E]/70" />
         </div>
@@ -119,53 +120,50 @@ function CommentSection({ postId, isOpen }) {
         </div>
       </form>
 
-      {/* Danh sách bình luận */}
-      <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin">
+      {/* Danh sách bình luận - chỉ hiện tối đa 2 */}
+      <div className="space-y-2.5">
         {loading ? (
-          <p className="text-center text-gray-500 text-sm py-3">
+          <p className="text-center text-gray-500 text-sm py-2">
             {t('blog.loadingComments', 'Đang tải bình luận...')}
           </p>
         ) : comments.length === 0 ? (
-          <p className="text-center text-gray-500 text-sm py-3">
+          <p className="text-center text-gray-500 text-xs py-2">
             {t('blog.noComments', 'Chưa có bình luận nào. Hãy là người đầu tiên! 💬')}
           </p>
         ) : (
           <>
-            {(showAllComments ? comments : comments.slice(0, 3)).map((c, idx) => (
+            {comments.slice(0, PREVIEW_COUNT).map((c, idx) => (
               <div
                 key={c.id || idx}
-                className="comment-item-appear flex gap-2.5 group/comment"
+                className="comment-item-appear flex gap-2 group/comment"
                 style={{ animationDelay: `${idx * 0.05}s` }}
               >
-                {/* Avatar */}
-                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/30 border border-white/10 flex items-center justify-center text-[10px] text-white/70 font-bold">
+                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/30 border border-white/10 flex items-center justify-center text-[9px] text-white/70 font-bold">
                   {c.tenNguoiDung?.charAt(c.tenNguoiDung.length - 1) || '?'}
                 </div>
-                {/* Content */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2 mb-0.5">
-                    <span className="text-xs font-semibold text-[#F1D89E]/80 truncate">
+                  <div className="flex items-baseline gap-1.5 mb-0.5">
+                    <span className="text-[11px] font-semibold text-[#F1D89E]/80 truncate">
                       {c.tenNguoiDung}
                     </span>
-                    <span className="text-[10px] text-gray-600 flex-shrink-0">
-                      {c.ngayBinhLuan
-                        ? format(new Date(c.ngayBinhLuan), 'dd/MM HH:mm')
-                        : ''}
+                    <span className="text-[9px] text-gray-600 flex-shrink-0">
+                      {c.ngayBinhLuan ? format(new Date(c.ngayBinhLuan), 'dd/MM HH:mm') : ''}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-300 leading-relaxed break-words">
+                  <p className="text-xs text-gray-300 leading-relaxed break-words line-clamp-2">
                     {c.noiDung}
                   </p>
                 </div>
               </div>
             ))}
-            {comments.length > 3 && (
-              <button
-                onClick={(e) => { e.preventDefault(); setShowAllComments(!showAllComments); }}
-                className="w-full text-center text-xs text-[#F1D89E]/80 hover:text-[#F1D89E] py-2 mt-2 border-t border-white/5 transition-colors"
+            {comments.length > PREVIEW_COUNT && (
+              <Link
+                to={`/post/${postId}`}
+                className="flex items-center justify-center gap-1 text-[11px] text-[#F1D89E]/70 hover:text-[#F1D89E] py-1.5 mt-1 border-t border-white/5 transition-colors"
               >
-                {showAllComments ? t('blog.hideComments', 'Thu gọn') : `${t('blog.viewAllComments', 'Xem tất cả')} ${comments.length} ${t('blog.commentsCount', 'bình luận')}`}
-              </button>
+                {t('blog.viewAllComments', 'Xem tất cả')} {comments.length} {t('blog.commentsCount', 'bình luận')}
+                <ChevronRight className="w-3 h-3" />
+              </Link>
             )}
           </>
         )}
@@ -369,25 +367,25 @@ export default function BlogSection() {
                 </p>
 
                 {/* ===== Action Bar: Đọc tiếp + Tim + Bình luận ===== */}
-                <div className="flex items-center justify-between mt-auto pt-3 border-t border-white/5">
-                  <Link to={`/post/${post.maBaiViet}`} className="inline-block border border-[#F1D89E] text-[#F1D89E] px-5 py-1.5 rounded-full hover:bg-[#F1D89E] hover:text-black font-semibold transition-colors text-sm">
+                <div className="flex items-center justify-between mt-auto pt-3 border-t border-white/5 gap-2">
+                  <Link to={`/post/${post.maBaiViet}`} className="inline-block border border-[#F1D89E] text-[#F1D89E] px-3 py-1.5 rounded-full hover:bg-[#F1D89E] hover:text-black font-semibold transition-colors text-xs whitespace-nowrap">
                     {t('blog.readMore', 'Đọc tiếp')}
                   </Link>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
                     {/* Nút Tim */}
                     <HeartButton postId={post.maBaiViet} initialLikes={post.luotTim || 0} />
 
                     {/* Nút Bình luận */}
                     <button
                       onClick={() => toggleComments(post.maBaiViet)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-300
+                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full transition-all duration-300
                         ${openComments[post.maBaiViet]
                           ? 'bg-[#F1D89E]/10 border border-[#F1D89E]/30 text-[#F1D89E]'
                           : 'bg-white/5 border border-white/10 text-gray-400 hover:text-[#F1D89E] hover:border-[#F1D89E]/30 hover:bg-[#F1D89E]/5'
                         }`}
                     >
-                      <MessageCircle className="w-4 h-4" />
+                      <MessageCircle className="w-3.5 h-3.5" />
                       <span className="text-xs font-medium min-w-[12px] tabular-nums">
                         {commentCounts[post.maBaiViet] || 0}
                       </span>
