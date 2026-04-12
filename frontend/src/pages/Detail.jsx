@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { ArrowLeft, Edit, Trash2, Heart, Send, User, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Heart, Send, User, MessageCircle, CornerDownRight } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 import { useTranslation } from 'react-i18next';
 import { useAuth, ADMIN_API_KEY } from '../context/AuthContext';
@@ -19,15 +19,184 @@ function getAnonymousName() {
 }
 
 // ==========================================
+// SUB-COMPONENT: Form gửi bình luận / trả lời
+// ==========================================
+function CommentForm({ onSubmit, submitting, isAdmin, adminAvatar, placeholder, autoFocus }) {
+  const [text, setText] = useState('');
+  const inputRef = useRef(null);
+  const anonymousName = getAnonymousName();
+  const displayName = isAdmin ? 'Đức Nam' : anonymousName;
+
+  useEffect(() => {
+    if (autoFocus && inputRef.current) inputRef.current.focus();
+  }, [autoFocus]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!text.trim() || submitting) return;
+    await onSubmit(text.trim(), displayName);
+    setText('');
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex gap-3">
+      {/* Avatar */}
+      <div className="flex-shrink-0 w-9 h-9 rounded-full overflow-hidden border border-[#F1D89E]/20 flex items-center justify-center bg-gradient-to-br from-[#F1D89E]/30 to-[#F1D89E]/10">
+        {isAdmin && adminAvatar ? (
+          <img src={adminAvatar} alt="Đức Nam" className="w-full h-full object-cover" />
+        ) : (
+          <User className="w-4 h-4 text-[#F1D89E]/70" />
+        )}
+      </div>
+      <div className="flex-1 flex flex-col gap-1">
+        <div className="text-xs text-[#F1D89E]/50 mb-0.5">
+          Bình luận với tên: <span className={`font-semibold ${isAdmin ? 'text-[#F1D89E]' : 'text-[#F1D89E]/80'}`}>{displayName}</span>
+        </div>
+        <div className="flex gap-2">
+          <input
+            ref={inputRef}
+            type="text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={placeholder || 'Viết bình luận...'}
+            className="flex-1 bg-white/5 border border-white/10 rounded-full px-5 py-2.5 text-sm text-white placeholder-gray-500 outline-none focus:border-[#F1D89E]/40 focus:bg-white/[0.07] transition-all"
+            maxLength={500}
+          />
+          <button
+            type="submit"
+            disabled={!text.trim() || submitting}
+            className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-r from-[#F1D89E] to-[#e8c86e] flex items-center justify-center text-black hover:shadow-[0_0_16px_rgba(241,216,158,0.4)] disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 hover:scale-110 active:scale-95"
+          >
+            <Send className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+// ==========================================
+// SUB-COMPONENT: Hiển thị 1 bình luận (có reply)
+// ==========================================
+function CommentItem({ comment, replies, isAdmin, adminAvatar, onReply, submitting }) {
+  const [showReplyForm, setShowReplyForm] = useState(false);
+
+  const handleReply = async (text, name) => {
+    await onReply(text, name, comment.id);
+    setShowReplyForm(false);
+  };
+
+  const avatarContent = (c) => {
+    if (c.isAdmin && adminAvatar) return <img src={adminAvatar} alt="Đức Nam" className="w-full h-full object-cover" />;
+    if (c.isAdmin) return <span className="text-xs font-bold text-[#F1D89E]">ĐN</span>;
+    return <span className="text-sm font-bold text-white/70">{c.tenNguoiDung?.charAt(c.tenNguoiDung.length - 1) || '?'}</span>;
+  };
+
+  const avatarBg = (c) =>
+    c.isAdmin
+      ? 'bg-gradient-to-br from-[#F1D89E]/40 to-amber-600/30 border-[#F1D89E]/40'
+      : 'bg-gradient-to-br from-purple-500/30 to-pink-500/30 border-white/10';
+
+  return (
+    <div className="comment-item-appear">
+      {/* Comment gốc */}
+      <div className="flex gap-3 p-4 rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-all">
+        <div className={`flex-shrink-0 w-9 h-9 rounded-full border overflow-hidden flex items-center justify-center ${avatarBg(comment)}`}>
+          {avatarContent(comment)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-2 mb-1">
+            <span className={`text-sm font-semibold ${comment.isAdmin ? 'text-[#F1D89E]' : 'text-[#F1D89E]/80'}`}>
+              {comment.tenNguoiDung}
+              {comment.isAdmin && <span className="ml-1.5 text-[10px] bg-[#F1D89E]/20 text-[#F1D89E] px-1.5 py-0.5 rounded-full font-normal">Admin</span>}
+            </span>
+            <span className="text-xs text-gray-600 flex-shrink-0">
+              {comment.ngayBinhLuan ? format(new Date(comment.ngayBinhLuan), 'dd/MM/yyyy HH:mm') : ''}
+            </span>
+          </div>
+          <p className="text-sm text-gray-300 leading-relaxed break-words">{comment.noiDung}</p>
+          {/* Nút trả lời */}
+          <button
+            onClick={() => setShowReplyForm((v) => !v)}
+            className="mt-2 flex items-center gap-1 text-xs text-gray-500 hover:text-[#F1D89E]/70 transition-colors"
+          >
+            <CornerDownRight className="w-3 h-3" />
+            {showReplyForm ? 'Huỷ' : 'Trả lời'}
+          </button>
+        </div>
+      </div>
+
+      {/* Form trả lời inline */}
+      {showReplyForm && (
+        <div className="ml-10 mt-2 p-3 rounded-xl bg-white/[0.02] border border-white/5">
+          <CommentForm
+            onSubmit={handleReply}
+            submitting={submitting}
+            isAdmin={isAdmin}
+            adminAvatar={adminAvatar}
+            placeholder={`Trả lời ${comment.tenNguoiDung}...`}
+            autoFocus={true}
+          />
+        </div>
+      )}
+
+      {/* Danh sách replies */}
+      {replies && replies.length > 0 && (
+        <div className="ml-10 mt-2 space-y-2">
+          {replies.map((r, i) => (
+            <div key={r.id || i} className="flex gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:border-white/10 transition-all">
+              <div className={`flex-shrink-0 w-7 h-7 rounded-full border overflow-hidden flex items-center justify-center text-xs ${avatarBg(r)}`}>
+                {avatarContent(r)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className={`text-xs font-semibold ${r.isAdmin ? 'text-[#F1D89E]' : 'text-[#F1D89E]/80'}`}>
+                    {r.tenNguoiDung}
+                    {r.isAdmin && <span className="ml-1.5 text-[9px] bg-[#F1D89E]/20 text-[#F1D89E] px-1 py-0.5 rounded-full font-normal">Admin</span>}
+                  </span>
+                  <span className="text-[10px] text-gray-600 flex-shrink-0">
+                    {r.ngayBinhLuan ? format(new Date(r.ngayBinhLuan), 'dd/MM/yyyy HH:mm') : ''}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-300 leading-relaxed break-words">{r.noiDung}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ==========================================
 // COMPONENT: Full Comment Section (Detail Page)
 // ==========================================
 function DetailCommentSection({ postId }) {
   const { t } = useTranslation();
+  const { isAdmin } = useAuth();
   const [comments, setComments] = useState([]);
-  const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const anonymousName = getAnonymousName();
+  const [adminAvatar, setAdminAvatar] = useState(null);
+
+  // Lấy avatar admin từ portfolio config
+  useEffect(() => {
+    const fetchAvatar = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/api/config`);
+        const data = res.data;
+        // Tìm avatar trong các field phổ biến
+        const avatar =
+          data?.hero?.avatar ||
+          data?.about?.avatar ||
+          data?.hero?.image ||
+          data?.about?.image ||
+          null;
+        if (avatar) setAdminAvatar(avatar);
+      } catch (_) {}
+    };
+    fetchAvatar();
+  }, []);
 
   const fetchComments = useCallback(async () => {
     setLoading(true);
@@ -41,22 +210,29 @@ function DetailCommentSection({ postId }) {
     }
   }, [postId]);
 
-  useEffect(() => {
-    fetchComments();
-  }, [fetchComments]);
+  useEffect(() => { fetchComments(); }, [fetchComments]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!newComment.trim() || submitting) return;
+  // Tổ chức comments thành cây: parents + replies của từng parent
+  const rootComments = comments.filter((c) => !c.parentId);
+  const repliesMap = comments.reduce((acc, c) => {
+    if (c.parentId) {
+      if (!acc[c.parentId]) acc[c.parentId] = [];
+      acc[c.parentId].push(c);
+    }
+    return acc;
+  }, {});
+
+  const handleSubmitRoot = async (text, name) => {
+    if (submitting) return;
     setSubmitting(true);
     try {
       const res = await axios.post(`${API_BASE_URL}/api/comments`, {
         maBaiViet: postId,
-        tenNguoiDung: anonymousName,
-        noiDung: newComment.trim(),
+        tenNguoiDung: name,
+        noiDung: text,
+        isAdmin: isAdmin,
       });
-      setComments((prev) => [res.data, ...prev]);
-      setNewComment('');
+      setComments((prev) => [...prev, res.data]);
     } catch (err) {
       console.error('Lỗi gửi bình luận:', err);
     } finally {
@@ -64,43 +240,46 @@ function DetailCommentSection({ postId }) {
     }
   };
 
+  const handleReply = async (text, name, parentId) => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const res = await axios.post(`${API_BASE_URL}/api/comments`, {
+        maBaiViet: postId,
+        tenNguoiDung: name,
+        noiDung: text,
+        parentId: parentId,
+        isAdmin: isAdmin,
+      });
+      setComments((prev) => [...prev, res.data]);
+    } catch (err) {
+      console.error('Lỗi gửi reply:', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const totalCount = comments.length;
+
   return (
     <div className="mt-10 md:mt-14 border-t border-white/10 pt-8">
       {/* Header */}
       <h3 className="text-lg md:text-xl font-bold text-white mb-6 flex items-center gap-2">
         <MessageCircle className="w-5 h-5 text-[#F1D89E]" />
         {t('detail.comments', 'Bình luận')}
-        <span className="text-sm font-normal text-gray-400">({comments.length})</span>
+        <span className="text-sm font-normal text-gray-400">({totalCount})</span>
       </h3>
 
-      {/* Form nhập bình luận */}
-      <form onSubmit={handleSubmit} className="flex gap-3 mb-8">
-        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-[#F1D89E]/30 to-[#F1D89E]/10 border border-[#F1D89E]/20 flex items-center justify-center">
-          <User className="w-5 h-5 text-[#F1D89E]/70" />
-        </div>
-        <div className="flex-1 flex flex-col gap-2">
-          <div className="text-xs text-[#F1D89E]/60 mb-1">
-            {t('detail.commentAs', 'Bình luận với tên:')} <span className="font-semibold text-[#F1D89E]/80">{anonymousName}</span>
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder={t('blog.commentPlaceholder', 'Viết bình luận...')}
-              className="flex-1 bg-white/5 border border-white/10 rounded-full px-5 py-2.5 text-sm text-white placeholder-gray-500 outline-none focus:border-[#F1D89E]/40 focus:bg-white/[0.07] transition-all"
-              maxLength={500}
-            />
-            <button
-              type="submit"
-              disabled={!newComment.trim() || submitting}
-              className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-r from-[#F1D89E] to-[#e8c86e] flex items-center justify-center text-black hover:shadow-[0_0_16px_rgba(241,216,158,0.4)] disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 hover:scale-110 active:scale-95"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </form>
+      {/* Form nhập bình luận gốc */}
+      <div className="mb-8">
+        <CommentForm
+          onSubmit={handleSubmitRoot}
+          submitting={submitting}
+          isAdmin={isAdmin}
+          adminAvatar={adminAvatar}
+          placeholder={t('blog.commentPlaceholder', 'Viết bình luận...')}
+        />
+      </div>
 
       {/* Danh sách tất cả bình luận */}
       <div className="space-y-4">
@@ -108,7 +287,7 @@ function DetailCommentSection({ postId }) {
           <p className="text-center text-gray-500 text-sm py-6">
             {t('blog.loadingComments', 'Đang tải bình luận...')}
           </p>
-        ) : comments.length === 0 ? (
+        ) : rootComments.length === 0 ? (
           <div className="text-center py-10">
             <MessageCircle className="w-10 h-10 text-gray-600 mx-auto mb-3" />
             <p className="text-gray-500 text-sm">
@@ -116,39 +295,24 @@ function DetailCommentSection({ postId }) {
             </p>
           </div>
         ) : (
-          comments.map((c, idx) => (
-            <div
+          // Hiển thị từ mới nhất xuống cũ nhất (đảo ngược rootComments)
+          [...rootComments].reverse().map((c, idx) => (
+            <CommentItem
               key={c.id || idx}
-              className="comment-item-appear flex gap-3 p-4 rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-all"
-              style={{ animationDelay: `${idx * 0.04}s` }}
-            >
-              {/* Avatar */}
-              <div className="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-purple-500/30 to-pink-500/30 border border-white/10 flex items-center justify-center text-sm text-white/70 font-bold">
-                {c.tenNguoiDung?.charAt(c.tenNguoiDung.length - 1) || '?'}
-              </div>
-              {/* Content */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className="text-sm font-semibold text-[#F1D89E]/80">
-                    {c.tenNguoiDung}
-                  </span>
-                  <span className="text-xs text-gray-600 flex-shrink-0">
-                    {c.ngayBinhLuan
-                      ? format(new Date(c.ngayBinhLuan), 'dd/MM/yyyy HH:mm')
-                      : ''}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-300 leading-relaxed break-words">
-                  {c.noiDung}
-                </p>
-              </div>
-            </div>
+              comment={c}
+              replies={repliesMap[c.id] || []}
+              isAdmin={isAdmin}
+              adminAvatar={adminAvatar}
+              onReply={handleReply}
+              submitting={submitting}
+            />
           ))
         )}
       </div>
     </div>
   );
 }
+
 
 // ==========================================
 // COMPONENT: Heart Button for Detail Page

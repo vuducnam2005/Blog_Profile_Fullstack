@@ -17,5 +17,11 @@ namespace BlogBackend.Models
         public string NoiDung { get; set; } = string.Empty;
 
         public DateTime NgayBinhLuan { get; set; } = DateTime.UtcNow;
+
+        // Trả lời bình luận: null = comment gốc, có giá trị = reply của comment đó
+        public int? ParentId { get; set; }
+
+        // Đánh dấu đây là bình luận của admin (Đức Nam)
+        public bool IsAdmin { get; set; } = false;
     }
 }

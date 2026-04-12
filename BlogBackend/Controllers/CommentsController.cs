@@ -26,7 +26,7 @@ namespace BlogBackend.Controllers
         {
             return await _context.Comments
                 .Where(c => c.MaBaiViet == postId)
-                .OrderByDescending(c => c.NgayBinhLuan)
+                .OrderBy(c => c.NgayBinhLuan) // Cũ nhất trước để dễ sắp xếp cây reply ở frontend
                 .ToListAsync();
         }
 
@@ -43,6 +43,17 @@ namespace BlogBackend.Controllers
             if (string.IsNullOrWhiteSpace(comment.TenNguoiDung))
             {
                 comment.TenNguoiDung = "Ẩn danh";
+            }
+
+            // Nếu là reply (có ParentId), kiểm tra comment cha tồn tại không
+            if (comment.ParentId.HasValue)
+            {
+                var parent = await _context.Comments.FindAsync(comment.ParentId.Value);
+                if (parent == null)
+                    return BadRequest(new { message = "Bình luận gốc không tồn tại." });
+                // Không cho phép reply của reply (chỉ 1 cấp)
+                if (parent.ParentId.HasValue)
+                    comment.ParentId = parent.ParentId;
             }
 
             comment.NgayBinhLuan = DateTime.UtcNow;
