@@ -18,6 +18,16 @@ function getAnonymousName() {
   return name;
 }
 
+// Helper: Chuyển đổi giờ UTC từ server sang giờ Việt Nam (UTC+7) rồi format
+function formatVNTime(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  // Chuyển sang múi giờ Asia/Ho_Chi_Minh trước khi format
+  const vnDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+  return format(vnDate, 'dd/MM/yyyy HH:mm');
+}
+
+
 // ==========================================
 // SUB-COMPONENT: Form gửi bình luận / trả lời
 // ==========================================
@@ -111,7 +121,7 @@ function CommentItem({ comment, replies, isAdmin, adminAvatar, onReply, submitti
               {comment.isAdmin && <span className="ml-1.5 text-[10px] bg-[#F1D89E]/20 text-[#F1D89E] px-1.5 py-0.5 rounded-full font-normal">Admin</span>}
             </span>
             <span className="text-xs text-gray-600 flex-shrink-0">
-              {comment.ngayBinhLuan ? format(new Date(comment.ngayBinhLuan), 'dd/MM/yyyy HH:mm') : ''}
+              {formatVNTime(comment.ngayBinhLuan)}
             </span>
           </div>
           <p className="text-sm text-gray-300 leading-relaxed break-words">{comment.noiDung}</p>
@@ -155,7 +165,7 @@ function CommentItem({ comment, replies, isAdmin, adminAvatar, onReply, submitti
                     {r.isAdmin && <span className="ml-1.5 text-[9px] bg-[#F1D89E]/20 text-[#F1D89E] px-1 py-0.5 rounded-full font-normal">Admin</span>}
                   </span>
                   <span className="text-[10px] text-gray-600 flex-shrink-0">
-                    {r.ngayBinhLuan ? format(new Date(r.ngayBinhLuan), 'dd/MM/yyyy HH:mm') : ''}
+                    {formatVNTime(r.ngayBinhLuan)}
                   </span>
                 </div>
                 <p className="text-xs text-gray-300 leading-relaxed break-words">{r.noiDung}</p>
@@ -444,7 +454,7 @@ export default function Detail() {
       
       <div className="flex max-md:flex-col justify-between items-start md:items-center border-b border-white/20 pb-4 md:pb-6 mb-6 md:mb-8 text-[#F1D89E]/60 text-xs md:text-sm gap-3 md:gap-4">
         <div className="flex items-center gap-4 flex-wrap">
-          <span>{t('detail.postedOn', 'Ngày đăng:')} {format(new Date(post.ngayDang), 'dd/MM/yyyy HH:mm')}</span>
+          <span>{t('detail.postedOn', 'Ngày đăng:')} {formatVNTime(post.ngayDang)}</span>
           <DetailHeartButton postId={post.maBaiViet} initialLikes={post.luotTim || 0} />
         </div>
         
