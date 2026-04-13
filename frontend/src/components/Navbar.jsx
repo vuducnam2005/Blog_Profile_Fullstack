@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { User, FileText, Globe, Menu, X, Camera, Music, Volume2, VolumeX } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +21,24 @@ export default function Navbar() {
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const [clickCount, setClickCount] = useState(0);
+  const [isAdminVisible, setIsAdminVisible] = useState(false);
+
+  useEffect(() => {
+    if (clickCount > 0 && clickCount < 3) {
+      const timer = setTimeout(() => setClickCount(0), 1000);
+      return () => clearTimeout(timer);
+    }
+    if (clickCount >= 3) {
+      setIsAdminVisible(true);
+    }
+  }, [clickCount]);
+
+  const handleLogoClick = () => {
+    scrollTo('hero');
+    setClickCount((prev) => prev + 1);
+  };
+
   const navItems = [
     { id: 'hero', label: t('nav.home') },
     { id: 'about', label: t('nav.about') },
@@ -36,8 +54,8 @@ export default function Navbar() {
       <div className="px-4 md:px-8 py-4 md:py-5 flex justify-between items-center bg-black/50 backdrop-blur-md border-b border-[#F1D89E]/20">
         {/* Logo */}
         <div
-          onClick={() => scrollTo('hero')}
-          className="text-xl md:text-2xl font-bold tracking-widest text-[#F1D89E] cursor-pointer hover:scale-105 transition-transform"
+          onClick={handleLogoClick}
+          className="text-xl md:text-2xl font-bold tracking-widest text-[#F1D89E] cursor-pointer hover:scale-105 transition-transform select-none"
         >
           Vũ Đức Nam
         </div>
@@ -82,12 +100,14 @@ export default function Navbar() {
             >
               <FileText className="w-4 h-4" /> CV
             </Link>
-            <Link
-              to="/admin/create"
-              className="border border-[#F1D89E]/40 text-[#F1D89E] px-4 py-1.5 rounded-full hover:bg-[#F1D89E]/10 transition-colors flex items-center gap-2"
-            >
-              <User className="w-4 h-4" /> Admin
-            </Link>
+            {isAdminVisible && (
+              <Link
+                to="/admin/create"
+                className="border border-[#F1D89E]/40 text-[#F1D89E] px-4 py-1.5 rounded-full hover:bg-[#F1D89E]/10 transition-colors flex items-center gap-2"
+              >
+                <User className="w-4 h-4" /> Admin
+              </Link>
+            )}
           </div>
         </div>
 
@@ -152,13 +172,15 @@ export default function Navbar() {
             >
               <FileText className="w-4 h-4" /> CV
             </Link>
-            <Link
-              to="/admin/create"
-              onClick={() => setMobileOpen(false)}
-              className="border border-[#F1D89E]/40 text-[#F1D89E] px-4 py-2 rounded-full hover:bg-[#F1D89E]/10 transition-colors flex items-center gap-2 text-xs font-bold"
-            >
-              <User className="w-4 h-4" /> Admin
-            </Link>
+            {isAdminVisible && (
+              <Link
+                to="/admin/create"
+                onClick={() => setMobileOpen(false)}
+                className="border border-[#F1D89E]/40 text-[#F1D89E] px-4 py-2 rounded-full hover:bg-[#F1D89E]/10 transition-colors flex items-center gap-2 text-xs font-bold"
+              >
+                <User className="w-4 h-4" /> Admin
+              </Link>
+            )}
           </div>
         </div>
       </div>
