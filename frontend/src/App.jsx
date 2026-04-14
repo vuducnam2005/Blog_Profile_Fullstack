@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { useState, useEffect, useContext } from 'react';
 import Home from './pages/Home';
 import Detail from './pages/Detail';
@@ -17,6 +17,7 @@ function AppContent() {
   const { data } = useContext(PortfolioContext);
   const { isAdmin } = useAuth();
   const [bypassedMaintenance, setBypassedMaintenance] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     AOS.init({
@@ -25,7 +26,21 @@ function AppContent() {
     });
   }, []);
 
-  const isMaintenance = data?.maintenanceMode && !isAdmin && !bypassedMaintenance;
+  const isNormalRoute = !location.pathname.startsWith('/admin');
+  
+  let isMaintenance = false;
+  if (data?.maintenanceMode) {
+    if (isNormalRoute) {
+      // Mọi người (kể cả Admin) khi ra các trang ngoài đều thấy màn hình bảo trì để kiểm tra
+      isMaintenance = true;
+    } else {
+      // Đang truy cập route /admin
+      if (!isAdmin && !bypassedMaintenance) {
+        // Nếu người lạ gõ thẳng /admin mà chưa bypass 3 clicks -> Chặn hiển thị Login form
+        isMaintenance = true;
+      }
+    }
+  }
 
   if (isMaintenance) {
     return <MaintenanceOverlay onBypass={() => setBypassedMaintenance(true)} />;
