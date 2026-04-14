@@ -148,6 +148,24 @@ export default function ConfigEditor() {
                     </button>
                 </div>
 
+                {/* --- CHẾ ĐỘ BẢO TRÌ --- */}
+                <div className="mb-10 p-6 bg-red-500/10 border border-red-500/30 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div>
+                        <h3 className="text-xl font-bold text-red-400 mb-2">Chế Độ Bảo Trì (Maintenance Mode)</h3>
+                        <p className="text-gray-400 text-sm">Khi bật, khách truy cập sẽ thấy màn hình bảo trì và không thể thao tác trang web. Tính năng đăng nhập Admin được ẩn bên dưới logo bảo trì khi click 3 lần.</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                        <input 
+                            type="checkbox" 
+                            className="sr-only peer" 
+                            checked={!!config.maintenanceMode}
+                            onChange={(e) => setConfig({ ...config, maintenanceMode: e.target.checked })}
+                        />
+                        <div className="w-14 h-7 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-red-500"></div>
+                        <span className="ml-3 text-sm font-bold text-white uppercase">{config.maintenanceMode ? 'ĐANG BẬT' : 'Tắt'}</span>
+                    </label>
+                </div>
+
                 {/* --- SUB TABS THAO TÁC NHANH --- */}
                 <div className="flex flex-wrap gap-3 mb-10 sticky top-[80px] z-[60] bg-black/80 backdrop-blur-md p-4 rounded-xl shadow-[0_4px_30px_rgba(0,0,0,0.5)] border border-[#F1D89E]/20">
                     <span className="text-[#F1D89E] w-full md:w-auto text-sm font-bold flex items-center mr-2 uppercase tracking-wide">
