@@ -12,6 +12,9 @@ export const PortfolioProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : defaultData;
   });
   const [loading, setLoading] = useState(!data);
+  // configReady = false cho đến khi API trả về dữ liệu thật lần đầu tiên
+  // Ngăn chặn việc dùng dữ liệu cũ từ localStorage để quyết định bảo trì
+  const [configReady, setConfigReady] = useState(false);
 
   const fetchConfig = useCallback(async () => {
     try {
@@ -22,6 +25,7 @@ export const PortfolioProvider = ({ children }) => {
       console.error("Error fetching config:", error);
     } finally {
       setLoading(false);
+      setConfigReady(true);
     }
   }, []);
 
@@ -30,7 +34,7 @@ export const PortfolioProvider = ({ children }) => {
   }, [fetchConfig]);
 
   return (
-    <PortfolioContext.Provider value={{ data, setData, fetchConfig, loading }}>
+    <PortfolioContext.Provider value={{ data, setData, fetchConfig, loading, configReady }}>
       {children}
     </PortfolioContext.Provider>
   );

@@ -14,7 +14,7 @@ import AOS from 'aos';
 import 'aos/dist/aos.css';
 
 function AppContent() {
-  const { data } = useContext(PortfolioContext);
+  const { data, configReady } = useContext(PortfolioContext);
   const { isAdmin } = useAuth();
   const [bypassedMaintenance, setBypassedMaintenance] = useState(false);
   const location = useLocation();
@@ -25,6 +25,25 @@ function AppContent() {
       once: false,
     });
   }, []);
+
+  // CHỜ cho đến khi API trả về dữ liệu thật từ server
+  // Không dùng localStorage cũ để quyết định hiển thị bảo trì
+  if (!configReady) {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: '#000', display: 'flex',
+        alignItems: 'center', justifyContent: 'center'
+      }}>
+        <div style={{
+          width: 40, height: 40, border: '3px solid rgba(241,216,158,0.3)',
+          borderTopColor: '#F1D89E', borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite'
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
 
   const isNormalRoute = !location.pathname.startsWith('/admin');
   
