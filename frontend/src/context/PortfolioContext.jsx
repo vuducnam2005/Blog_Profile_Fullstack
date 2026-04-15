@@ -15,8 +15,7 @@ export const PortfolioProvider = ({ children }) => {
 
   const fetchConfig = useCallback(async () => {
     try {
-      if (!data) setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/api/config`);
+      const response = await axios.get(`${API_BASE_URL}/api/config?t=${new Date().getTime()}`);
       setData(response.data);
       localStorage.setItem('portfolioData', JSON.stringify(response.data));
     } catch (error) {
@@ -24,14 +23,14 @@ export const PortfolioProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [data]);
+  }, []);
 
   useEffect(() => {
     fetchConfig();
   }, [fetchConfig]);
 
   return (
-    <PortfolioContext.Provider value={{ data, fetchConfig, loading }}>
+    <PortfolioContext.Provider value={{ data, setData, fetchConfig, loading }}>
       {children}
     </PortfolioContext.Provider>
   );

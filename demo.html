@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hiệu ứng Parallax 3D</title>
+    <style>
+        /* Thiết lập cơ bản để xóa viền và chặn cuộn trang */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: radial-gradient(circle at center, #1b2735 0%, #090a0f 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Container chứa toàn bộ khung cảnh */
+        #scene {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Khung chuẩn cho các lớp (làm to hơn màn hình một chút để khi di chuyển không bị lộ viền) */
+        .layer {
+            position: absolute;
+            width: 110%;
+            height: 110%;
+            top: -5%;
+            left: -5%;
+            pointer-events: none; /* Tránh việc các layer che mất sự kiện chuột */
+        }
+
+        /* 1. Lớp bầu trời sao (Dùng CSS background pattern mỏng) */
+        .stars {
+            background-image: 
+                radial-gradient(2px 2px at 20px 30px, #eee, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 40px 70px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 50px 160px, #ddd, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 90px 40px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 130px 80px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 160px 120px, #ddd, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 200px 200px;
+            opacity: 0.6;
+            z-index: 1;
+        }
+
+        /* 2. Lớp Typography (Chữ nằm sau nhân vật) */
+        .text-layer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 2;
+        }
+
+        h1 {
+            font-size: 8vw; /* Chữ to tự động theo màn hình */
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255, 223, 0, 0.6), 0 0 40px rgba(255, 223, 0, 0.4); /* Hiệu ứng phát sáng vàng */
+            margin: 0;
+            letter-spacing: 5px;
+        }
+
+        p {
+            color: #ddd;
+            font-size: 1.2rem;
+            margin-top: -10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+
+        /* 3. Lớp Nhân vật (Nằm trên cùng) */
+        .character-layer {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end; /* Ép ảnh sát xuống dưới đáy */
+            z-index: 3;
+            /* Tạo ánh sáng vàng hắt từ sau lưng nhân vật */
+            filter: drop-shadow(0px -10px 50px rgba(255, 215, 0, 0.5)); 
+        }
+
+        .character-layer img {
+            height: 75vh; /* Chiều cao ảnh chiếm 75% màn hình */
+            object-fit: contain;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="scene">
+        <div class="layer stars" data-speed="1"></div>
+        
+        <div class="layer text-layer" data-speed="4">
+            <h1>Tuấn Ang</h1>
+            <p>a storyteller, influencer, and aspiring AI Pioneer.</p>
+        </div>
+        
+        <div class="layer character-layer" data-speed="8">
+            <img src="https://via.placeholder.com/600x800.png?text=Thay+A%CC%89nh+T%C3%A1ch+N%C3%AA%CC%80n+Va%CC%80o+%C4%90%C3%A2y" alt="Character">
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('mousemove', function(e) {
+            const layers = document.querySelectorAll('.layer');
+            
+            layers.forEach(layer => {
+                const speed = layer.getAttribute('data-speed');
+                // Tính toán tọa độ ngược lại với hướng di chuột
+                const x = (window.innerWidth - e.pageX * speed) / 100;
+                const y = (window.innerHeight - e.pageY * speed) / 100;
+                
+                // Áp dụng di chuyển
+                layer.style.transform = `translateX(${x}px) translateY(${y}px)`;
+            });
+        });
+    </script>
+
+</body>
+</html>

@@ -8,7 +8,7 @@ import { uploadFile } from '../../utils/upload';
 
 export default function ConfigEditor() {
     const navigate = useNavigate();
-    const { fetchConfig } = useContext(PortfolioContext);
+    const { fetchConfig, setData } = useContext(PortfolioContext);
     const [config, setConfig] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -111,7 +111,11 @@ export default function ConfigEditor() {
         setSaving(true);
         try {
             await axios.post(`${API_BASE_URL}/api/config`, config);
-            await fetchConfig(); // Cập nhật dữ liệu toàn cục ngay lập tức
+            
+            // Cập nhật state toàn cục và cache ngay lập tức để không bị Flicker
+            setData(config);
+            localStorage.setItem('portfolioData', JSON.stringify(config));
+            
             alert("Đã lưu lại Cấu hình Giao diện thành công! Trở lại Trang Chủ để thấy thay đổi.");
         } catch (error) {
             console.error(error);
