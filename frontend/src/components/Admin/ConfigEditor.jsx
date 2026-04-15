@@ -1,4 +1,5 @@
 import { useState, useEffect, useContext, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import axios from 'axios';
 import { Save, Plus, Trash2, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -112,8 +113,11 @@ export default function ConfigEditor() {
         try {
             await axios.post(`${API_BASE_URL}/api/config`, config);
             
-            // Cập nhật state toàn cục và cache ngay lập tức để không bị Flicker
-            setData(config);
+            // flushSync ép React commit state NGAY LẬP TỨC trước khi alert() chặn thread
+            // Đảm bảo khi navigate về Home, data đã được cập nhật hoàn toàn
+            flushSync(() => {
+                setData(config);
+            });
             localStorage.setItem('portfolioData', JSON.stringify(config));
             
             alert("Đã lưu lại Cấu hình Giao diện thành công! Trở lại Trang Chủ để thấy thay đổi.");
