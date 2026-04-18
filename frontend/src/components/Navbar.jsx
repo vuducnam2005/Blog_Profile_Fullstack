@@ -20,10 +20,8 @@ export default function Navbar() {
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: 'smooth' });
     
-    // Nếu về trang chủ thì gửi thêm sự kiện để xoay góc nhìn galaxy lại từ đầu
-    if (id === 'hero') {
-      window.dispatchEvent(new Event('resetGalaxy'));
-    }
+    // Gửi sự kiện resetGalaxy cho MỌI tab để quay góc nhìn về như cũ
+    window.dispatchEvent(new Event('resetGalaxy'));
   };
 
   const [clickCount, setClickCount] = useState(0);

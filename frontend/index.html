@@ -297,8 +297,8 @@
             if (points) {
                 // Xoay trục Y: auto-rotation + scroll rotation + mouse rotation (±π = ±180° = full 360°)
                 points.rotation.y = timeAngle + (currentScrollY * -0.001) + (smoothMouseX * Math.PI);
-                // Xoay trục X: nghiêng nhẹ theo vị trí chuột dọc (±π/4 = ±45° để không lật ngửa)
-                points.rotation.x = smoothMouseY * (Math.PI / 4);
+                // Giữ nguyên trục X ban đầu để không bị nghiêng lật ngửa
+                points.rotation.x = 0;
             }
 
             // Di chuyển các ngôi sao bay tạo cảm giác đang lướt trong tàu vũ trụ
