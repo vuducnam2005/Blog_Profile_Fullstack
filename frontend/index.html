@@ -264,6 +264,13 @@
             mouseY = (event.clientY / window.innerHeight) * 2 - 1;
         });
 
+        // LẮNG NGHE SỰ KIỆN TỪ REACT ĐỂ RESET GALAXY TRỞ VỀ BAN ĐẦU
+        window.addEventListener('resetGalaxy', () => {
+            timeAngle = 0; // Trả lại góc xoay ban đầu
+            mouseX = 0;    // Reset góc chuột
+            mouseY = 0;
+        });
+
         // RESIZE
         window.addEventListener('resize', () => {
             sizes.width = window.innerWidth;

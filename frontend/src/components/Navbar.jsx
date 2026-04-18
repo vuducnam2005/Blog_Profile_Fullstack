@@ -19,6 +19,11 @@ export default function Navbar() {
     setMobileOpen(false);
     const el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: 'smooth' });
+    
+    // Nếu về trang chủ thì gửi thêm sự kiện để xoay góc nhìn galaxy lại từ đầu
+    if (id === 'hero') {
+      window.dispatchEvent(new Event('resetGalaxy'));
+    }
   };
 
   const [clickCount, setClickCount] = useState(0);
