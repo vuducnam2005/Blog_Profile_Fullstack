@@ -248,6 +248,22 @@
         let timeAngle = 0;
         let currentScrollY = window.scrollY || 0;
 
+        // =====================================================
+        // MOUSE-DRIVEN GALAXY ROTATION (360° theo vị trí chuột)
+        // =====================================================
+        // mouseX, mouseY: giá trị chuẩn hóa [-1, 1] theo vị trí chuột trên viewport
+        let mouseX = 0;
+        let mouseY = 0;
+        // Giá trị lerp (đã mượt hóa) để tránh giật khi di chuột nhanh
+        let smoothMouseX = 0;
+        let smoothMouseY = 0;
+
+        window.addEventListener('mousemove', (event) => {
+            // Chuẩn hóa vị trí chuột: trung tâm = 0, trái/trên = -1, phải/dưới = +1
+            mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+            mouseY = (event.clientY / window.innerHeight) * 2 - 1;
+        });
+
         // RESIZE
         window.addEventListener('resize', () => {
             sizes.width = window.innerWidth;
@@ -264,11 +280,18 @@
             // 1. Dải ngân hà tự quay từ từ theo thời gian
             timeAngle += 0.001;
 
-                        // 2. Tính mô men xoắn cho vòng lặp xoay mượt mà
+            // 2. Tính mô men xoắn cho vòng lặp xoay mượt mà (scroll)
             currentScrollY += (window.scrollY - currentScrollY) * 0.02;
 
+            // 3. Mượt hóa giá trị chuột (lerp) – hệ số 0.05 cho cảm giác "trôi" mượt mà
+            smoothMouseX += (mouseX - smoothMouseX) * 0.05;
+            smoothMouseY += (mouseY - smoothMouseY) * 0.05;
+
             if (points) {
-                points.rotation.y = timeAngle + (currentScrollY * -0.001);
+                // Xoay trục Y: auto-rotation + scroll rotation + mouse rotation (±π = ±180° = full 360°)
+                points.rotation.y = timeAngle + (currentScrollY * -0.001) + (smoothMouseX * Math.PI);
+                // Xoay trục X: nghiêng nhẹ theo vị trí chuột dọc (±π/4 = ±45° để không lật ngửa)
+                points.rotation.x = smoothMouseY * (Math.PI / 4);
             }
 
             // Di chuyển các ngôi sao bay tạo cảm giác đang lướt trong tàu vũ trụ
