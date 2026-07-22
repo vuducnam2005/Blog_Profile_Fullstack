@@ -24,6 +24,11 @@
     "facebook": "https://www.facebook.com/ucnam.382441",
     "instagram": "https://www.instagram.com/duc_nam205/"
   },
+  "about": {
+    "title": "Giới thiệu",
+    "p1": "Tôi là một Backend Developer (Fresher) đầy nhiệt huyết với đam mê tạo ra các hệ thống web tối ưu và ổn định. Hiện đang theo học ngành CNTT tại Đại học Đại Nam (2023-2025), tôi lập tức tập trung sâu vào Python, C# .NET, SQL Server và phát triển REST API.",
+    "p2": "Mục tiêu hướng tới của tôi là kiến thiết các giải pháp web backend linh hoạt, cho phép xử lý dữ liệu phức tạp, qua đó giúp các doanh nghiệp luôn nổi bật nhờ hệ thống cốt lõi vững vàng đằng sau."
+  },
   "experiences": [
     {
       "id": 1775084861100,

@@ -9,13 +9,14 @@ import { uploadFile } from '../../utils/upload';
 
 export default function ConfigEditor() {
     const navigate = useNavigate();
-    const { fetchConfig, setData } = useContext(PortfolioContext);
+    const { setData } = useContext(PortfolioContext);
     const [config, setConfig] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [uploadingMedia, setUploadingMedia] = useState(false);
 
     const heroRef = useRef(null);
+    const aboutRef = useRef(null);
     const projectsRef = useRef(null);
     const experiencesRef = useRef(null);
     const skillsRef = useRef(null);
@@ -32,6 +33,7 @@ export default function ConfigEditor() {
 
     const tabs = [
         { id: 'hero', label: 'Thông tin cốt lõi', ref: heroRef },
+        { id: 'about', label: 'Nội dung Giới thiệu', ref: aboutRef },
         { id: 'projects', label: 'Dự án mẫu', ref: projectsRef },
         { id: 'experiences', label: 'Kinh nghiệm', ref: experiencesRef },
         { id: 'skills', label: 'Kỹ năng', ref: skillsRef },
@@ -43,6 +45,18 @@ export default function ConfigEditor() {
         axios.get(`${API_BASE_URL}/api/config`)
             .then(res => {
                 const fetchedConfig = res.data || {};
+                if (!fetchedConfig.about) {
+                    fetchedConfig.about = {};
+                }
+                if (!fetchedConfig.about.title) {
+                    fetchedConfig.about.title = 'Giới thiệu';
+                }
+                if (!fetchedConfig.about.p1) {
+                    fetchedConfig.about.p1 = 'Tôi là một Backend Developer (Fresher) đầy nhiệt huyết với đam mê tạo ra các hệ thống web tối ưu và ổn định. Hiện đang theo học ngành CNTT tại Đại học Đại Nam (2023-2025), tôi lập tức tập trung sâu vào Python, C# .NET, SQL Server và phát triển REST API.';
+                }
+                if (!fetchedConfig.about.p2) {
+                    fetchedConfig.about.p2 = 'Mục tiêu hướng tới của tôi là kiến thiết các giải pháp web backend linh hoạt, cho phép xử lý dữ liệu phức tạp, qua đó giúp các doanh nghiệp luôn nổi bật nhờ hệ thống cốt lõi vững vàng đằng sau.';
+                }
                 if (!fetchedConfig.skillsCategories || fetchedConfig.skillsCategories.length === 0) {
                     fetchedConfig.skillsCategories = [
                         { id: 1, title: 'Backend & Database', items: ['C# / .NET 9', 'Python', 'SQL Server', 'RESTful API', 'Entity Framework', 'C++'] },
@@ -366,11 +380,56 @@ export default function ConfigEditor() {
                     </div>
                 </section>
 
-                {/* 2. DỰ ÁN */}
+                {/* 2. NỘI DUNG GIỚI THIỆU */}
+                <section ref={aboutRef} className="mb-14 scroll-mt-24">
+                    <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-full bg-[#F1D89E] text-black flex items-center justify-center font-bold">2</span> 
+                        Nội Dung Phần Giới Thiệu (About Section)
+                    </h2>
+                    <div className="grid grid-cols-1 gap-6 bg-white/5 p-6 rounded-2xl border border-white/10">
+                        <div>
+                            <label className="text-xs text-[#F1D89E] font-bold uppercase tracking-wider mb-2 block">
+                                Tiêu Đề Mục Giới Thiệu
+                            </label>
+                            <input 
+                                value={config.about?.title || "Giới thiệu"} 
+                                onChange={e => handleChange("about", "title", e.target.value)} 
+                                className="w-full bg-black/40 border border-white/20 p-3 rounded-xl text-white outline-none focus:border-[#F1D89E]" 
+                                placeholder="Giới thiệu"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs text-[#F1D89E] font-bold uppercase tracking-wider mb-2 block">
+                                Đoạn 1: Giới thiệu bản thân, học vấn & công nghệ cốt lõi
+                            </label>
+                            <textarea 
+                                rows="4" 
+                                value={config.about?.p1 ?? "Tôi là một Backend Developer (Fresher) đầy nhiệt huyết với đam mê tạo ra các hệ thống web tối ưu và ổn định. Hiện đang theo học ngành CNTT tại Đại học Đại Nam (2023-2025), tôi lập tức tập trung sâu vào Python, C# .NET, SQL Server và phát triển REST API."} 
+                                onChange={e => handleChange("about", "p1", e.target.value)} 
+                                className="w-full bg-black/40 border border-white/20 p-3 rounded-xl text-white outline-none focus:border-[#F1D89E] leading-relaxed text-sm" 
+                                placeholder="Nhập nội dung đoạn 1..."
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs text-[#F1D89E] font-bold uppercase tracking-wider mb-2 block">
+                                Đoạn 2: Định hướng & Mục tiêu phát triển
+                            </label>
+                            <textarea 
+                                rows="4" 
+                                value={config.about?.p2 ?? "Mục tiêu hướng tới của tôi là kiến thiết các giải pháp web backend linh hoạt, cho phép xử lý dữ liệu phức tạp, qua đó giúp các doanh nghiệp luôn nổi bật nhờ hệ thống cốt lõi vững vàng đằng sau."} 
+                                onChange={e => handleChange("about", "p2", e.target.value)} 
+                                className="w-full bg-black/40 border border-white/20 p-3 rounded-xl text-white outline-none focus:border-[#F1D89E] leading-relaxed text-sm" 
+                                placeholder="Nhập nội dung đoạn 2..."
+                            />
+                        </div>
+                    </div>
+                </section>
+
+                {/* 3. DỰ ÁN */}
                 <section ref={projectsRef} className="mb-14 scroll-mt-24">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                            <span className="w-8 h-8 rounded-full bg-[#F1D89E] text-black flex items-center justify-center">2</span> 
+                            <span className="w-8 h-8 rounded-full bg-[#F1D89E] text-black flex items-center justify-center">3</span> 
                             Thư Viện Dự Án Mẫu
                         </h2>
                         <button 
@@ -415,11 +474,11 @@ export default function ConfigEditor() {
                     </div>
                 </section>
 
-                {/* 3. EXPERIENCE */}
+                {/* 4. EXPERIENCE */}
                 <section ref={experiencesRef} className="mb-14 scroll-mt-24">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                            <span className="w-8 h-8 rounded-full bg-[#F1D89E] text-black flex items-center justify-center">3</span> 
+                            <span className="w-8 h-8 rounded-full bg-[#F1D89E] text-black flex items-center justify-center">4</span> 
                             Kinh Nghiệm & Học Vấn
                         </h2>
                         <button 
@@ -460,11 +519,11 @@ export default function ConfigEditor() {
                     </div>
                 </section>
 
-                {/* 4. KỸ NĂNG & CÔNG NGHỆ */}
+                {/* 5. KỸ NĂNG & CÔNG NGHỆ */}
                 <section ref={skillsRef} className="mb-14 scroll-mt-24">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                            <span className="w-8 h-8 rounded-full bg-[#F1D89E] text-black flex items-center justify-center">4</span> 
+                            <span className="w-8 h-8 rounded-full bg-[#F1D89E] text-black flex items-center justify-center">5</span> 
                             Kỹ năng & Công nghệ
                         </h2>
                         <button 
@@ -498,11 +557,11 @@ export default function ConfigEditor() {
                     </div>
                 </section>
 
-                {/* 5. QUẢN LÝ ALBUM (ẢNH & VIDEO) */}
+                {/* 6. QUẢN LÝ ALBUM (ẢNH & VIDEO) */}
                 <section ref={albumRef} className="mb-14 scroll-mt-24">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                            <span className="w-8 h-8 rounded-full bg-[#F1D89E] text-black flex items-center justify-center">5</span>
+                            <span className="w-8 h-8 rounded-full bg-[#F1D89E] text-black flex items-center justify-center">6</span>
                             Quản Lý Album (Ảnh & Video)
                         </h2>
                         <div className="flex items-center gap-4">
@@ -608,11 +667,11 @@ export default function ConfigEditor() {
                     </div>
                 </section>
 
-                {/* 6. THỐNG KÊ SỐ LIỆU */}
+                {/* 7. THỐNG KÊ SỐ LIỆU */}
                 <section ref={statsRef} className="mb-14 scroll-mt-24">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                            <span className="w-8 h-8 rounded-full bg-[#F1D89E] text-black flex items-center justify-center">5</span>
+                            <span className="w-8 h-8 rounded-full bg-[#F1D89E] text-black flex items-center justify-center">7</span>
                             Thống Kê Số Liệu (Trang Giới Thiệu)
                         </h2>
                         <button

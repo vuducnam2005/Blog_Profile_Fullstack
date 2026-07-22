@@ -26,21 +26,25 @@ export default function About() {
 
   const skillsCategories = data?.skillsCategories?.length > 0 ? data.skillsCategories : defaultSkillsCategories;
 
+  const aboutTitle = data?.about?.title || t('about.title', 'Giới thiệu');
+
   return (
     <section id="about" className="min-h-screen flex flex-col justify-center pt-20 md:pt-24 pb-12 md:pb-16 px-3 md:px-12 lg:px-24">
       <h2 className="text-3xl md:text-5xl font-extrabold text-[#F1D89E] mb-8 md:mb-12 flex items-center" data-aos="fade-right">
-        <span className="bg-[#F1D89E] w-8 md:w-12 h-1 mr-3 md:mr-4"></span> {t('about.title', 'Giới thiệu')}
+        <span className="bg-[#F1D89E] w-8 md:w-12 h-1 mr-3 md:mr-4"></span> {aboutTitle}
       </h2>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16">
         {/* Cột trái */}
         <div className="flex flex-col justify-between" data-aos="fade-right" data-aos-delay="200">
           <div>
-            <p className="text-gray-300 text-sm md:text-lg leading-relaxed mb-4 md:mb-6 font-light">
-              {t('about.p1_1', 'Tôi là một ')}<span className="text-white font-semibold">{t('about.p1_2', 'Backend Developer (Fresher)')}</span>{t('about.p1_3', ' đầy nhiệt huyết với đam mê tạo ra các hệ thống web tối ưu và ổn định. Hiện đang theo học ngành CNTT tại Đại học Đại Nam (2023-2025), tôi lập tức tập trung sâu vào ')}<span className="text-[#F1D89E] font-medium">{t('about.p1_4', 'Python, C# .NET, SQL Server và phát triển REST API')}</span>.
+            <p className="text-gray-300 text-sm md:text-lg leading-relaxed mb-4 md:mb-6 font-light whitespace-pre-line">
+              {data?.about?.p1 ? data.about.p1 : (
+                <>{t('about.p1_1', 'Tôi là một ')}<span className="text-white font-semibold">{t('about.p1_2', 'Backend Developer (Fresher)')}</span>{t('about.p1_3', ' đầy nhiệt huyết với đam mê tạo ra các hệ thống web tối ưu và ổn định. Hiện đang theo học ngành CNTT tại Đại học Đại Nam (2023-2025), tôi lập tức tập trung sâu vào ')}<span className="text-[#F1D89E] font-medium">{t('about.p1_4', 'Python, C# .NET, SQL Server và phát triển REST API')}</span>.</>
+              )}
             </p>
-            <p className="text-gray-300 text-sm md:text-lg leading-relaxed font-light">
-              {t('about.p2', 'Mục tiêu hướng tới của tôi là kiến thiết các giải pháp web backend linh hoạt, cho phép xử lý dữ liệu phức tạp, qua đó giúp các doanh nghiệp luôn nổi bật nhờ hệ thống cốt lõi vững vàng đằng sau.')}
+            <p className="text-gray-300 text-sm md:text-lg leading-relaxed font-light whitespace-pre-line">
+              {data?.about?.p2 || t('about.p2', 'Mục tiêu hướng tới của tôi là kiến thiết các giải pháp web backend linh hoạt, cho phép xử lý dữ liệu phức tạp, qua đó giúp các doanh nghiệp luôn nổi bật nhờ hệ thống cốt lõi vững vàng đằng sau.')}
             </p>
           </div>
           
