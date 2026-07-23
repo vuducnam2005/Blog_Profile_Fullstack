@@ -919,7 +919,6 @@
         const lightRayMat = new THREE.ShaderMaterial({
             uniforms: {
                 uTime: { value: 0 },
-                uScrollEnergy: { value: 0 },
                 uVisibility: { value: isMobile ? 1.25 : 1.0 },
             },
             vertexShader: `
@@ -940,7 +939,6 @@
             `,
             fragmentShader: `
                 uniform float uTime;
-                uniform float uScrollEnergy;
                 uniform float uVisibility;
                 varying float vProgress;
                 varying float vAcross;
@@ -948,14 +946,14 @@
                 varying float vHue;
 
                 void main(){
-                    float speed = (0.48 + vSeed * 0.22) * (1.0 + uScrollEnergy * 1.7);
+                    float speed = 0.48 + vSeed * 0.22;
                     float waveA = sin(vProgress * 34.0 - uTime * speed * 5.0 + vSeed * 13.0) * 0.5 + 0.5;
                     float waveB = sin(vProgress * 13.0 - uTime * speed * 2.2 + vSeed * 7.0) * 0.5 + 0.5;
                     float flowingLight = 0.62 + waveA * 0.23 + waveB * 0.15;
                     float surge = pow(max(sin(vProgress * 11.0 - uTime * speed * 3.0 + vSeed * 9.0), 0.0), 6.0);
 
                     // Smooth luminous heads travel from the outer edge toward the horizon.
-                    float headSpeed = (0.18 + vSeed * 0.1) * (1.0 + uScrollEnergy * 3.0);
+                    float headSpeed = 0.18 + vSeed * 0.1;
                     float headA = fract(uTime * headSpeed + vSeed * 0.83);
                     float headB = fract(uTime * headSpeed * 0.68 + vSeed * 0.37 + 0.48);
                     float pulseA = exp(-pow((vProgress - headA) / 0.045, 2.0));
@@ -986,7 +984,7 @@
                     float alpha = sourceFade * softEdge
                         * (0.12 + flowingLight * 0.15 + inwardHeat * 0.13 + surge * 0.05 + incomingPulse * 0.09);
                     gl_FragColor = vec4(
-                        color * intensity * uVisibility * (1.0 + uScrollEnergy * 0.2),
+                        color * intensity * uVisibility,
                         alpha * uVisibility
                     );
                 }
@@ -1204,8 +1202,7 @@
             innerGlowMat.uniforms.uTime.value = flowTime;
             einsteinRingMat.uniforms.uTime.value = flowTime;
             lensArc2Mat.uniforms.uTime.value = flowTime;
-            lightRayMat.uniforms.uTime.value = flowTime;
-            lightRayMat.uniforms.uScrollEnergy.value = scrollEnergy;
+            lightRayMat.uniforms.uTime.value = elapsedTime;
 
             // --- UPDATE ORBITAL PARTICLES ---
             const orbPositions = orbGeo.attributes.position.array;
