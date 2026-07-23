@@ -151,9 +151,11 @@
                 particleSize: isMobile ? 0.02 : 0.015,
             },
             lightRibbons: {
-                // Main width controls: large at the source, needle-thin at the horizon.
-                outerWidth: isMobile ? 0.72 : isTablet ? 0.95 : 1.9,
-                innerWidth: isMobile ? 0.016 : 0.012,
+                // Shared by desktop and mobile: edit once and both layouts update.
+                outerWidth: 1.9,
+                innerWidth: 0.012,
+                startRadius: 15.0,
+                radiusVariation: 12.0,
                 taperPower: 0.82,
                 widthVariation: 0.36,
             },
@@ -882,7 +884,8 @@
             const seed = Math.random();
             const hue = Math.random();
             const startAngle = (rayIndex / lightRayCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.65;
-            const startRadius = isMobile ? 14.0 + Math.random() * 10.0 : 15.0 + Math.random() * 12.0;
+            const startRadius = CONFIG.lightRibbons.startRadius
+                + Math.random() * CONFIG.lightRibbons.radiusVariation;
             const startHeight = (isMobile ? 0.5 : 2.0) + Math.random() * (isMobile ? 5.5 : 9.0);
             const endHeight = (Math.random() - 0.5) * 0.75;
             const bendDirection = Math.random() < 0.5 ? -1 : 1;
@@ -919,7 +922,7 @@
         const lightRayMat = new THREE.ShaderMaterial({
             uniforms: {
                 uTime: { value: 0 },
-                uVisibility: { value: isMobile ? 1.25 : 1.0 },
+                uVisibility: { value: 1.0 },
             },
             vertexShader: `
                 attribute float aRaySeed;
