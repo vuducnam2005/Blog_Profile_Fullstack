@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import axios from 'axios';
-import { Save, Plus, Trash2, ArrowLeft } from 'lucide-react';
+import { Save, Plus, Trash2, ArrowLeft, GripVertical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../../config';
 import { PortfolioContext } from '../../context/PortfolioContext';
@@ -14,6 +14,9 @@ export default function ConfigEditor() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [uploadingMedia, setUploadingMedia] = useState(false);
+    const [draggedExperienceIndex, setDraggedExperienceIndex] = useState(null);
+    const [experienceDropIndex, setExperienceDropIndex] = useState(null);
+    const draggedExperienceIndexRef = useRef(null);
 
     const heroRef = useRef(null);
     const aboutRef = useRef(null);
@@ -111,6 +114,55 @@ export default function ConfigEditor() {
             newArray.splice(index, 1);
             return { ...prev, [section]: newArray };
         });
+    };
+
+    const reorderExperience = (fromIndex, toIndex) => {
+        if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+
+        setConfig(prev => {
+            const experiences = [...(prev.experiences || [])];
+            if (fromIndex >= experiences.length || toIndex >= experiences.length) return prev;
+
+            const [movedItem] = experiences.splice(fromIndex, 1);
+            experiences.splice(toIndex, 0, movedItem);
+            return { ...prev, experiences };
+        });
+    };
+
+    const handleExperienceDragStart = (event, index) => {
+        draggedExperienceIndexRef.current = index;
+        setDraggedExperienceIndex(index);
+        setExperienceDropIndex(index);
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', String(index));
+
+        const card = event.currentTarget.closest('[data-experience-card]');
+        if (card) event.dataTransfer.setDragImage(card, 32, 32);
+    };
+
+    const handleExperienceDrop = (event, toIndex) => {
+        event.preventDefault();
+        const fromIndex = draggedExperienceIndexRef.current;
+        if (fromIndex !== null) reorderExperience(fromIndex, toIndex);
+        draggedExperienceIndexRef.current = null;
+        setDraggedExperienceIndex(null);
+        setExperienceDropIndex(null);
+    };
+
+    const handleExperienceDragEnd = () => {
+        draggedExperienceIndexRef.current = null;
+        setDraggedExperienceIndex(null);
+        setExperienceDropIndex(null);
+    };
+
+    const handleExperienceHandleKeyDown = (event, index) => {
+        if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+
+        event.preventDefault();
+        const direction = event.key === 'ArrowUp' ? -1 : 1;
+        const toIndex = index + direction;
+        const lastIndex = (config.experiences?.length || 0) - 1;
+        if (toIndex >= 0 && toIndex <= lastIndex) reorderExperience(index, toIndex);
     };
 
     const handleSkillsChange = (e) => {
@@ -489,14 +541,44 @@ export default function ConfigEditor() {
                         </button>
                     </div>
 
+                    <p className="mb-4 ml-3 text-sm text-gray-400">
+                        Giữ và kéo biểu tượng <GripVertical className="inline h-4 w-4 text-[#F1D89E]" /> để đổi thứ tự, sau đó bấm Cập nhật để lưu.
+                    </p>
+
                     <div className="space-y-4 border-l-2 border-[#F1D89E]/20 pl-6 ml-3">
                         {config.experiences?.map((item, index) => (
-                            <div key={item.id} className="relative bg-white/5 p-5 rounded-2xl border border-white/10 group hover:border-[#F1D89E]/30 transition-all">
+                            <div
+                                key={item.id}
+                                data-experience-card
+                                onDragEnter={() => setExperienceDropIndex(index)}
+                                onDragOver={(event) => {
+                                    event.preventDefault();
+                                    event.dataTransfer.dropEffect = 'move';
+                                }}
+                                onDrop={(event) => handleExperienceDrop(event, index)}
+                                className={`relative bg-white/5 p-5 rounded-2xl border group transition-all ${
+                                    experienceDropIndex === index && draggedExperienceIndex !== null && draggedExperienceIndex !== index
+                                        ? 'border-[#F1D89E] bg-[#F1D89E]/10 shadow-[0_0_24px_rgba(241,216,158,0.18)]'
+                                        : 'border-white/10 hover:border-[#F1D89E]/30'
+                                } ${draggedExperienceIndex === index ? 'opacity-60' : ''}`}
+                            >
+                                <button
+                                    type="button"
+                                    draggable
+                                    onDragStart={(event) => handleExperienceDragStart(event, index)}
+                                    onDragEnd={handleExperienceDragEnd}
+                                    onKeyDown={(event) => handleExperienceHandleKeyDown(event, index)}
+                                    className="absolute top-4 right-16 cursor-grab active:cursor-grabbing text-gray-400 bg-white/5 p-2 rounded-lg hover:bg-[#F1D89E]/20 hover:text-[#F1D89E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F1D89E]"
+                                    aria-label={`Kéo để đổi vị trí mục ${item.year || index + 1}. Dùng phím mũi tên lên hoặc xuống để sắp xếp.`}
+                                    title="Giữ và kéo để đổi thứ tự"
+                                >
+                                    <GripVertical className="w-5 h-5" />
+                                </button>
                                 <button onClick={() => handleRemoveArrayItem('experiences', index)} className="absolute top-4 right-4 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity bg-red-400/10 p-2 rounded-lg hover:bg-red-400 hover:text-white">
                                     <Trash2 className="w-5 h-5"/>
                                 </button>
                                 
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pr-12">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pr-24">
                                     <div className="md:col-span-1">
                                         <label className="text-[10px] text-[#F1D89E] font-bold uppercase tracking-wider mb-1 block">Dấu mốc thời gian</label>
                                         <input value={item.year || ""} onChange={e => handleArrayChange('experiences', index, 'year', e.target.value)} className="w-full bg-black/40 border border-transparent p-2 rounded-lg text-[#F1D89E] outline-none focus:border-[#F1D89E] font-mono font-bold" />
