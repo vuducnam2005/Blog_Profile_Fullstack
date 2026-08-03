@@ -134,12 +134,12 @@
                 lerp: 0.03,
             },
             particles: {
-                galaxy: isMobile ? 80000 : isTablet ? 150000 : 250000,
-                farStars: isMobile ? 6000 : isTablet ? 12000 : 22000,
-                midDust: isMobile ? 1800 : isTablet ? 3500 : 6000,
-                nearDust: isMobile ? 400 : isTablet ? 800 : 1500,
-                orbital: isMobile ? 800 : isTablet ? 1500 : 2800,
-                lightRays: isMobile ? 12 : isTablet ? 16 : 20,
+                galaxy: isMobile ? 50000 : isTablet ? 100000 : 180000,
+                farStars: isMobile ? 1000 : isTablet ? 2000 : 3000,
+                midDust: isMobile ? 600 : isTablet ? 1200 : 2000,
+                nearDust: isMobile ? 150 : isTablet ? 300 : 500,
+                orbital: isMobile ? 60 : isTablet ? 120 : 200,
+                lightRays: isMobile ? 7 : isTablet ? 9 : 11,
                 lightRaySegments: isMobile ? 64 : 96,
             },
             galaxy: {
@@ -174,7 +174,7 @@
         camera.position.set(0, CONFIG.camera.yFar, CONFIG.camera.zFar);
         scene.add(camera);
 
-        const renderer = new THREE.WebGLRenderer({ canvas, antialias: !isMobile, alpha: true, powerPreference: 'high-performance' });
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: !isMobile, alpha: true });
         renderer.setSize(sizes.width, sizes.height);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.0 : 1.5));
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -692,24 +692,24 @@
             fsPos[i3] = r * Math.sin(phi) * Math.cos(theta);
             fsPos[i3 + 1] = r * Math.sin(phi) * Math.sin(theta);
             fsPos[i3 + 2] = r * Math.cos(phi);
-            const brightness = 0.5 + Math.random() * 0.5;
-            // Tông màu vàng kim / vàng óng rực rỡ (Gold / Amber stars)
+            const brightness = 0.4 + Math.random() * 0.6;
+            // Slight color variation
             const tint = Math.random();
-            fsCol[i3] = brightness * 1.0;
-            fsCol[i3 + 1] = brightness * (0.8 + tint * 0.18);
-            fsCol[i3 + 2] = brightness * (0.25 + tint * 0.25);
+            fsCol[i3] = brightness * (0.9 + tint * 0.1);
+            fsCol[i3 + 1] = brightness * (0.85 + tint * 0.15);
+            fsCol[i3 + 2] = brightness;
         }
         farStarsGeo.setAttribute('position', new THREE.BufferAttribute(fsPos, 3));
         farStarsGeo.setAttribute('color', new THREE.BufferAttribute(fsCol, 3));
         const farStarsMat = new THREE.PointsMaterial({
-            size: 0.08,
+            size: 0.06,
             sizeAttenuation: true,
             depthWrite: false,
             blending: THREE.AdditiveBlending,
             vertexColors: true,
             transparent: true,
             alphaMap: starTexture,
-            opacity: 0.9,
+            opacity: 0.7,
         });
         const farStars = new THREE.Points(farStarsGeo, farStarsMat);
         scene.add(farStars);
@@ -807,14 +807,14 @@
         orbGeo.setAttribute('position', new THREE.BufferAttribute(orbPos, 3));
         orbGeo.setAttribute('color', new THREE.BufferAttribute(orbCol, 3));
         const orbMat = new THREE.PointsMaterial({
-            size: 0.075,
+            size: 0.06,
             sizeAttenuation: true,
             depthWrite: false,
             blending: THREE.AdditiveBlending,
             vertexColors: true,
             transparent: true,
             alphaMap: starTexture,
-            opacity: 0.95,
+            opacity: 0.9,
         });
         const orbitalParticles = new THREE.Points(orbGeo, orbMat);
         blackHoleGroup.add(orbitalParticles);
