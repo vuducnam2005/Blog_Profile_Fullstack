@@ -183,8 +183,8 @@ export default function AiChatWidget() {
     ]);
 
     let i = 0;
-    const chunkSize = 2; // Gõ 2 ký tự mỗi nhịp cho cảm giác chữ chảy nhanh mượt mà
-    const speed = 12; // 12ms per chunk
+    const chunkSize = 4; // Gõ 4 ký tự mỗi nhịp siêu nhanh mượt mà như ChatGPT Turbo
+    const speed = 8; // 8ms per chunk
 
     const timer = setInterval(() => {
       i += chunkSize;
