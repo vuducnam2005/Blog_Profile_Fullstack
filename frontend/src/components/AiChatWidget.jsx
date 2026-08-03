@@ -167,6 +167,49 @@ export default function AiChatWidget() {
     throw new Error(lastError || "Không thể gọi Gemini API trực tiếp");
   };
 
+  // Hiệu ứng gõ chữ từng ký tự mượt mà như ChatGPT / Gemini
+  const typeWriterReply = (fullText) => {
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    // Thêm tin nhắn trống ban đầu của AI với con trỏ nhấp nháy isTyping: true
+    setMessages(prev => [
+      ...prev,
+      {
+        sender: 'ai',
+        text: '',
+        time: timeStr,
+        isTyping: true
+      }
+    ]);
+
+    let i = 0;
+    const chunkSize = 2; // Gõ 2 ký tự mỗi nhịp cho cảm giác chữ chảy nhanh mượt mà
+    const speed = 12; // 12ms per chunk
+
+    const timer = setInterval(() => {
+      i += chunkSize;
+      const currentText = fullText.slice(0, i);
+      const isDone = i >= fullText.length;
+
+      setMessages(prev => {
+        const updated = [...prev];
+        const lastIdx = updated.length - 1;
+        if (lastIdx >= 0 && updated[lastIdx].sender === 'ai') {
+          updated[lastIdx] = {
+            ...updated[lastIdx],
+            text: currentText,
+            isTyping: !isDone
+          };
+        }
+        return updated;
+      });
+
+      if (isDone) {
+        clearInterval(timer);
+      }
+    }, speed);
+  };
+
   const handleSend = async (textToSend) => {
     const query = textToSend || input.trim();
     if (!query || loading) return;
@@ -184,14 +227,7 @@ export default function AiChatWidget() {
     try {
       // Gọi trực tiếp Gemini API từ Frontend
       const aiReply = await callGeminiDirectly(query, messages);
-      setMessages(prev => [
-        ...prev,
-        {
-          sender: 'ai',
-          text: aiReply,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      ]);
+      typeWriterReply(aiReply);
     } catch (err) {
       console.warn("Direct Gemini API error, using offline smart fallback:", err);
       let fallbackAnswer = `Trợ lý AI đang sẵn sàng hỗ trợ! Bạn có thể hỏi mình các thông tin chi tiết về kinh nghiệm, kỹ năng và các dự án của Vũ Đức Nam nhé 😊.`;
@@ -211,14 +247,7 @@ export default function AiChatWidget() {
         fallbackAnswer = `Trình độ học vấn của Nam:\n🎓 Đại học Đại Nam - Chuyên ngành CNTT (2023-2027)\n📊 GPA: 3.2 / 4.0 (Loại Giỏi)\n🏆 Giải Nhì cuộc thi Lập trình cơ bản khoa CNTT, Chứng chỉ Gemini University Student & Học bổng nhiều kỳ liên tiếp.`;
       }
 
-      setMessages(prev => [
-        ...prev,
-        {
-          sender: 'ai',
-          text: fallbackAnswer,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      ]);
+      typeWriterReply(fallbackAnswer);
     } finally {
       setLoading(false);
     }
@@ -271,6 +300,9 @@ export default function AiChatWidget() {
                     : 'bg-[#181a26] border border-white/10 text-gray-200 rounded-tl-none whitespace-pre-line'
                 }`}>
                   {msg.text}
+                  {msg.isTyping && (
+                    <span className="inline-block w-1.5 h-3.5 bg-[#F1D89E] ml-1 align-middle animate-pulse rounded-full" />
+                  )}
                   <div className={`text-[10px] mt-1 text-right ${msg.sender === 'user' ? 'text-black/60' : 'text-gray-500'}`}>
                     {msg.time}
                   </div>
