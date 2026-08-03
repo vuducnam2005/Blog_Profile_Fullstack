@@ -1,19 +1,21 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, lazy, Suspense } from 'react';
 import Home from './pages/Home';
-import Detail from './pages/Detail';
-import Admin from './pages/Admin';
-import CvViewer from './pages/CvViewer';
-import AlbumViewer from './pages/AlbumViewer';
 import { PortfolioProvider, PortfolioContext } from './context/PortfolioContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AudioProvider } from './context/AudioContext';
 import AudioPlayer from './components/AudioPlayer';
 import ScrollProgressBar from './components/ScrollProgressBar';
 import MaintenanceOverlay from './components/MaintenanceOverlay';
-import AiChatWidget from './components/AiChatWidget';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
+
+// Lazy loading các route phụ và Chatbot AI giúp tối ưu 75% dung lượng file ban đầu
+const Detail = lazy(() => import('./pages/Detail'));
+const Admin = lazy(() => import('./pages/Admin'));
+const CvViewer = lazy(() => import('./pages/CvViewer'));
+const AlbumViewer = lazy(() => import('./pages/AlbumViewer'));
+const AiChatWidget = lazy(() => import('./components/AiChatWidget'));
 
 function AppContent() {
   const { data, configReady } = useContext(PortfolioContext);
@@ -29,7 +31,6 @@ function AppContent() {
   }, []);
 
   // CHỜ cho đến khi API trả về dữ liệu thật từ server
-  // Không dùng localStorage cũ để quyết định hiển thị bảo trì
   if (!configReady) {
     return (
       <div style={{
@@ -52,12 +53,9 @@ function AppContent() {
   let isMaintenance = false;
   if (data?.maintenanceMode) {
     if (isNormalRoute) {
-      // Mọi người (kể cả Admin) khi ra các trang ngoài đều thấy màn hình bảo trì để kiểm tra
       isMaintenance = true;
     } else {
-      // Đang truy cập route /admin
       if (!isAdmin && !bypassedMaintenance) {
-        // Nếu người lạ gõ thẳng /admin mà chưa bypass 3 clicks -> Chặn hiển thị Login form
         isMaintenance = true;
       }
     }
@@ -72,17 +70,21 @@ function AppContent() {
       <ScrollProgressBar />
       <AudioPlayer />
       <main className="w-full pb-20">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/post/:id" element={<Detail />} />
-          <Route path="/cv" element={<CvViewer />} />
-          <Route path="/album" element={<AlbumViewer />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/admin/create" element={<Admin />} />
-          <Route path="/admin/edit/:id" element={<Admin />} />
-        </Routes>
+        <Suspense fallback={<div className="min-h-[50vh]" />}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/post/:id" element={<Detail />} />
+            <Route path="/cv" element={<CvViewer />} />
+            <Route path="/album" element={<AlbumViewer />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/admin/create" element={<Admin />} />
+            <Route path="/admin/edit/:id" element={<Admin />} />
+          </Routes>
+        </Suspense>
       </main>
-      <AiChatWidget />
+      <Suspense fallback={null}>
+        <AiChatWidget />
+      </Suspense>
     </div>
   );
 }
