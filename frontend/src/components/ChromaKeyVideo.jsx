@@ -30,23 +30,12 @@ const ChromaKeyVideo = ({
 
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     
-    // Tốc độ khung hình 24 FPS (mỗi frame ~41.6ms) - chuẩn tốc độ chuyển động video
-    const targetFpsInterval = 1000 / 24;
-
-    const processFrame = (now) => {
+    const processFrame = () => {
       // Dừng xử lý khi tab ẩn hoặc video chưa chạy
       if (document.hidden || !video || video.paused || video.ended) {
         animFrameId.current = requestAnimationFrame(processFrame);
         return;
       }
-
-      // Giới hạn FPS cực chuẩn
-      const elapsed = now - lastFrameTimeRef.current;
-      if (elapsed < targetFpsInterval) {
-        animFrameId.current = requestAnimationFrame(processFrame);
-        return;
-      }
-      lastFrameTimeRef.current = now - (elapsed % targetFpsInterval);
 
       const w = canvas.width;
       const h = canvas.height;
