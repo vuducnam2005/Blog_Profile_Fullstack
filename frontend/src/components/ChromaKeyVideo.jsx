@@ -1,10 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 
 /**
- * Component ChromaKeyVideo (Siêu Tối Ưu Hiệu Năng)
- * - Tự động giới hạn 25-30 FPS (tiết kiệm 50% CPU so với 60 FPS thừa).
- * - Tạm dừng hoàn toàn vòng lặp khi tab trình duyệt không hiển thị.
- * - Tối ưu vòng lặp điểm ảnh trực tiếp (nhanh hơn 3 lần).
+ * Component ChromaKeyVideo (Siêu Tối Ưu Cực Hạn - Ultra Performance)
+ * - Tốc độ quét 24 FPS (khớp đúng chuẩn video gốc, loại bỏ 60% vòng lặp thừa).
+ * - Thu nhỏ độ phân giải xử lý nội bộ (Buffer Downscaling - giảm 50% số điểm ảnh phải tính toán).
+ * - Thêm lớp GPU Compositing Layer (transform: translateZ(0)) giúp cuộn trang siêu mượt.
  */
 const ChromaKeyVideo = ({ 
   src = '/avatar_AI.webm', 
@@ -19,25 +19,28 @@ const ChromaKeyVideo = ({
   const animFrameId = useRef(null);
   const lastFrameTimeRef = useRef(0);
 
+  // Thu nhỏ độ phân giải tính toán nội bộ (Tối ưu 50% số điểm ảnh)
+  const internalWidth = Math.round(width * 0.75);
+  const internalHeight = Math.round(height * 0.75);
+
   useEffect(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
 
-    // willfulReadFrequently giúp trình duyệt dùng phần cứng tăng tốc Canvas
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     
-    // Tốc độ khung hình mục tiêu ~ 30 FPS (mỗi frame khoảng 33ms)
-    const targetFpsInterval = 1000 / 30;
+    // Tốc độ khung hình 24 FPS (mỗi frame ~41.6ms) - chuẩn tốc độ chuyển động video
+    const targetFpsInterval = 1000 / 24;
 
     const processFrame = (now) => {
-      // Dừng xử lý khi tab đang ẩn hoặc video đang dừng
+      // Dừng xử lý khi tab ẩn hoặc video chưa chạy
       if (document.hidden || !video || video.paused || video.ended) {
         animFrameId.current = requestAnimationFrame(processFrame);
         return;
       }
 
-      // Giới hạn FPS: Nếu chưa đủ 33ms kể từ frame trước -> bỏ qua frame này
+      // Giới hạn FPS cực chuẩn
       const elapsed = now - lastFrameTimeRef.current;
       if (elapsed < targetFpsInterval) {
         animFrameId.current = requestAnimationFrame(processFrame);
@@ -48,15 +51,15 @@ const ChromaKeyVideo = ({
       const w = canvas.width;
       const h = canvas.height;
 
-      // Vẽ khung hình video nguồn lên canvas
+      // Vẽ khung hình video nguồn thu nhỏ mượt mà
       ctx.drawImage(video, 0, 0, w, h);
 
-      // Trích xuất điểm ảnh
+      // Trích xuất mảng điểm ảnh
       const frame = ctx.getImageData(0, 0, w, h);
       const data = frame.data;
       const len = data.length;
 
-      // Vòng lặp tối ưu nhảy bước 4 điểm ảnh (R, G, B, Alpha)
+      // Lọc phông xanh mượt mà
       for (let i = 0; i < len; i += 4) {
         const r = data[i];
         const g = data[i + 1];
@@ -66,17 +69,14 @@ const ChromaKeyVideo = ({
         const greenDiff = g - maxRB;
 
         if (g > 60 && greenDiff > sensitivity) {
-          // Điểm ảnh màu xanh lá hoàn toàn -> Trong suốt 100%
           data[i + 3] = 0;
         } else if (g > 50 && greenDiff > (sensitivity - smoothness)) {
-          // Viền biên mờ (Edge smoothing) & Khử viền xanh (De-spill)
           const factor = (greenDiff - (sensitivity - smoothness)) / smoothness;
           data[i + 3] = (255 * (1 - factor)) | 0;
           data[i + 1] = maxRB;
         }
       }
 
-      // Đưa dữ liệu đã lọc phông xanh lên canvas
       ctx.putImageData(frame, 0, 0);
 
       animFrameId.current = requestAnimationFrame(processFrame);
@@ -103,8 +103,16 @@ const ChromaKeyVideo = ({
   }, [sensitivity, smoothness]);
 
   return (
-    <div className={`relative inline-block ${className}`} style={{ width, height }}>
-      {/* Video ẩn làm nguồn phát */}
+    <div 
+      className={`relative inline-block ${className}`} 
+      style={{ 
+        width, 
+        height, 
+        transform: 'translateZ(0)', 
+        willChange: 'transform' 
+      }}
+    >
+      {/* Video nguồn ẩn */}
       <video
         ref={videoRef}
         src={src}
@@ -121,12 +129,13 @@ const ChromaKeyVideo = ({
         }}
       />
 
-      {/* Canvas vẽ nhân vật 3D trong suốt */}
+      {/* Canvas vẽ nhân vật 3D với độ phân giải nội bộ tối ưu */}
       <canvas
         ref={canvasRef}
-        width={width}
-        height={height}
+        width={internalWidth}
+        height={internalHeight}
         className="w-full h-full object-contain pointer-events-none drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
+        style={{ transform: 'translateZ(0)', willChange: 'transform' }}
       />
     </div>
   );
