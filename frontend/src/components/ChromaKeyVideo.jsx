@@ -19,9 +19,9 @@ const ChromaKeyVideo = ({
   const animFrameId = useRef(null);
   const lastFrameTimeRef = useRef(0);
 
-  // Thu nhỏ độ phân giải tính toán nội bộ (Tối ưu 50% số điểm ảnh)
-  const internalWidth = Math.round(width * 0.75);
-  const internalHeight = Math.round(height * 0.75);
+  // Độ phân giải hiển thị sắc nét 100% nguyên bản
+  const internalWidth = width;
+  const internalHeight = height;
 
   useEffect(() => {
     const video = videoRef.current;

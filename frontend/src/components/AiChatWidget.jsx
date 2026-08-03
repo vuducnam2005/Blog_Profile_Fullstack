@@ -317,12 +317,12 @@ export default function AiChatWidget() {
         className="group relative flex flex-col items-center justify-end -mb-2.5 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer outline-none select-none"
         title="Trò chuyện với Trợ lý AI Nam"
       >
-        {/* Khung chứa Avatar Video Full Body nhỏ gọn đã XÓA NỀN XANH */}
-        <div className="relative flex items-center justify-center filter drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]">
+        {/* Khung chứa Avatar Video Full Body nét căng, mở rộng không bị xén tay */}
+        <div className="relative flex items-center justify-center filter drop-shadow-[0_8px_24px_rgba(0,0,0,0.7)]">
           <ChromaKeyVideo 
             src="/avatar_AI.webm" 
-            width={105} 
-            height={135} 
+            width={150} 
+            height={170} 
             sensitivity={38} 
             smoothness={18}
           />
