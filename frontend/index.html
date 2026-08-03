@@ -134,13 +134,13 @@
                 lerp: 0.03,
             },
             particles: {
-                galaxy: isMobile ? 50000 : isTablet ? 100000 : 180000,
-                farStars: isMobile ? 1000 : isTablet ? 2000 : 3000,
-                midDust: isMobile ? 600 : isTablet ? 1200 : 2000,
-                nearDust: isMobile ? 150 : isTablet ? 300 : 500,
-                orbital: isMobile ? 60 : isTablet ? 120 : 200,
-                lightRays: isMobile ? 7 : isTablet ? 9 : 11,
-                lightRaySegments: isMobile ? 64 : 96,
+                galaxy: isMobile ? 18000 : isTablet ? 30000 : 45000,
+                farStars: isMobile ? 600 : isTablet ? 1200 : 1800,
+                midDust: isMobile ? 300 : isTablet ? 600 : 1000,
+                nearDust: isMobile ? 80 : isTablet ? 150 : 250,
+                orbital: isMobile ? 40 : isTablet ? 80 : 120,
+                lightRays: isMobile ? 5 : isTablet ? 7 : 9,
+                lightRaySegments: isMobile ? 32 : 48,
             },
             galaxy: {
                 radius: 17,
@@ -174,19 +174,19 @@
         camera.position.set(0, CONFIG.camera.yFar, CONFIG.camera.zFar);
         scene.add(camera);
 
-        const renderer = new THREE.WebGLRenderer({ canvas, antialias: !isMobile, alpha: true });
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true, powerPreference: 'high-performance' });
         renderer.setSize(sizes.width, sizes.height);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.0 : 1.5));
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.toneMappingExposure = 0.82;
 
         /* =====================================================================
-         * POST-PROCESSING — EffectComposer + UnrealBloomPass
+         * POST-PROCESSING — EffectComposer + UnrealBloomPass (Tối ưu 4x speed)
          * ===================================================================== */
         const composer = new EffectComposer(renderer);
         composer.addPass(new RenderPass(scene, camera));
         const bloomPass = new UnrealBloomPass(
-            new THREE.Vector2(sizes.width, sizes.height),
+            new THREE.Vector2(Math.round(sizes.width / 2), Math.round(sizes.height / 2)),
             CONFIG.bloom.strength,
             CONFIG.bloom.radius,
             CONFIG.bloom.threshold
