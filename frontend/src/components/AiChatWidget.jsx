@@ -100,12 +100,33 @@ export default function AiChatWidget() {
   const callGeminiDirectly = async (queryText, historyMsgs) => {
     const candidateModels = ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-2.5-pro'];
 
-    // Chuyển đổi lịch sử chat sang định dạng chuẩn Gemini contents
-    const contents = historyMsgs.map(m => ({
-      role: m.sender === 'user' ? 'user' : 'model',
-      parts: [{ text: m.text }]
-    }));
-    contents.push({ role: 'user', parts: [{ text: queryText }] });
+    // Lọc và chuyển đổi lịch sử trò chuyện sang mảng contents xen kẽ role chuẩn Gemini (user -> model -> user)
+    const contents = [];
+    
+    // Loại bỏ tin nhắn chào mừng ban đầu của AI nếu có, để đảm bảo message đầu tiên gửi cho Gemini là 'user'
+    const conversationHistory = historyMsgs.filter((m, idx) => !(idx === 0 && m.sender === 'ai'));
+
+    conversationHistory.forEach(m => {
+      const role = m.sender === 'user' ? 'user' : 'model';
+      // Đảm bảo mảng bắt đầu bằng 'user' và không có 2 role trùng lặp đứng cạnh nhau
+      if (contents.length === 0 && role === 'model') return;
+      if (contents.length > 0 && contents[contents.length - 1].role === role) return;
+
+      contents.push({
+        role: role,
+        parts: [{ text: m.text }]
+      });
+    });
+
+    // Thêm câu hỏi mới nhất của người dùng
+    if (contents.length > 0 && contents[contents.length - 1].role === 'user') {
+      contents[contents.length - 1].parts[0].text += `\n${queryText}`;
+    } else {
+      contents.push({
+        role: 'user',
+        parts: [{ text: queryText }]
+      });
+    }
 
     const payload = {
       system_instruction: {
@@ -114,7 +135,7 @@ export default function AiChatWidget() {
       contents: contents,
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 800
+        maxOutputTokens: 1000
       }
     };
 
@@ -287,22 +308,28 @@ export default function AiChatWidget() {
             </div>
           )}
 
-          {/* INPUT GỬI TIN NHẮN */}
+          {/* INPUT GỬI TIN NHẮN MULTI-LINE AUTO-WRAP */}
           <form 
             onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-            className="p-3 bg-[#12131c] border-t border-white/10 flex items-center gap-2"
+            className="p-3 bg-[#12131c] border-t border-white/10 flex items-end gap-2"
           >
-            <input
-              type="text"
+            <textarea
+              rows={1}
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
               placeholder="Hỏi AI về kinh nghiệm, kỹ năng của Nam..."
-              className="flex-1 bg-[#1a1c29] text-gray-100 placeholder-gray-500 text-xs rounded-xl px-3 py-2.5 outline-none border border-white/10 focus:border-[#F1D89E]/50 transition"
+              className="flex-1 bg-[#1a1c29] text-gray-100 placeholder-gray-500 text-xs rounded-xl px-3 py-2.5 outline-none border border-white/10 focus:border-[#F1D89E]/50 transition resize-none max-h-24 overflow-y-auto leading-relaxed whitespace-pre-wrap break-words"
             />
             <button
               type="submit"
               disabled={!input.trim() || loading}
-              className="p-2.5 bg-[#F1D89E] hover:bg-[#e2c686] text-black rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2.5 bg-[#F1D89E] hover:bg-[#e2c686] text-black rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed shrink-0 mb-0.5"
             >
               <Send className="w-4 h-4" />
             </button>
