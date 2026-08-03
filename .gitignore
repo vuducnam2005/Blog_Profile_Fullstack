@@ -1,0 +1,9 @@
+# Build outputs
+[Bb]in/
+[Oo]bj/
+node_modules/
+dist/
+.vs/
+.vscode/
+*.user
+*.log

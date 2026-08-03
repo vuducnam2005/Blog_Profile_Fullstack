@@ -9,7 +9,9 @@ import { PortfolioProvider, PortfolioContext } from './context/PortfolioContext'
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AudioProvider } from './context/AudioContext';
 import AudioPlayer from './components/AudioPlayer';
+import ScrollProgressBar from './components/ScrollProgressBar';
 import MaintenanceOverlay from './components/MaintenanceOverlay';
+import AiChatWidget from './components/AiChatWidget';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 
@@ -67,6 +69,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen font-sans tracking-wide">
+      <ScrollProgressBar />
       <AudioPlayer />
       <main className="w-full pb-20">
         <Routes>
@@ -79,6 +82,7 @@ function AppContent() {
           <Route path="/admin/edit/:id" element={<Admin />} />
         </Routes>
       </main>
+      <AiChatWidget />
     </div>
   );
 }

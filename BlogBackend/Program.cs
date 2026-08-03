@@ -84,11 +84,18 @@ app.MapControllers();
 app.MapMethods("/", new[] { "GET", "HEAD" }, () => Results.Ok("Backend is awake!"));
 app.MapMethods("/api/health", new[] { "GET", "HEAD" }, () => Results.Ok("Backend is alive and kicking!"));
 
-// Tự động chạy Migration khi khởi động (Hữu ích khi deploy lên Cloud)
+// Tự động chạy Migration khi khởi động (nếu có kết nối CSDL PostgreSQL)
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<BlogDbContext>();
-    db.Database.Migrate();
+    try
+    {
+        var db = scope.ServiceProvider.GetRequiredService<BlogDbContext>();
+        db.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Cảnh báo DB] Bỏ qua Migration do chưa kết nối PostgreSQL: {ex.Message}");
+    }
 }
 
 app.Run();
