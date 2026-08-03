@@ -183,8 +183,8 @@ export default function AiChatWidget() {
     ]);
 
     let i = 0;
-    const chunkSize = 4; // Gõ 4 ký tự mỗi nhịp siêu nhanh mượt mà như ChatGPT Turbo
-    const speed = 8; // 8ms per chunk
+    const chunkSize = 8; // Gõ 8 ký tự mỗi nhịp siêu tốc Lightning
+    const speed = 4; // 4ms per chunk - chữ chảy ra trong chớp mắt
 
     const timer = setInterval(() => {
       i += chunkSize;
