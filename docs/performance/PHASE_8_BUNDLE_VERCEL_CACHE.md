@@ -15,7 +15,7 @@ Ngày hoàn thành kỹ thuật: 2026-08-04
 `AiChatLauncher.jsx` được import đồng bộ từ `App.jsx` và chịu trách nhiệm render avatar AI ngay lập tức.
 
 - Giữ nguyên `ChromaKeyVideo` và kích thước `clamp(112px, 24vw, 150px)` x `clamp(127px, 27.2vw, 170px)`.
-- Giữ nguyên autoplay, loop và poster fallback; Giai đoạn 10 thay GPU chroma-key bằng packed alpha mask trên Safari/iOS.
+- Giữ nguyên autoplay, loop và poster fallback; Safari/iOS dùng animated WebP alpha native từ bản sửa v3.
 - Giữ nguyên hover scale, active scale, drop shadow, badge bounce và icon spin.
 - Avatar có key ổn định và không bị unmount khi dynamic chunk được thêm vào, tránh khởi động lại video lúc mở chat.
 

@@ -143,7 +143,7 @@ Ngoài ra phải giữ nguyên:
 
 - Tiếp tục dùng VP9 alpha cho trình duyệt hỗ trợ.
 - Với Safari/iOS, dùng fallback có đường alpha đáng tin cậy thay vì phụ thuộc vào chroma-key ngưỡng màu hiện tại.
-- Ưu tiên video alpha native tương thích Safari nếu pipeline/codec triển khai hỗ trợ ổn định; nếu không, dùng video màu + alpha mask đồng bộ trong một WebGL shader.
+- Dùng animated WebP alpha native trên Safari/iOS; nếu asset không tải được, dùng poster RGBA trong suốt làm fallback cuối.
 - Poster alpha chỉ hiển thị khi decoder/canvas chưa sẵn sàng và phải được fade-out sau frame đầu tiên thành công.
 
 Điều kiện đạt:
@@ -215,7 +215,7 @@ Ngoài ra phải giữ nguyên:
 | Tia chân thực hơn nhưng khó nhìn trên nền sáng | Tăng halo cục bộ trong shader, không tăng width hình học hoặc global bloom |
 | Occlusion làm tia biến mất quá sớm | Điều chỉnh vùng fade theo photon ring và camera depth, không bỏ occlusion |
 | Matte video rung giữa các frame | Dùng temporal smoothing/semantic matting và kiểm tra frame difference |
-| Safari không hỗ trợ codec alpha đã chọn | Dùng color video + alpha mask đồng bộ trên GPU |
+| Safari không tải được animated WebP | Hiển thị poster RGBA trong suốt; không quay lại canvas có nguy cơ nền opaque |
 | Asset alpha mới tăng dung lượng | Tối ưu codec/CRF và cache; không giảm độ phân giải hoặc FPS hiển thị |
 | Poster hiện nền trong thời gian khởi tạo | Chỉ dùng poster RGBA đã kiểm tra toàn frame và fade sau frame GPU đầu tiên |
 
@@ -228,16 +228,18 @@ Ngoài ra phải giữ nguyên:
 - Shader mới có photon core, narrow halo, bloom envelope, photon packet gia tốc, phổ màu có kiểm soát và fade hấp thụ tại event horizon.
 - Event horizon opaque tiếp tục ghi depth; ray giữ `depthTest: true` và `depthWrite: false` để phần phía sau bị che đúng pipeline trong suốt.
 - Chrome/Edge/Firefox dùng `avatar_AI_alpha_v2.webm` 720 x 1280, VP9 alpha, 24 FPS, 240 frame.
-- Safari/iOS dùng `avatar_AI_safari_mask_v2.mp4` 1080 x 960, trong đó hai nửa 540 x 960 chứa màu và alpha mask đồng bộ trong cùng stream.
+- Bản packed-alpha v2 đã bị loại sau khi ảnh chụp iPhone thật cho thấy Safari vẫn composite nền thành opaque.
+- Safari/iOS hiện dùng `avatar_AI_mobile_v3.webp` 450 x 510, alpha animation native, 24 FPS, 240 frame và loop vô hạn.
 - Poster dùng `avatar_AI_poster_v2.png` 720 x 1280 RGBA; alpha có dải 0-255 và 55,87% pixel hoàn toàn trong suốt.
-- Asset v2 dùng tên mới để tránh Safari/iPhone tiếp tục lấy media cũ từ cache.
+- Asset v3 dùng tên mới để tránh Safari/iPhone tiếp tục lấy media v2 từ cache.
 - Ba asset runtime cũ đã được xóa; `avatar_AI.webm` vẫn được giữ làm video nguồn để tái tạo pipeline.
 
 ### Kết quả kiểm tra tự động
 
 - Reconstruction alpha tại 6 mốc từ frame 0 đến frame 239 không xuất hiện nền xanh; vùng hoàn toàn trong suốt dao động 54,54%-55,76%.
-- Packed Safari có 240 frame, 24 FPS, thời lượng 10 giây và dung lượng 2.575.963 byte.
-- Packed texture giảm từ bản thử 1440 x 1280 xuống 1080 x 960, giảm 43,75% số pixel upload nhưng vẫn đủ nguồn cho kích thước hiển thị DPR 3.
+- Animated WebP có 240 frame, 24 FPS, loop vô hạn, kích thước 450 x 510 và dung lượng 5.560.020 byte.
+- Kiểm tra alpha ở 6 mốc từ frame 0 đến 239 cho thấy nền có alpha 0-1/255; compositing trên checker không xuất hiện hình chữ nhật.
+- Kích thước 450 x 510 khớp mức pixel cần cho avatar lớn nhất tại DPR 3, không dùng canvas hoặc texture upload JavaScript trên iOS.
 - Frontend ESLint đạt.
 - Frontend production build đạt.
 - `git diff --check` không phát hiện whitespace error.
@@ -245,5 +247,5 @@ Ngoài ra phải giữ nguyên:
 ### Chưa thể xác nhận trong môi trường hiện tại
 
 - Browser runtime trả về danh sách rỗng, vì vậy chưa thể chụp và đánh giá trực quan tia WebGL trên desktop/mobile tại máy chạy Codex.
-- Cần kiểm tra sau deploy trên Safari iPhone thật để xác nhận decoder, autoplay và packed-alpha shader hoạt động đúng trong môi trường production.
+- Cần kiểm tra sau deploy trên Safari iPhone thật để xác nhận animated WebP alpha native hoạt động đúng trong môi trường production.
 - Chỉ đánh dấu nghiệm thu hình ảnh cuối cùng sau khi đối chiếu tia sáng và avatar trên thiết bị thật; các mục này chưa được tự động coi là đạt.

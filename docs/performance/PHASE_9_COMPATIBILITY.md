@@ -44,16 +44,11 @@ Kết quả tính toán:
 
 Mọi browser iOS đều dùng WebKit. Detection mới nhận cả iPhone, iPad, iPod và iPadOS desktop mode, không chỉ Safari.
 
-Chrome/Edge/Firefox trên iOS dùng MP4 đóng gói màu + alpha mask trên GPU thay vì thử VP9 alpha không tương thích. Canvas vẫn render theo DPR và không xử lý từng pixel trên main thread.
+Chrome/Edge/Firefox trên iOS dùng `avatar_AI_mobile_v3.webp` có alpha animation native thay vì VP9 alpha hoặc canvas WebGL. Asset giữ đủ 240 frame, 24 FPS và loop vô hạn.
 
-### WebGL context recovery
+### Native alpha fallback
 
-GPU avatar lắng nghe:
-
-- `webglcontextlost`
-- `webglcontextrestored`
-
-Khi context bị mất do chuyển tab, xoay màn hình hoặc hệ điều hành thu hồi GPU, poster xuất hiện lại và WebGL pipeline được tạo lại sau restore. Video không cần reload toàn trang.
+Safari composite alpha trực tiếp qua thẻ `img`, không cần `texImage2D`, canvas hay phục hồi WebGL context cho avatar. Nếu animated WebP không tải được, poster RGBA trong suốt được dùng làm fallback cuối.
 
 ### Safari overflow fallback
 
@@ -97,7 +92,7 @@ Media hỗ trợ byte range với HTTP 206:
 
 - `avatar_AI.webm`: `video/webm`.
 - `avatar_AI_alpha_v2.webm`: `video/webm`.
-- `avatar_AI_safari_mask_v2.mp4`: `video/mp4`.
+- `avatar_AI_mobile_v3.webp`: `image/webp`.
 - `avatar_AI_poster_v2.png`: `image/png`.
 
 Byte range giúp browser seek/decode video mà không bắt buộc tải lại toàn bộ file.
@@ -144,7 +139,7 @@ Các điều kiện khác:
 
 - `data-aos` vẫn có 52 token và AOS vẫn `once: false`.
 - Glass usage vẫn là 11; production CSS vẫn chứa backdrop filter và hover animation.
-- Chroma-key chỉ dùng WebGL `texImage2D` + `drawArrays`; không có `getImageData` hoặc `putImageData` CPU per-pixel.
+- Avatar iOS dùng animated WebP alpha native; không có canvas, `getImageData`, `putImageData` hoặc upload texture JavaScript từng frame.
 - Three.js có OffscreenCanvas Worker và dynamic main-thread fallback.
 - `requestVideoFrameCallback` có fallback `requestAnimationFrame`.
 - `IntersectionObserver` không hỗ trợ sẽ render toàn bộ deferred sections.

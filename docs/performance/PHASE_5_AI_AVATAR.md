@@ -1,9 +1,9 @@
 # Phase 5 - AI Avatar Video Pipeline
 
-> Cập nhật 2026-08-04: Giai đoạn 10 thay đường Safari chroma-key runtime bằng
-> `avatar_AI_safari_mask_v2.mp4` đóng gói màu + alpha mask. Các asset runtime
-> `avatar_AI_alpha.webm`, `avatar_AI_fallback.mp4` và `avatar_AI_poster.png`
-> đã được thay bởi phiên bản v2; phần bên dưới được giữ làm lịch sử Phase 5.
+> Cập nhật 2026-08-04: Sau kiểm tra iPhone thật, đường WebGL packed-alpha của
+> Giai đoạn 10 vẫn có thể xuất nền opaque trên Safari. Bản sửa v3 chuyển iOS
+> sang `avatar_AI_mobile_v3.webp` có alpha animation native. Phần bên dưới được
+> giữ làm lịch sử Phase 5.
 
 ## Mục tiêu
 

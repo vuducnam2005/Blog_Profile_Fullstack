@@ -6,9 +6,9 @@ param(
     [int]$Smoothness = 18,
     [double]$DespillMix = 0.5,
     [int]$Vp9Crf = 24,
-    [int]$PackedH264Crf = 16,
-    [int]$PackedColorWidth = 540,
-    [int]$PackedColorHeight = 960,
+    [int]$AnimatedWebpWidth = 450,
+    [int]$AnimatedWebpHeight = 510,
+    [int]$AnimatedWebpQuality = 84,
     [double]$PosterTime = 0.04
 )
 
@@ -63,7 +63,7 @@ $alphaExpression = "if(gt(g(X,Y),60)*gt($greenDifference,$Sensitivity),0,if(gt(g
 $keyFilter = "format=rgba,geq=r='r(X,Y)':g='$greenExpression':b='b(X,Y)':a='$alphaExpression',despill=green:mix=$DespillMix"
 
 $alphaPath = Join-Path $outputRoot "avatar_AI_alpha_v2.webm"
-$packedFallbackPath = Join-Path $outputRoot "avatar_AI_safari_mask_v2.mp4"
+$animatedWebpPath = Join-Path $outputRoot "avatar_AI_mobile_v3.webp"
 $posterPath = Join-Path $outputRoot "avatar_AI_poster_v2.png"
 
 Invoke-Ffmpeg @(
@@ -77,18 +77,16 @@ Invoke-Ffmpeg @(
     $alphaPath
 )
 
-# Safari receives one H.264 stream with color on the left and its alpha mask on
-# the right. The WebGL fallback samples both halves, so no runtime chroma key is
-# required and compressed green pixels can never become a visible rectangle.
-$packedFilter = "[0:v]$keyFilter,split=2[colorAlpha][matte];[colorAlpha]scale=${PackedColorWidth}:${PackedColorHeight}:flags=lanczos,format=yuv420p[color];[matte]alphaextract,scale=${PackedColorWidth}:${PackedColorHeight}:flags=lanczos,format=yuv420p[mask];[color][mask]hstack=inputs=2,format=yuv420p[packed]"
+# Safari handles animated WebP alpha natively. This avoids canvas alpha
+# compositing differences on iOS while preserving all 24 FPS animation frames.
 Invoke-Ffmpeg @(
     "-hide_banner", "-y",
     "-i", $sourceFile,
-    "-filter_complex", $packedFilter,
-    "-map", "[packed]", "-an",
-    "-c:v", "libx264", "-preset", "slow", "-crf", "$PackedH264Crf",
-    "-pix_fmt", "yuv420p", "-movflags", "+faststart",
-    $packedFallbackPath
+    "-map", "0:v:0", "-an",
+    "-vf", "$keyFilter,scale=${AnimatedWebpWidth}:${AnimatedWebpHeight}:flags=lanczos,format=yuva420p",
+    "-c:v", "libwebp_anim", "-lossless", "0", "-quality", "$AnimatedWebpQuality",
+    "-preset", "icon", "-loop", "0", "-fps_mode", "passthrough",
+    $animatedWebpPath
 )
 
 Invoke-Ffmpeg @(
@@ -100,5 +98,5 @@ Invoke-Ffmpeg @(
     $posterPath
 )
 
-Get-Item -LiteralPath $alphaPath, $packedFallbackPath, $posterPath |
+Get-Item -LiteralPath $alphaPath, $animatedWebpPath, $posterPath |
     Select-Object Name, Length, FullName

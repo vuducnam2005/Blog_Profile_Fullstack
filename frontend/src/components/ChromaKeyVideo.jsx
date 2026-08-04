@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import GpuChromaKeyVideo from './GpuChromaKeyVideo';
 
 const DEFAULT_ALPHA_SRC = '/avatar_AI_alpha_v2.webm';
-const DEFAULT_PACKED_MP4_SRC = '/avatar_AI_safari_mask_v2.mp4';
+const DEFAULT_ANIMATED_WEBP_SRC = '/avatar_AI_mobile_v3.webp';
 const DEFAULT_POSTER_SRC = '/avatar_AI_poster_v2.png';
 
 function supportsNativeVp9Alpha() {
@@ -27,12 +26,12 @@ const ChromaKeyVideo = ({
   width = 105,
   height = 135,
   alphaSrc = DEFAULT_ALPHA_SRC,
-  packedMp4Src = DEFAULT_PACKED_MP4_SRC,
+  animatedWebpSrc = DEFAULT_ANIMATED_WEBP_SRC,
   posterSrc = DEFAULT_POSTER_SRC,
 }) => {
   const videoRef = useRef(null);
   const [renderMode, setRenderMode] = useState(() => (
-    supportsNativeVp9Alpha() ? 'alpha' : 'gpu'
+    supportsNativeVp9Alpha() ? 'alpha' : 'animated-webp'
   ));
 
   useEffect(() => {
@@ -76,12 +75,25 @@ const ChromaKeyVideo = ({
           aria-hidden="true"
           className="absolute inset-0 w-full h-full object-fill pointer-events-none drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
           onCanPlay={() => videoRef.current?.play().catch(() => {})}
-          onError={() => setRenderMode('gpu')}
+          onError={() => setRenderMode('animated-webp')}
+        />
+      ) : renderMode === 'animated-webp' ? (
+        <img
+          src={animatedWebpSrc}
+          alt=""
+          aria-hidden="true"
+          decoding="async"
+          draggable="false"
+          className="absolute inset-0 w-full h-full object-fill pointer-events-none drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
+          onError={() => setRenderMode('poster')}
         />
       ) : (
-        <GpuChromaKeyVideo
-          packedMp4Src={packedMp4Src}
-          posterSrc={posterSrc}
+        <img
+          src={posterSrc}
+          alt=""
+          aria-hidden="true"
+          draggable="false"
+          className="absolute inset-0 w-full h-full object-fill pointer-events-none drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
         />
       )}
     </div>

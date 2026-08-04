@@ -40,7 +40,7 @@ $assetPaths = [regex]::Matches($html, '(?:src|href)="(?<path>/assets/[^"]+)"') |
 $resourcePaths = @("/") + $assetPaths + @(
     "/avatar_AI.webm",
     "/avatar_AI_alpha_v2.webm",
-    "/avatar_AI_safari_mask_v2.mp4",
+    "/avatar_AI_mobile_v3.webp",
     "/avatar_AI_poster_v2.png"
 )
 foreach ($resourcePath in $resourcePaths) {
