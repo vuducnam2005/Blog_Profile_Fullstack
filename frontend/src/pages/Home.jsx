@@ -5,8 +5,11 @@ import Projects from '../components/Projects';
 import BlogSection from '../components/BlogSection';
 import Navbar from '../components/Navbar';
 import Contact from '../components/Contact';
+import { useDeferredSections } from '../hooks/useDeferredSections';
 
 export default function Home() {
+  useDeferredSections();
+
   return (
     <>
       <Navbar />

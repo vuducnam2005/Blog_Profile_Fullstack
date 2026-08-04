@@ -44,21 +44,41 @@ if (connectionString.StartsWith("postgres"))
 builder.Services.AddDbContext<BlogDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+static bool IsAllowedFrontendOrigin(string origin)
+{
+    if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri)) return false;
+
+    var host = uri.Host;
+    if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+        || host.Equals("ducnamdev.site", StringComparison.OrdinalIgnoreCase)
+        || host.EndsWith(".ducnamdev.site", StringComparison.OrdinalIgnoreCase)
+        || host.EndsWith(".devtunnels.ms", StringComparison.OrdinalIgnoreCase)
+        || host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase))
+    {
+        return true;
+    }
+
+    if (!System.Net.IPAddress.TryParse(host, out var address)) return false;
+    if (System.Net.IPAddress.IsLoopback(address)) return true;
+    if (address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork) return false;
+
+    var bytes = address.GetAddressBytes();
+    return bytes[0] == 10
+        || (bytes[0] == 172 && bytes[1] is >= 16 and <= 31)
+        || (bytes[0] == 192 && bytes[1] == 168);
+}
+
 // Cấu hình CORS bảo mật: Chỉ cho phép các tên miền được chỉ định
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.SetIsOriginAllowed(origin => 
-                    origin.Contains("localhost") || 
-                    origin.Contains("192.168.") || // Cho phép mạng LAN khi test Mobile
-                    origin.Contains("devtunnels.ms") || // Cho phép VS Code Tunnels
-                    origin.Contains("ducnamdev.site") || // CHÍNH THỨC: Cho phép tên miền của bạn
-                    origin.Contains("vercel.app") // Cho phép link dự phòng của Vercel
-                  )
+            policy.SetIsOriginAllowed(IsAllowedFrontendOrigin)
                   .AllowAnyHeader()
-                  .AllowAnyMethod();
+                  .AllowAnyMethod()
+                  .WithExposedHeaders("ETag")
+                  .SetPreflightMaxAge(TimeSpan.FromHours(24));
         });
 });
 

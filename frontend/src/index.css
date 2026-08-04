@@ -5,6 +5,97 @@
 @layer utilities {
   .glass {
     @apply bg-white/5 backdrop-blur-md border border-white/10 shadow-xl;
+    isolation: isolate;
+  }
+}
+
+.deferred-section {
+  --section-intrinsic-size: 1200px;
+  content-visibility: auto;
+  contain-intrinsic-size: auto var(--section-intrinsic-size);
+}
+
+.deferred-section--about {
+  --section-intrinsic-size: 1250px;
+}
+
+.deferred-section--experience {
+  --section-intrinsic-size: 1700px;
+}
+
+.deferred-section--projects {
+  --section-intrinsic-size: 1350px;
+}
+
+.deferred-section--blog {
+  --section-intrinsic-size: 2200px;
+}
+
+.deferred-section--contact {
+  --section-intrinsic-size: 720px;
+}
+
+.deferred-section[data-render-ready='true'] {
+  content-visibility: visible;
+}
+
+.ai-chat-panel {
+  width: 350px;
+  max-width: calc(100vw - 2rem);
+  height: 500px;
+  max-height: calc(100vh - 180px);
+}
+
+@supports (height: 100dvh) {
+  .ai-chat-panel {
+    max-height: calc(100dvh - 180px);
+  }
+}
+
+@media (min-width: 768px) {
+  .deferred-section--about {
+    --section-intrinsic-size: 950px;
+  }
+
+  .deferred-section--experience {
+    --section-intrinsic-size: 1250px;
+  }
+
+  .deferred-section--projects {
+    --section-intrinsic-size: 1000px;
+  }
+
+  .deferred-section--blog {
+    --section-intrinsic-size: 1450px;
+  }
+
+  .deferred-section--contact {
+    --section-intrinsic-size: 650px;
+  }
+}
+
+@media (min-width: 640px) {
+  .ai-chat-panel {
+    width: 390px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .deferred-section--about,
+  .deferred-section--projects {
+    --section-intrinsic-size: 900px;
+  }
+
+  .deferred-section--experience {
+    --section-intrinsic-size: 1050px;
+  }
+
+  .deferred-section--blog {
+    --section-intrinsic-size: 1100px;
+  }
+
+  .deferred-section--contact {
+    --section-intrinsic-size: 620px;
   }
 }
 
@@ -14,6 +105,7 @@ body {
   box-sizing: border-box;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   color: #fff;
+  overflow-x: hidden;
   overflow-x: clip;
 }
 

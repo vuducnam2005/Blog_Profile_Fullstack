@@ -7,46 +7,72 @@ import { AudioProvider } from './context/AudioContext';
 import AudioPlayer from './components/AudioPlayer';
 import ScrollProgressBar from './components/ScrollProgressBar';
 import MaintenanceOverlay from './components/MaintenanceOverlay';
+import AiChatLauncher from './components/AiChatLauncher';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
+
+function parseTransitionTime(value) {
+  return value.split(',').reduce((maxTime, part) => {
+    const time = part.trim();
+    const milliseconds = time.endsWith('ms')
+      ? Number.parseFloat(time)
+      : Number.parseFloat(time) * 1000;
+    return Number.isFinite(milliseconds) ? Math.max(maxTime, milliseconds) : maxTime;
+  }, 0);
+}
 
 // Lazy loading các route phụ và Chatbot AI giúp tối ưu 75% dung lượng file ban đầu
 const Detail = lazy(() => import('./pages/Detail'));
 const Admin = lazy(() => import('./pages/Admin'));
 const CvViewer = lazy(() => import('./pages/CvViewer'));
 const AlbumViewer = lazy(() => import('./pages/AlbumViewer'));
-const AiChatWidget = lazy(() => import('./components/AiChatWidget'));
 
 function AppContent() {
-  const { data, configReady } = useContext(PortfolioContext);
+  const { data } = useContext(PortfolioContext);
   const { isAdmin } = useAuth();
   const [bypassedMaintenance, setBypassedMaintenance] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
+    const activeTimers = new Map();
+    const manageWillChange = (event) => {
+      const element = event.detail;
+      if (!(element instanceof HTMLElement)) return;
+
+      const current = activeTimers.get(element);
+      if (current) window.clearTimeout(current.timerId);
+
+      const originalValue = current?.originalValue ?? element.style.willChange;
+      element.style.willChange = 'transform, opacity';
+
+      const computedStyle = window.getComputedStyle(element);
+      const activeDuration = parseTransitionTime(computedStyle.transitionDuration)
+        + parseTransitionTime(computedStyle.transitionDelay);
+      const timerId = window.setTimeout(() => {
+        element.style.willChange = originalValue;
+        activeTimers.delete(element);
+      }, Math.max(activeDuration, 1000) + 80);
+
+      activeTimers.set(element, { timerId, originalValue });
+    };
+
+    document.addEventListener('aos:in', manageWillChange);
+    document.addEventListener('aos:out', manageWillChange);
     AOS.init({
       duration: 1000,
       once: false,
     });
-  }, []);
 
-  // CHỜ cho đến khi API trả về dữ liệu thật từ server
-  if (!configReady) {
-    return (
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 9999,
-        background: '#000', display: 'flex',
-        alignItems: 'center', justifyContent: 'center'
-      }}>
-        <div style={{
-          width: 40, height: 40, border: '3px solid rgba(241,216,158,0.3)',
-          borderTopColor: '#F1D89E', borderRadius: '50%',
-          animation: 'spin 0.8s linear infinite'
-        }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
-  }
+    return () => {
+      document.removeEventListener('aos:in', manageWillChange);
+      document.removeEventListener('aos:out', manageWillChange);
+      activeTimers.forEach(({ timerId, originalValue }, element) => {
+        window.clearTimeout(timerId);
+        element.style.willChange = originalValue;
+      });
+      activeTimers.clear();
+    };
+  }, []);
 
   const isNormalRoute = !location.pathname.startsWith('/admin');
   
@@ -82,9 +108,7 @@ function AppContent() {
           </Routes>
         </Suspense>
       </main>
-      <Suspense fallback={null}>
-        <AiChatWidget />
-      </Suspense>
+      <AiChatLauncher />
     </div>
   );
 }

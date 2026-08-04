@@ -29,7 +29,7 @@ export default function About() {
   const aboutTitle = data?.about?.title || t('about.title', 'Giới thiệu');
 
   return (
-    <section id="about" className="min-h-screen flex flex-col justify-center pt-20 md:pt-24 pb-12 md:pb-16 px-3 md:px-12 lg:px-24">
+    <section id="about" className="deferred-section deferred-section--about min-h-screen flex flex-col justify-center pt-20 md:pt-24 pb-12 md:pb-16 px-3 md:px-12 lg:px-24">
       <h2 className="text-3xl md:text-5xl font-extrabold text-[#F1D89E] mb-8 md:mb-12 flex items-center" data-aos="fade-right">
         <span className="bg-[#F1D89E] w-8 md:w-12 h-1 mr-3 md:mr-4"></span> {aboutTitle}
       </h2>

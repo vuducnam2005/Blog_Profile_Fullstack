@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { format } from 'date-fns';
 import { Search, Heart, MessageCircle, Send, User, ChevronRight } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 import { useTranslation } from 'react-i18next';
+import OptimizedImage from './OptimizedImage';
+import { formatDateTime } from '../utils/dateTime';
 
 // ==========================================
 // HELPER: Tạo / Lấy tên ẩn danh từ localStorage
@@ -45,7 +46,7 @@ function FloatingHearts({ hearts }) {
 // ==========================================
 // COMPONENT: Comment Section
 // ==========================================
-function CommentSection({ postId, isOpen }) {
+function CommentSection({ postId, isOpen, onCommentAdded }) {
   const { t } = useTranslation();
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
@@ -55,23 +56,28 @@ function CommentSection({ postId, isOpen }) {
 
   const PREVIEW_COUNT = 2; // Chỉ hiện 2 bình luận trên card
 
-  const fetchComments = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await axios.get(`${API_BASE_URL}/api/comments/bypost/${postId}`);
-      setComments(res.data);
-    } catch (err) {
-      console.error('Lỗi tải bình luận:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [postId]);
-
   useEffect(() => {
-    if (isOpen) {
-      fetchComments();
-    }
-  }, [isOpen, fetchComments]);
+    if (!isOpen) return undefined;
+
+    const controller = new AbortController();
+    setLoading(true);
+
+    axios.get(`${API_BASE_URL}/api/comments/bypost/${postId}`, {
+      signal: controller.signal,
+    }).then((res) => {
+      setComments(res.data);
+    }).catch((err) => {
+      if (err.code !== 'ERR_CANCELED') {
+        console.error('Lỗi tải bình luận:', err);
+      }
+    }).finally(() => {
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
+    });
+
+    return () => controller.abort();
+  }, [isOpen, postId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -84,6 +90,7 @@ function CommentSection({ postId, isOpen }) {
         noiDung: newComment.trim(),
       });
       setComments((prev) => [res.data, ...prev]);
+      onCommentAdded?.();
       setNewComment('');
     } catch (err) {
       console.error('Lỗi gửi bình luận:', err);
@@ -147,7 +154,7 @@ function CommentSection({ postId, isOpen }) {
                       {c.tenNguoiDung}
                     </span>
                     <span className="text-[9px] text-gray-600 flex-shrink-0">
-                      {c.ngayBinhLuan ? format(new Date(c.ngayBinhLuan), 'dd/MM HH:mm') : ''}
+                      {c.ngayBinhLuan ? formatDateTime(c.ngayBinhLuan, { includeYear: false }) : ''}
                     </span>
                   </div>
                   <p className="text-xs text-gray-300 leading-relaxed break-words line-clamp-2">
@@ -184,13 +191,6 @@ function HeartButton({ postId, initialLikes }) {
   const [hearts, setHearts] = useState([]);
   const buttonRef = useRef(null);
   const heartIdRef = useRef(0);
-
-  // Sync likes from parent khi initialLikes thay đổi (fetch mới)
-  useEffect(() => {
-    if (initialLikes !== undefined && initialLikes !== null) {
-      setLikes(initialLikes);
-    }
-  }, [initialLikes]);
 
   const spawnFloatingHearts = () => {
     const count = 1 + Math.floor(Math.random() * 3); // 1-3 trái tim
@@ -260,55 +260,79 @@ function HeartButton({ postId, initialLikes }) {
 export default function BlogSection() {
   const { t } = useTranslation();
   const [posts, setPosts] = useState(() => {
-    const saved = localStorage.getItem('portfolioPosts');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('portfolioPosts');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      try {
+        localStorage.removeItem('portfolioPosts');
+      } catch {
+        // Tiếp tục bằng danh sách rỗng nếu storage không khả dụng.
+      }
+      return [];
+    }
   });
   const [search, setSearch] = useState("");
   const [openComments, setOpenComments] = useState({}); // { postId: true/false }
-  const [commentCounts, setCommentCounts] = useState({}); // { postId: count }
 
-  const fetchPosts = async () => {
+  useEffect(() => {
+    const controller = new AbortController();
+    let etag = '';
     try {
-      const res = await axios.get(`${API_BASE_URL}/api/posts`);
-      // Sắp xếp mới nhất lên đầu
-      const sorted = res.data.sort((a,b) => new Date(b.ngayDang) - new Date(a.ngayDang));
+      etag = localStorage.getItem('portfolioPostsEtag') || '';
+    } catch {
+      // ETag chỉ là tối ưu tùy chọn; request vẫn hoạt động nếu storage bị chặn.
+    }
+
+    axios.get(`${API_BASE_URL}/api/posts`, {
+      signal: controller.signal,
+      headers: etag ? { 'If-None-Match': etag } : undefined,
+      validateStatus: (status) => status === 200 || status === 304,
+    }).then((res) => {
+      if (res.status === 304) return;
+
+      const sorted = [...res.data].sort((a, b) => new Date(b.ngayDang) - new Date(a.ngayDang));
       setPosts(sorted);
-      localStorage.setItem('portfolioPosts', JSON.stringify(sorted));
-    } catch (error) {
-      console.error(error);
-      // Dữ liệu mẫu nếu server lỗi
-      setPosts([
-        { maBaiViet: 1, tieuDe: t('blog.networkErrorTitle', 'Lỗi Mạng - Hãy bật Server C#'), noiDung: t('blog.networkErrorDesc', 'Đang chờ kết nối Backend C# từ localhost:5020...'), ngayDang: new Date().toISOString(), luotTim: 0 }
-      ]);
-    }
-  };
-
-  // Fetch số lượng comment cho mỗi post
-  const fetchCommentCounts = async (postsList) => {
-    const counts = {};
-    await Promise.all(
-      postsList.map(async (post) => {
-        try {
-          const res = await axios.get(`${API_BASE_URL}/api/comments/bypost/${post.maBaiViet}`);
-          counts[post.maBaiViet] = res.data.length;
-        } catch {
-          counts[post.maBaiViet] = 0;
+      try {
+        localStorage.setItem('portfolioPosts', JSON.stringify(sorted));
+        if (res.headers.etag) {
+          localStorage.setItem('portfolioPostsEtag', res.headers.etag);
         }
-      })
-    );
-    setCommentCounts(counts);
+      } catch (error) {
+        console.warn('Không thể lưu cache bài viết:', error);
+      }
+    }).catch((error) => {
+      if (error.code === 'ERR_CANCELED') return;
+
+      console.error(error);
+      setPosts((currentPosts) => currentPosts.length > 0 ? currentPosts : [
+        {
+          maBaiViet: 1,
+          tieuDe: t('blog.networkErrorTitle', 'Lỗi Mạng - Hãy bật Server C#'),
+          noiDung: t('blog.networkErrorDesc', 'Đang chờ kết nối Backend C# từ localhost:5020...'),
+          ngayDang: new Date().toISOString(),
+          luotTim: 0,
+          commentCount: 0,
+        }
+      ]);
+    });
+
+    return () => controller.abort();
+  }, [t]);
+
+  const incrementCommentCount = (postId) => {
+    setPosts((currentPosts) => {
+      const nextPosts = currentPosts.map((post) => post.maBaiViet === postId
+        ? { ...post, commentCount: (post.commentCount || 0) + 1 }
+        : post);
+      try {
+        localStorage.setItem('portfolioPosts', JSON.stringify(nextPosts));
+      } catch (error) {
+        console.warn('Không thể cập nhật cache số bình luận:', error);
+      }
+      return nextPosts;
+    });
   };
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    fetchPosts();
-  }, []);
-
-  useEffect(() => {
-    if (posts.length > 0) {
-      fetchCommentCounts(posts);
-    }
-  }, [posts]);
 
   const toggleComments = (postId) => {
     setOpenComments((prev) => ({
@@ -320,7 +344,7 @@ export default function BlogSection() {
   const filteredPosts = posts.filter(p => p.tieuDe?.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <section id="blog" className="min-h-screen pt-20 md:pt-24 pb-16 md:pb-24 px-3 md:px-12 lg:px-24">
+    <section id="blog" className="deferred-section deferred-section--blog min-h-screen pt-20 md:pt-24 pb-16 md:pb-24 px-3 md:px-12 lg:px-24">
       <h2 className="text-3xl md:text-5xl font-extrabold text-[#F1D89E] mb-8 md:mb-12 flex items-center" data-aos="fade-right">
         <span className="bg-[#F1D89E] w-8 md:w-12 h-1 mr-3 md:mr-4"></span> {t('blog.title', 'Góc Cá Nhân (Blog)')}
       </h2>
@@ -342,7 +366,13 @@ export default function BlogSection() {
             <div key={post.maBaiViet} className="glass rounded-2xl transition-all hover:-translate-y-2 hover:shadow-[0_0_20px_rgba(241,216,158,0.2)] hover:border-[#F1D89E]/50 flex flex-col items-start bg-black/40 border border-[#F1D89E]/20 overflow-hidden group" data-aos="fade-up" data-aos-delay={200 + (idx * 100)}>
               {post.hinhAnhBia && (
                 <div className="w-full h-40 md:h-56 relative border-b border-white/10 bg-black/80 flex items-center justify-center overflow-hidden">
-                   <img src={post.hinhAnhBia.startsWith('http') ? post.hinhAnhBia : `${API_BASE_URL}${post.hinhAnhBia.startsWith('/') ? '' : '/'}${post.hinhAnhBia}`} alt="Cover" className="max-w-full max-h-full object-contain transition-transform duration-700 group-hover:scale-105" />
+                   <OptimizedImage
+                     src={post.hinhAnhBia}
+                     alt={`Ảnh bìa ${post.tieuDe}`}
+                     widths={[320, 480, 640, 960]}
+                     sizes="(min-width: 1280px) 264px, (min-width: 1024px) calc(25vw - 32px), (min-width: 640px) calc(50vw - 28px), calc(100vw - 32px)"
+                     className="max-w-full max-h-full object-contain transition-transform duration-700 group-hover:scale-105"
+                   />
                    {post.theLoai && (
                      <span className="absolute top-4 left-4 px-3 py-1.5 bg-black/60 backdrop-blur-md text-[#F1D89E] border border-[#F1D89E]/30 text-xs font-bold rounded-lg mb-3 uppercase tracking-wider">{post.theLoai}</span>
                    )}
@@ -359,7 +389,7 @@ export default function BlogSection() {
                 </h3>
                 
                 <p className="text-[#F1D89E]/60 text-xs mb-4">
-                  {format(new Date(post.ngayDang), 'dd/MM/yyyy HH:mm')}
+                  {formatDateTime(post.ngayDang)}
                 </p>
                 
                 <p className="text-gray-300 line-clamp-3 mb-5 flex-grow font-light text-sm leading-relaxed">
@@ -374,7 +404,11 @@ export default function BlogSection() {
 
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     {/* Nút Tim */}
-                    <HeartButton postId={post.maBaiViet} initialLikes={post.luotTim || 0} />
+                    <HeartButton
+                      key={`${post.maBaiViet}-${post.luotTim || 0}`}
+                      postId={post.maBaiViet}
+                      initialLikes={post.luotTim || 0}
+                    />
 
                     {/* Nút Bình luận */}
                     <button
@@ -387,7 +421,7 @@ export default function BlogSection() {
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
                       <span className="text-xs font-medium min-w-[12px] tabular-nums">
-                        {commentCounts[post.maBaiViet] || 0}
+                        {post.commentCount || 0}
                       </span>
                     </button>
                   </div>
@@ -397,6 +431,7 @@ export default function BlogSection() {
                 <CommentSection
                   postId={post.maBaiViet}
                   isOpen={openComments[post.maBaiViet] || false}
+                  onCommentAdded={() => incrementCommentCount(post.maBaiViet)}
                 />
               </div>
             </div>

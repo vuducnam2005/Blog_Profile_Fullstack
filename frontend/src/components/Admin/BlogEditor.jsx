@@ -5,9 +5,7 @@ import { Save, ArrowLeft, Image as ImageIcon } from 'lucide-react';
 import { API_BASE_URL } from '../../config';
 import { ADMIN_API_KEY } from '../../context/AuthContext';
 import { uploadFile } from '../../utils/upload';
-
-// import ReactQuill from 'react-quill';
-// import 'react-quill/dist/quill.snow.css';
+import OptimizedImage from '../OptimizedImage';
 
 export default function BlogEditor() {
   const { id } = useParams();
@@ -86,18 +84,6 @@ export default function BlogEditor() {
     setLoading(false);
   };
 
-  // Cấu hình Toolbar cho Trình soạn thảo Rich Text
-  const modules = {
-    toolbar: [
-      [{ 'header': [1, 2, 3, false] }],
-      ['bold', 'italic', 'underline', 'strike'],
-      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-      ['link', 'image', 'code-block'],
-      ['clean'],
-      [{ 'color': [] }]
-    ]
-  };
-
   return (
     <div className="pt-24 max-w-5xl mx-auto px-4 relative z-20 pb-20">
       <div className="glass rounded-3xl p-8 bg-black/60 shadow-2xl border border-white/10">
@@ -152,7 +138,14 @@ export default function BlogEditor() {
                 <label className="block text-sm font-semibold text-[#F1D89E] uppercase tracking-wider mb-2">Ảnh bìa (Thumbnail)</label>
                 <div className="w-full aspect-[16/9] border-2 border-dashed border-gray-600 rounded-2xl flex flex-col items-center justify-center relative overflow-hidden bg-black/60 hover:border-[#F1D89E]/50 transition-colors">
                     {hinhAnhBia ? (
-                        <img src={hinhAnhBia.startsWith('http') ? hinhAnhBia : `${API_BASE_URL}${hinhAnhBia.startsWith('/') ? '' : '/'}${hinhAnhBia}`} alt="Cover Preview" className="absolute inset-0 w-full h-full object-contain" />
+                        <OptimizedImage
+                          src={hinhAnhBia}
+                          alt="Cover Preview"
+                          widths={[480, 960, 1440]}
+                          sizes="(min-width: 768px) 50vw, calc(100vw - 64px)"
+                          loading="eager"
+                          className="absolute inset-0 w-full h-full object-contain"
+                        />
                     ) : (
                         <div className="text-gray-400 flex flex-col items-center">
                             <ImageIcon className="w-10 h-10 mb-2 opacity-50" />

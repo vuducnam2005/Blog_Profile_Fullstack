@@ -22,12 +22,13 @@ namespace BlogBackend.Controllers
 
         // GET: api/comments/bypost/5
         [HttpGet("bypost/{postId}")]
-        public async Task<ActionResult<IEnumerable<Comment>>> GetCommentsByPost(int postId)
+        public async Task<ActionResult<IEnumerable<Comment>>> GetCommentsByPost(int postId, CancellationToken cancellationToken)
         {
             return await _context.Comments
+                .AsNoTracking()
                 .Where(c => c.MaBaiViet == postId)
                 .OrderBy(c => c.NgayBinhLuan) // Cũ nhất trước để dễ sắp xếp cây reply ở frontend
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
         }
 
         // POST: api/comments

@@ -1,131 +1,96 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import GpuChromaKeyVideo from './GpuChromaKeyVideo';
 
-/**
- * Component ChromaKeyVideo (Siêu Tối Ưu Cực Hạn - Ultra Performance)
- * - Tốc độ quét 24 FPS (khớp đúng chuẩn video gốc, loại bỏ 60% vòng lặp thừa).
- * - Thu nhỏ độ phân giải xử lý nội bộ (Buffer Downscaling - giảm 50% số điểm ảnh phải tính toán).
- * - Thêm lớp GPU Compositing Layer (transform: translateZ(0)) giúp cuộn trang siêu mượt.
- */
-const ChromaKeyVideo = ({ 
-  src = '/avatar_AI.webm', 
-  className = '', 
-  width = 105, 
+const DEFAULT_ALPHA_SRC = '/avatar_AI_alpha.webm';
+const DEFAULT_FALLBACK_MP4_SRC = '/avatar_AI_fallback.mp4';
+const DEFAULT_FALLBACK_WEBM_SRC = '/avatar_AI.webm';
+const DEFAULT_POSTER_SRC = '/avatar_AI_poster.png';
+
+function supportsNativeVp9Alpha() {
+  if (typeof document === 'undefined' || typeof navigator === 'undefined') return false;
+
+  const video = document.createElement('video');
+  const supportsVp9 = video.canPlayType('video/webm; codecs="vp9"') !== '';
+  const userAgent = navigator.userAgent;
+  const isSafari = /Safari/i.test(userAgent) && !/Chrome|Chromium|CriOS|Edg|OPR|Android/i.test(userAgent);
+  const isIOS = /iPad|iPhone|iPod/i.test(userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  return supportsVp9 && !isSafari && !isIOS;
+}
+
+function toCssSize(value) {
+  return typeof value === 'number' ? `${value}px` : value;
+}
+
+const ChromaKeyVideo = ({
+  className = '',
+  width = 105,
   height = 135,
   sensitivity = 38,
-  smoothness = 18
+  smoothness = 18,
+  alphaSrc = DEFAULT_ALPHA_SRC,
+  fallbackMp4Src = DEFAULT_FALLBACK_MP4_SRC,
+  fallbackWebmSrc = DEFAULT_FALLBACK_WEBM_SRC,
+  posterSrc = DEFAULT_POSTER_SRC,
 }) => {
   const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const animFrameId = useRef(null);
-  const lastFrameTimeRef = useRef(0);
-
-  // Độ phân giải hiển thị sắc nét 100% nguyên bản
-  const internalWidth = width;
-  const internalHeight = height;
+  const [renderMode, setRenderMode] = useState(() => (
+    supportsNativeVp9Alpha() ? 'alpha' : 'gpu'
+  ));
 
   useEffect(() => {
+    if (renderMode !== 'alpha') return undefined;
+
     const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
+    if (!video) return undefined;
 
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    
-    const processFrame = () => {
-      // Dừng xử lý khi tab ẩn hoặc video chưa chạy
-      if (document.hidden || !video || video.paused || video.ended) {
-        animFrameId.current = requestAnimationFrame(processFrame);
-        return;
-      }
-
-      const w = canvas.width;
-      const h = canvas.height;
-
-      // Vẽ khung hình video nguồn thu nhỏ mượt mà
-      ctx.drawImage(video, 0, 0, w, h);
-
-      // Trích xuất mảng điểm ảnh
-      const frame = ctx.getImageData(0, 0, w, h);
-      const data = frame.data;
-      const len = data.length;
-
-      // Lọc phông xanh mượt mà
-      for (let i = 0; i < len; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-
-        const maxRB = r > b ? r : b;
-        const greenDiff = g - maxRB;
-
-        if (g > 60 && greenDiff > sensitivity) {
-          data[i + 3] = 0;
-        } else if (g > 50 && greenDiff > (sensitivity - smoothness)) {
-          const factor = (greenDiff - (sensitivity - smoothness)) / smoothness;
-          data[i + 3] = (255 * (1 - factor)) | 0;
-          data[i + 1] = maxRB;
-        }
-      }
-
-      ctx.putImageData(frame, 0, 0);
-
-      animFrameId.current = requestAnimationFrame(processFrame);
-    };
-
-    const handlePlay = () => {
-      lastFrameTimeRef.current = performance.now();
-      animFrameId.current = requestAnimationFrame(processFrame);
-    };
-
-    video.addEventListener('play', handlePlay);
-    if (!video.paused) {
-      handlePlay();
-    } else {
-      video.play().catch(() => {});
-    }
-
-    return () => {
-      video.removeEventListener('play', handlePlay);
-      if (animFrameId.current) {
-        cancelAnimationFrame(animFrameId.current);
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        video.pause();
+      } else {
+        video.play().catch(() => {});
       }
     };
-  }, [sensitivity, smoothness]);
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [renderMode]);
 
   return (
-    <div 
-      className={`relative inline-block ${className}`} 
-      style={{ 
-        width, 
-        height, 
-        transform: 'translateZ(0)', 
-        willChange: 'transform' 
+    <div
+      className={`relative inline-block shrink-0 ${className}`}
+      style={{
+        width: toCssSize(width),
+        height: toCssSize(height),
+        transform: 'translateZ(0)',
       }}
     >
-      {/* Video nguồn ẩn */}
-      <video
-        ref={videoRef}
-        src={src}
-        autoPlay
-        loop
-        muted
-        playsInline
-        crossOrigin="anonymous"
-        className="hidden"
-        onCanPlay={() => {
-          if (videoRef.current && videoRef.current.paused) {
-            videoRef.current.play().catch(() => {});
-          }
-        }}
-      />
-
-      {/* Canvas vẽ nhân vật 3D với độ phân giải nội bộ tối ưu */}
-      <canvas
-        ref={canvasRef}
-        width={internalWidth}
-        height={internalHeight}
-        className="w-full h-full object-contain pointer-events-none drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
-        style={{ transform: 'translateZ(0)', willChange: 'transform' }}
-      />
+      {renderMode === 'alpha' ? (
+        <video
+          ref={videoRef}
+          src={alphaSrc}
+          poster={posterSrc}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          crossOrigin="anonymous"
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-fill pointer-events-none drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
+          onCanPlay={() => videoRef.current?.play().catch(() => {})}
+          onError={() => setRenderMode('gpu')}
+        />
+      ) : (
+        <GpuChromaKeyVideo
+          mp4Src={fallbackMp4Src}
+          webmSrc={fallbackWebmSrc}
+          posterSrc={posterSrc}
+          sensitivity={sensitivity}
+          smoothness={smoothness}
+        />
+      )}
     </div>
   );
 };

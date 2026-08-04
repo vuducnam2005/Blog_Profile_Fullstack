@@ -6,7 +6,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BlogBackend.Data;
+using BlogBackend.Infrastructure;
 using BlogBackend.Models;
+using System.Text.Json;
 
 namespace BlogBackend.Controllers
 {
@@ -29,18 +31,45 @@ namespace BlogBackend.Controllers
 
         // GET: api/Posts
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<BlogPost>>> GetBlogPosts()
+        public async Task<IActionResult> GetBlogPosts(CancellationToken cancellationToken)
         {
-            return await _context.BlogPosts
+            var posts = await _context.BlogPosts
+                .AsNoTracking()
                 .OrderByDescending(p => p.NgayDang)
-                .ToListAsync();
+                .Select(p => new
+                {
+                    p.MaBaiViet,
+                    p.TieuDe,
+                    p.NoiDung,
+                    p.HinhAnhBia,
+                    p.TomTat,
+                    p.TheLoai,
+                    p.NgayDang,
+                    p.LuotTim,
+                    CommentCount = _context.Comments.Count(c => c.MaBaiViet == p.MaBaiViet)
+                })
+                .ToListAsync(cancellationToken);
+
+            var json = JsonSerializer.Serialize(posts, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            var entityTag = EntityTag.Create(json);
+            Response.Headers.ETag = entityTag;
+            Response.Headers.CacheControl = "public, max-age=0, must-revalidate";
+
+            if (EntityTag.Matches(Request, entityTag))
+            {
+                return StatusCode(StatusCodes.Status304NotModified);
+            }
+
+            return Content(json, "application/json");
         }
 
         // GET: api/Posts/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<BlogPost>> GetBlogPost(int id)
+        public async Task<ActionResult<BlogPost>> GetBlogPost(int id, CancellationToken cancellationToken)
         {
-            var blogPost = await _context.BlogPosts.FindAsync(id);
+            var blogPost = await _context.BlogPosts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(post => post.MaBaiViet == id, cancellationToken);
 
             if (blogPost == null)
             {

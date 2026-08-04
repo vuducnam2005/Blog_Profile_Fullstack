@@ -1,9 +1,12 @@
 import { Mail, Phone, Globe, GraduationCap, Code, MapPin, Home } from 'lucide-react';
 import fallbackAvatarImg from '../assets/avatar.png';
+import fallbackAvatarAvif from '../assets/avatar.avif';
+import fallbackAvatarWebp from '../assets/avatar.webp';
 import { useContext } from 'react';
 import { PortfolioContext } from '../context/PortfolioContext';
 import { API_BASE_URL } from '../config';
 import { useTranslation } from 'react-i18next';
+import OptimizedImage from './OptimizedImage';
 
 export default function Hero() {
   const { t } = useTranslation();
@@ -26,7 +29,20 @@ export default function Hero() {
             <div className="flex-1 flex flex-col items-center lg:items-start text-center lg:text-left z-10 w-full pl-0 lg:pl-4" data-aos="fade-right">
                 {/* Avatar Tròn Vàng */}
                 <div className="w-24 h-24 md:w-36 md:h-36 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(241,216,158,0.5)] mb-6 md:mb-8 tracking-tighter overflow-hidden border border-[#F1D89E]/40 shrink-0" data-aos="zoom-in" data-aos-delay="200">
-                    <img src={hero.avatar ? (hero.avatar.startsWith('http') ? hero.avatar : `${API_BASE_URL}${hero.avatar}`) : fallbackAvatarImg} alt="Avatar Vũ Đức Nam" className="w-full h-full object-cover" />
+                    <OptimizedImage
+                      src={hero.avatar || fallbackAvatarImg}
+                      avifSrc={!hero.avatar ? fallbackAvatarAvif : undefined}
+                      webpSrc={!hero.avatar ? fallbackAvatarWebp : undefined}
+                      resolveSource={Boolean(hero.avatar)}
+                      alt="Avatar Vũ Đức Nam"
+                      widths={[144, 288, 432]}
+                      sizes="(min-width: 768px) 144px, 96px"
+                      width="372"
+                      height="371"
+                      loading="eager"
+                      fetchPriority="high"
+                      className="w-full h-full object-cover"
+                    />
                 </div>
                 
                 {/* Tên & Chức vụ */}

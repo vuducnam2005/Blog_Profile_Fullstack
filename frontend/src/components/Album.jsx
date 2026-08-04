@@ -1,21 +1,16 @@
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PortfolioContext } from '../context/PortfolioContext';
 import { AudioContext } from '../context/AudioContext';
-import { API_BASE_URL } from '../config';
+import OptimizedImage from './OptimizedImage';
+import { getCompatibleVideoUrl, resolveMediaUrl } from '../utils/media';
 
 export default function Album() {
   const { t } = useTranslation();
   const { data } = useContext(PortfolioContext);
   const [filter, setFilter] = useState('all'); // 'all', 'image', 'video'
-  const [albums, setAlbums] = useState([]);
+  const albums = data?.album || [];
   const { pauseAudioThmporarily, resumeAudioAfterTempPause } = useContext(AudioContext);
-
-  useEffect(() => {
-    if (data?.album) {
-      setAlbums(data.album);
-    }
-  }, [data]);
 
   const filteredAlbums = albums.filter((item) => {
     if (filter === 'all') return true;
@@ -59,18 +54,14 @@ export default function Album() {
         ) : (
           <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
             {filteredAlbums.map((item, index) => {
-              let url = item.url.startsWith('http') ? item.url : `${API_BASE_URL}${item.url}`;
-              
-              // Nếu dùng Cloudinary, ép định dạng đuôi thành .mp4 để mọi trình duyệt (Chrome, Cốc Cốc...) đều đọc được kể cả video tải lên từ iPhone (.mov)
-              if (item.type === 'video' && url.includes('cloudinary.com')) {
-                  url = url.replace(/\.[^/.]+$/, ".mp4");
-              }
+              const resolvedUrl = resolveMediaUrl(item.url);
+              const videoUrl = getCompatibleVideoUrl(resolvedUrl);
               
               return (
                 <div key={index} className="break-inside-avoid relative group rounded-2xl overflow-hidden glass border border-white/10 bg-black/40 shadow-xl">
                   {item.type === 'video' ? (
                     <video
-                      src={url}
+                      src={videoUrl}
                       controls
                       playsInline
                       preload="metadata"
@@ -80,10 +71,11 @@ export default function Album() {
                       onEnded={resumeAudioAfterTempPause}
                     />
                   ) : (
-                    <img
-                      src={url}
+                    <OptimizedImage
+                      src={item.url}
                       alt={`Album item ${index}`}
-                      loading="lazy"
+                      widths={[360, 540, 720, 1080]}
+                      sizes="(min-width: 1280px) 373px, (min-width: 1024px) calc(33vw - 48px), (min-width: 640px) calc(50vw - 36px), calc(100vw - 32px)"
                       className="w-full object-cover rounded-2xl transition-transform duration-700 group-hover:scale-105"
                     />
                   )}

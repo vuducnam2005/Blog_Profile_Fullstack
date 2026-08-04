@@ -91,6 +91,8 @@ namespace BlogBackend.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("MaBaiViet", "NgayBinhLuan");
+
                     b.ToTable("Comments");
                 });
 

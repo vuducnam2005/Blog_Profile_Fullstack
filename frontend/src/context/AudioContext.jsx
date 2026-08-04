@@ -1,134 +1,196 @@
-import React, { createContext, useState, useEffect, useRef, useContext } from 'react';
+import {
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import { PortfolioContext } from './PortfolioContext';
-import { API_BASE_URL } from '../config';
+import { getOptimizedAudioUrl, resolveMediaUrl } from '../utils/media';
 
+const AUDIO_PROMPT_KEY = 'hasAnsweredAudioPrompt';
+const AUDIO_PLAYING_KEY = 'audioWasPlaying';
+const AUDIO_TEMP_PAUSED_KEY = 'tempPausedBySystem';
+
+function readSessionValue(key) {
+    try {
+        return sessionStorage.getItem(key);
+    } catch {
+        return null;
+    }
+}
+
+function writeSessionValue(key, value) {
+    try {
+        sessionStorage.setItem(key, value);
+    } catch {
+        // Audio vẫn hoạt động nếu storage bị chặn.
+    }
+}
+
+function removeSessionValue(key) {
+    try {
+        sessionStorage.removeItem(key);
+    } catch {
+        // Audio vẫn hoạt động nếu storage bị chặn.
+    }
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
 export const AudioContext = createContext();
 
 export const AudioProvider = ({ children }) => {
     const { data } = useContext(PortfolioContext);
-    
-    // get audio url
     const backgroundMusic = data?.hero?.backgroundMusic;
-    let audioUrl = backgroundMusic ? (backgroundMusic.startsWith('http') ? backgroundMusic : `${API_BASE_URL}${backgroundMusic}`) : null;
+    const audioUrl = useMemo(() => {
+        if (!backgroundMusic) return null;
+        return getOptimizedAudioUrl(resolveMediaUrl(backgroundMusic));
+    }, [backgroundMusic]);
 
-    // Tối ưu hóa Audio qua Cloudinary nếu có thể
-    if (audioUrl && audioUrl.includes('cloudinary.com')) {
-        const parts = audioUrl.split('/upload/');
-        if (parts.length === 2) {
-            // f_auto: tự động định dạng (mp3, opus, etc)
-            // q_auto: tự động nén chất lượng (bitrate)
-            audioUrl = `${parts[0]}/upload/f_auto,q_auto/${parts[1]}`;
-        }
-    }
-
-    const [isPlaying, setIsPlaying] = useState(false);
+    const [isPlaying, setIsPlaying] = useState(() => (
+        readSessionValue(AUDIO_PROMPT_KEY) === 'true'
+        && readSessionValue(AUDIO_PLAYING_KEY) === 'true'
+    ));
     const [showPrompt, setShowPrompt] = useState(false);
-    const [hasInteracted, setHasInteracted] = useState(false);
-    const [volume, setVolume] = useState(0.5); // Default volume 50%
+    const [hasInteracted, setHasInteracted] = useState(() => (
+        readSessionValue(AUDIO_PROMPT_KEY) === 'true'
+    ));
+    const [shouldLoadAudio, setShouldLoadAudio] = useState(() => (
+        readSessionValue(AUDIO_PROMPT_KEY) === 'true'
+        && readSessionValue(AUDIO_PLAYING_KEY) === 'true'
+    ));
     const [isAudioLoaded, setIsAudioLoaded] = useState(false);
     const audioRef = useRef(null);
+    const volume = 0.5;
 
-    // Kiểm tra xem đã từng hỏi chưa
+    // Chỉ hiện prompt; chưa tạo thẻ audio và chưa gắn src ở bước này.
     useEffect(() => {
-        if (!audioUrl) return; // Nếu không có nhạc cấu hình, không làm gì cả
-        
-        const answered = sessionStorage.getItem('hasAnsweredAudioPrompt');
-        if (!answered) {
-            // Chờ 1 chút xíu để page render xong rồi hiện prompt
-            const timer = setTimeout(() => {
-                setShowPrompt(true);
-            }, 1000);
-            return () => clearTimeout(timer);
-        } else {
-            setHasInteracted(true);
-            // Nếu người ta đã đồng ý, ta có thể khôi phục trạng thái phát
-            const wasPlaying = sessionStorage.getItem('audioWasPlaying') === 'true';
-            if (wasPlaying) {
-                 setIsPlaying(true);
-            }
-        }
-    }, [audioUrl]);
+        if (!audioUrl || hasInteracted) return undefined;
 
-    // Đồng bộ state `isPlaying` với thẻ Audio
+        const timer = window.setTimeout(() => {
+            setShowPrompt(true);
+        }, 1000);
+
+        return () => window.clearTimeout(timer);
+    }, [audioUrl, hasInteracted]);
+
+    // Khi người dùng cho phép, play() để trình duyệt tự buffer theo Range Request.
     useEffect(() => {
-        if (audioRef.current) {
-            audioRef.current.volume = volume;
-            if (isPlaying) {
-                // Play trả về một Promise, vì vậy bắt lỗi nếu bị trình duyệt chặn
-                const playPromise = audioRef.current.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(error => {
-                        console.warn("Auto-play was prevented:", error);
-                        setIsPlaying(false);
-                        sessionStorage.setItem('audioWasPlaying', 'false');
-                    });
-                }
-            } else {
-                audioRef.current.pause();
-            }
-        }
-    }, [isPlaying, volume]);
+        const audio = audioRef.current;
+        if (!audio || !shouldLoadAudio) return undefined;
 
-    const handleAccept = () => {
+        audio.volume = volume;
+
+        if (!isPlaying) {
+            audio.pause();
+            return undefined;
+        }
+
+        let active = true;
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+            playPromise.catch((error) => {
+                if (!active) return;
+                console.warn('Auto-play was prevented:', error);
+                setIsPlaying(false);
+                writeSessionValue(AUDIO_PLAYING_KEY, 'false');
+            });
+        }
+
+        return () => {
+            active = false;
+        };
+    }, [audioUrl, isPlaying, shouldLoadAudio]);
+
+    const handleAccept = useCallback(() => {
         setHasInteracted(true);
         setShowPrompt(false);
+        setIsAudioLoaded(false);
+        setShouldLoadAudio(true);
         setIsPlaying(true);
-        sessionStorage.setItem('hasAnsweredAudioPrompt', 'true');
-        sessionStorage.setItem('audioWasPlaying', 'true');
-    };
+        writeSessionValue(AUDIO_PROMPT_KEY, 'true');
+        writeSessionValue(AUDIO_PLAYING_KEY, 'true');
+    }, []);
 
-    const handleDecline = () => {
+    const handleDecline = useCallback(() => {
         setHasInteracted(true);
         setShowPrompt(false);
         setIsPlaying(false);
-        sessionStorage.setItem('hasAnsweredAudioPrompt', 'true');
-        sessionStorage.setItem('audioWasPlaying', 'false');
-    };
+        setShouldLoadAudio(false);
+        removeSessionValue(AUDIO_TEMP_PAUSED_KEY);
+        writeSessionValue(AUDIO_PROMPT_KEY, 'true');
+        writeSessionValue(AUDIO_PLAYING_KEY, 'false');
+    }, []);
 
-    const toggleAudio = () => {
+    const toggleAudio = useCallback(() => {
+        if (!audioUrl) return;
+
         const nextState = !isPlaying;
+        if (nextState) {
+            setIsAudioLoaded(false);
+            setShouldLoadAudio(true);
+        } else {
+            removeSessionValue(AUDIO_TEMP_PAUSED_KEY);
+        }
         setIsPlaying(nextState);
-        sessionStorage.setItem('audioWasPlaying', nextState.toString());
-    };
+        writeSessionValue(AUDIO_PLAYING_KEY, nextState.toString());
+    }, [audioUrl, isPlaying]);
 
-    const pauseAudioThmporarily = () => {
-        if (isPlaying) {
-             setIsPlaying(false);
-             // Lưu cờ là ta đã tạm dừng vì lý do hệ thống (như mở video)
-             sessionStorage.setItem('tempPausedBySystem', 'true');
-        }
-    };
+    const pauseAudioThmporarily = useCallback(() => {
+        setIsPlaying((currentState) => {
+            if (!currentState) return currentState;
+            writeSessionValue(AUDIO_TEMP_PAUSED_KEY, 'true');
+            return false;
+        });
+    }, []);
 
-    const resumeAudioAfterTempPause = () => {
-        const wasTempPaused = sessionStorage.getItem('tempPausedBySystem') === 'true';
-        if (wasTempPaused && hasInteracted) {
-             setIsPlaying(true);
-             sessionStorage.removeItem('tempPausedBySystem');
-        }
-    };
+    const resumeAudioAfterTempPause = useCallback(() => {
+        const wasTempPaused = readSessionValue(AUDIO_TEMP_PAUSED_KEY) === 'true';
+        if (!wasTempPaused || !hasInteracted) return;
+
+        setShouldLoadAudio(true);
+        setIsPlaying(true);
+        removeSessionValue(AUDIO_TEMP_PAUSED_KEY);
+    }, [hasInteracted]);
+
+    const contextValue = useMemo(() => ({
+        isPlaying,
+        toggleAudio,
+        pauseAudioThmporarily,
+        resumeAudioAfterTempPause,
+        showPrompt,
+        handleAccept,
+        handleDecline,
+        isAudioLoaded,
+        audioUrl,
+        audioRef,
+    }), [
+        audioUrl,
+        handleAccept,
+        handleDecline,
+        isAudioLoaded,
+        isPlaying,
+        pauseAudioThmporarily,
+        resumeAudioAfterTempPause,
+        showPrompt,
+        toggleAudio,
+    ]);
 
     return (
-        <AudioContext.Provider value={{
-            isPlaying,
-            toggleAudio,
-            pauseAudioThmporarily,
-            resumeAudioAfterTempPause,
-            showPrompt,
-            handleAccept,
-            handleDecline,
-            isAudioLoaded,
-            audioUrl,
-            audioRef
-        }}>
-            {/* The invisible audio element */}
-            {audioUrl && (
-                <audio 
+        <AudioContext.Provider value={contextValue}>
+            {shouldLoadAudio && audioUrl && (
+                <audio
+                    key={audioUrl}
                     ref={audioRef}
                     src={audioUrl}
                     loop
-                    preload="auto"
-                    onLoadedData={() => setIsAudioLoaded(true)}
+                    preload="metadata"
+                    onLoadStart={() => setIsAudioLoaded(false)}
                     onCanPlay={() => setIsAudioLoaded(true)}
+                    onPlaying={() => setIsAudioLoaded(true)}
+                    onError={() => setIsAudioLoaded(false)}
                 />
             )}
             {children}

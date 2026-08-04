@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../../config';
 import { PortfolioContext } from '../../context/PortfolioContext';
 import { uploadFile } from '../../utils/upload';
+import OptimizedImage from '../OptimizedImage';
 
 export default function ConfigEditor() {
     const navigate = useNavigate();
@@ -177,14 +178,20 @@ export default function ConfigEditor() {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await axios.post(`${API_BASE_URL}/api/config`, config);
+            const response = await axios.post(`${API_BASE_URL}/api/config`, config);
             
             // flushSync ép React commit state NGAY LẬP TỨC trước khi alert() chặn thread
             // Đảm bảo khi navigate về Home, data đã được cập nhật hoàn toàn
             flushSync(() => {
                 setData(config);
             });
-            localStorage.setItem('portfolioData', JSON.stringify(config));
+            if (response.headers.etag) {
+                try {
+                    localStorage.setItem('portfolioConfigEtag', response.headers.etag);
+                } catch (error) {
+                    console.warn('Không thể lưu config ETag:', error);
+                }
+            }
             
             alert("Đã lưu lại Cấu hình Giao diện thành công! Trở lại Trang Chủ để thấy thay đổi.");
         } catch (error) {
@@ -269,7 +276,14 @@ export default function ConfigEditor() {
                         <div className="md:col-span-2 flex flex-col md:flex-row items-center gap-6 mb-2 bg-black/40 p-5 rounded-2xl border border-white/5 shadow-inner">
                             <div className="w-24 h-24 rounded-full border-2 border-[#F1D89E] shadow-[0_0_15px_rgba(241,216,158,0.2)] bg-black overflow-hidden shrink-0 flex items-center justify-center">
                                 {config.hero?.avatar ? (
-                                    <img src={config.hero.avatar.startsWith('http') ? config.hero.avatar : `${API_BASE_URL}${config.hero.avatar}`} alt="Avatar preview" className="w-full h-full object-cover" />
+                                    <OptimizedImage
+                                        src={config.hero.avatar}
+                                        alt="Avatar preview"
+                                        widths={[96, 192, 288]}
+                                        sizes="96px"
+                                        loading="eager"
+                                        className="w-full h-full object-cover"
+                                    />
                                 ) : (
                                     <span className="text-[10px] text-gray-500">Trống</span>
                                 )}
@@ -698,34 +712,17 @@ export default function ConfigEditor() {
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {config.album?.map((item, index) => {
-                            let url = item.url.startsWith('http') ? item.url : `${API_BASE_URL}${item.url}`;
-                            
-                            // Hàm tạo thumbnail tối ưu qua Cloudinary
-                            const getOptimizedThumb = (sourceUrl, type) => {
-                                if (!sourceUrl.includes('cloudinary.com')) return sourceUrl;
-                                const parts = sourceUrl.split('/upload/');
-                                if (parts.length !== 2) return sourceUrl;
-                                
-                                // Thumbnail nhỏ (300x300), nén mạnh, định dạng tự động
-                                let transformation = 'c_fill,g_auto,h_300,w_300,f_auto,q_auto';
-                                if (type === 'video') {
-                                    // Video thumbnail là ảnh JPG từ frame ở giây 0.5
-                                    transformation += ',so_0.5';
-                                    return (parts[0] + '/upload/' + transformation + '/' + parts[1]).replace(/\.[^/.]+$/, '.jpg');
-                                }
-                                return parts[0] + '/upload/' + transformation + '/' + parts[1];
-                            };
-
-                            const thumbUrl = getOptimizedThumb(url, item.type);
-
                             return (
                                 <div key={item.id || index} className="relative group rounded-xl overflow-hidden glass border border-white/10 bg-black/40 aspect-square">
                                     {/* Sử dụng ảnh thumbnail cho cả video và image ở trang quản trị để load cực nhanh */}
-                                    <img 
-                                        src={thumbUrl} 
+                                    <OptimizedImage
+                                        src={item.url}
+                                        widths={[240, 360, 480, 720]}
+                                        sizes="(min-width: 768px) 25vw, 50vw"
+                                        videoThumbnail={item.type === 'video'}
+                                        cloudinaryOptions={{ crop: 'fill', gravity: 'auto' }}
                                         className="w-full h-full object-cover" 
                                         alt="Album preview" 
-                                        loading="lazy"
                                     />
                                     
                                     <div className="absolute inset-0 pointer-events-none bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">

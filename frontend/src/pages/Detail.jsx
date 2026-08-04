@@ -1,11 +1,14 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { format } from 'date-fns';
 import { ArrowLeft, Edit, Trash2, Heart, Send, User, MessageCircle, CornerDownRight } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 import { useTranslation } from 'react-i18next';
 import { useAuth, ADMIN_API_KEY } from '../context/AuthContext';
+import { PortfolioContext } from '../context/PortfolioContext';
+import OptimizedImage from '../components/OptimizedImage';
+import { getOptimizedImageUrl, resolveMediaUrl } from '../utils/media';
+import { formatDateTime } from '../utils/dateTime';
 
 // Helper: Tạo / Lấy tên ẩn danh từ localStorage
 function getAnonymousName() {
@@ -21,10 +24,8 @@ function getAnonymousName() {
 // Helper: Chuyển đổi giờ UTC từ server sang giờ Việt Nam (UTC+7) rồi format
 function formatVNTime(dateStr) {
   if (!dateStr) return '';
-  const date = new Date(dateStr);
   // Chuyển sang múi giờ Asia/Ho_Chi_Minh trước khi format
-  const vnDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
-  return format(vnDate, 'dd/MM/yyyy HH:mm');
+  return formatDateTime(dateStr, { timeZone: 'Asia/Ho_Chi_Minh' });
 }
 
 
@@ -53,7 +54,13 @@ function CommentForm({ onSubmit, submitting, isAdmin, adminAvatar, placeholder, 
       {/* Avatar */}
       <div className="flex-shrink-0 w-9 h-9 rounded-full overflow-hidden border border-[#F1D89E]/20 flex items-center justify-center bg-gradient-to-br from-[#F1D89E]/30 to-[#F1D89E]/10">
         {isAdmin && adminAvatar ? (
-          <img src={adminAvatar} alt="Đức Nam" className="w-full h-full object-cover" />
+          <OptimizedImage
+            src={adminAvatar}
+            alt="Đức Nam"
+            widths={[36, 72, 108]}
+            sizes="36px"
+            className="w-full h-full object-cover"
+          />
         ) : (
           <User className="w-4 h-4 text-[#F1D89E]/70" />
         )}
@@ -97,7 +104,17 @@ function CommentItem({ comment, replies, isAdmin, adminAvatar, onReply, submitti
   };
 
   const avatarContent = (c) => {
-    if (c.isAdmin && adminAvatar) return <img src={adminAvatar} alt="Đức Nam" className="w-full h-full object-cover" />;
+    if (c.isAdmin && adminAvatar) {
+      return (
+        <OptimizedImage
+          src={adminAvatar}
+          alt="Đức Nam"
+          widths={[36, 72, 108]}
+          sizes="36px"
+          className="w-full h-full object-cover"
+        />
+      );
+    }
     if (c.isAdmin) return <span className="text-xs font-bold text-[#F1D89E]">ĐN</span>;
     return <span className="text-sm font-bold text-white/70">{c.tenNguoiDung?.charAt(c.tenNguoiDung.length - 1) || '?'}</span>;
   };
@@ -184,29 +201,16 @@ function CommentItem({ comment, replies, isAdmin, adminAvatar, onReply, submitti
 function DetailCommentSection({ postId }) {
   const { t } = useTranslation();
   const { isAdmin } = useAuth();
+  const { data } = useContext(PortfolioContext);
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [adminAvatar, setAdminAvatar] = useState(null);
-
-  // Lấy avatar admin từ portfolio config
-  useEffect(() => {
-    const fetchAvatar = async () => {
-      try {
-        const res = await axios.get(`${API_BASE_URL}/api/config`);
-        const data = res.data;
-        // Tìm avatar trong các field phổ biến
-        const avatar =
-          data?.hero?.avatar ||
-          data?.about?.avatar ||
-          data?.hero?.image ||
-          data?.about?.image ||
-          null;
-        if (avatar) setAdminAvatar(avatar);
-      } catch (_) {}
-    };
-    fetchAvatar();
-  }, []);
+  const adminAvatar =
+    data?.hero?.avatar ||
+    data?.about?.avatar ||
+    data?.hero?.image ||
+    data?.about?.image ||
+    null;
 
   const fetchComments = useCallback(async () => {
     setLoading(true);
@@ -335,12 +339,6 @@ function DetailHeartButton({ postId, initialLikes }) {
   });
   const [bouncing, setBouncing] = useState(false);
 
-  useEffect(() => {
-    if (initialLikes !== undefined && initialLikes !== null) {
-      setLikes(initialLikes);
-    }
-  }, [initialLikes]);
-
   const handleLike = async () => {
     setLikes((prev) => prev + 1);
     setIsLiked(true);
@@ -406,13 +404,16 @@ export default function Detail() {
           headers: { 'X-Admin-Key': ADMIN_API_KEY }
         });
         navigate("/");
-      } catch(e) {
+      } catch {
         alert(t('detail.deleteError', "Lỗi khi xóa bài"));
       }
     }
   };
 
   if (!post) return <div className="text-center mt-20 text-xl font-light">{t('detail.loading', 'Đang tải bài viết...')}</div>;
+
+  const coverUrl = post.hinhAnhBia ? resolveMediaUrl(post.hinhAnhBia) : '';
+  const blurredCoverUrl = getOptimizedImageUrl(coverUrl, { width: 960 });
 
   return (
     <div className="max-w-3xl mx-auto glass rounded-2xl md:rounded-3xl p-5 md:p-12 bg-black/60 shadow-2xl">
@@ -425,12 +426,16 @@ export default function Detail() {
           {/* Lớp nền làm mờ cho ảnh tỷ lệ dọc (Cinematic Blur) */}
           <div 
              className="absolute inset-0 bg-cover bg-center blur-xl opacity-40 scale-125" 
-             style={{ backgroundImage: `url(${post.hinhAnhBia.startsWith('http') ? post.hinhAnhBia : `${API_BASE_URL}${post.hinhAnhBia.startsWith('/') ? '' : '/'}${post.hinhAnhBia}`})` }}
+             style={{ backgroundImage: `url(${blurredCoverUrl})` }}
           />
           {/* Ảnh chính giữ nguyên tỷ lệ */}
-          <img 
-              src={post.hinhAnhBia.startsWith('http') ? post.hinhAnhBia : `${API_BASE_URL}${post.hinhAnhBia.startsWith('/') ? '' : '/'}${post.hinhAnhBia}`} 
+          <OptimizedImage
+              src={post.hinhAnhBia}
               alt={post.tieuDe} 
+              widths={[640, 960, 1280, 1600, 2048]}
+              sizes="(min-width: 768px) 672px, calc(100vw - 40px)"
+              loading="eager"
+              fetchPriority="high"
               className="relative z-10 w-full h-full max-h-[450px] md:max-h-[600px] object-contain hover:scale-[1.02] transition-transform duration-700" 
           />
         </div>

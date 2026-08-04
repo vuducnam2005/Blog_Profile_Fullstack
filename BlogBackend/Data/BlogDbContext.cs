@@ -17,6 +17,9 @@ namespace BlogBackend.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.Entity<Comment>()
+                .HasIndex(comment => new { comment.MaBaiViet, comment.NgayBinhLuan });
+
             // Seed dữ liệu mặc định cho PortfolioConfig (Id = 1, chỉ dùng 1 dòng duy nhất)
             modelBuilder.Entity<PortfolioConfig>().HasData(new PortfolioConfig
             {

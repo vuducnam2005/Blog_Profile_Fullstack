@@ -1,10 +1,8 @@
 import React, { useContext } from 'react';
 import { AudioContext } from '../context/AudioContext';
 import { Music, X, Volume2, VolumeX } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 
 export default function AudioPlayer() {
-    const { t } = useTranslation();
     const { showPrompt, handleAccept, handleDecline, audioUrl, isAudioLoaded } = useContext(AudioContext);
 
     // Không render popup nếu không có audio url để thiết lập hoặc popup không được show

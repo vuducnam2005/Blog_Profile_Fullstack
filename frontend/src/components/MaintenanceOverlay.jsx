@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Settings, RefreshCw, ServerCrash, ShieldAlert, Cpu, Activity, Database } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 
 export default function MaintenanceOverlay({ onBypass }) {
-    const { t } = useTranslation();
     const [clicks, setClicks] = useState(0);
     const [progress, setProgress] = useState(0);
     const navigate = useNavigate();

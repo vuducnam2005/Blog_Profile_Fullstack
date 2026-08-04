@@ -12,7 +12,11 @@ export default function Navbar() {
   const toggleLanguage = () => {
     const newLang = i18n.language === 'vi' ? 'en' : 'vi';
     i18n.changeLanguage(newLang);
-    localStorage.setItem('appLang', newLang);
+    try {
+      localStorage.setItem('appLang', newLang);
+    } catch {
+      // Language switching still works when browser storage is unavailable.
+    }
   };
 
   const scrollTo = (id) => {
@@ -25,16 +29,14 @@ export default function Navbar() {
   };
 
   const [clickCount, setClickCount] = useState(0);
-  const [isAdminVisible, setIsAdminVisible] = useState(false);
+  const isAdminVisible = clickCount >= 3;
 
   useEffect(() => {
     if (clickCount > 0 && clickCount < 3) {
       const timer = setTimeout(() => setClickCount(0), 1000);
       return () => clearTimeout(timer);
     }
-    if (clickCount >= 3) {
-      setIsAdminVisible(true);
-    }
+    return undefined;
   }, [clickCount]);
 
   const handleLogoClick = () => {

@@ -4,66 +4,31 @@ import { ArrowLeft, Camera, X, ChevronLeft, ChevronRight, Play, Image as ImageIc
 import { useTranslation } from 'react-i18next';
 import { PortfolioContext } from '../context/PortfolioContext';
 import { AudioContext } from '../context/AudioContext';
-import { API_BASE_URL } from '../config';
+import OptimizedImage from '../components/OptimizedImage';
+import { getCompatibleVideoUrl, resolveMediaUrl } from '../utils/media';
 
 export default function AlbumViewer() {
   const { t } = useTranslation();
   const { data } = useContext(PortfolioContext);
   const [filter, setFilter] = useState('all');
-  const [albums, setAlbums] = useState([]);
+  const albums = data?.album || [];
   const [lightbox, setLightbox] = useState({ open: false, index: 0 });
   const { pauseAudioThmporarily, resumeAudioAfterTempPause } = useContext(AudioContext);
-
-  useEffect(() => {
-    if (data?.album) {
-      setAlbums(data.album);
-    }
-  }, [data]);
 
   const filteredAlbums = albums.filter((item) => {
     if (filter === 'all') return true;
     return item.type === filter;
   });
 
-  const resolveUrl = (item, isThumbnail = false) => {
-    let url = item.url.startsWith('http') ? item.url : `${API_BASE_URL}${item.url}`;
-
-    // Tối ưu hóa qua Cloudinary nếu đang sử dụng
-    if (url.includes('cloudinary.com')) {
-      const parts = url.split('/upload/');
-      if (parts.length === 2) {
-        let transformation = isThumbnail 
-          ? 'c_fill,g_auto,h_600,w_600,f_auto,q_auto' 
-          : 'f_auto,q_auto';
-        
-        if (isThumbnail && item.type === 'video') {
-          // Đối với video, lấy frame ở giây thứ 0.5 làm ảnh thumbnail tĩnh
-          transformation += ',so_0.5';
-          const thumbUrl = parts[0] + '/upload/' + transformation + '/' + parts[1];
-          return thumbUrl.replace(/\.[^/.]+$/, '.jpg');
-        }
-        
-        if (item.type === 'video') {
-          // Luôn ép đuôi .mp4 cho video full size để tương thích tốt nhất
-          return (parts[0] + '/upload/' + transformation + '/' + parts[1]).replace(/\.[^/.]+$/, '.mp4');
-        }
-        
-        return parts[0] + '/upload/' + transformation + '/' + parts[1];
-      }
-    }
-
-    return url;
-  };
-
   // Lightbox navigation
   const openLightbox = (index) => {
     setLightbox({ open: true, index });
     // Nếu mở 1 video, có thể pause nhạc ngay, hoặc đợi nó tự play. Tốt nhất để video controls onPlay.
   };
-  const closeLightbox = () => {
+  const closeLightbox = useCallback(() => {
     setLightbox({ open: false, index: 0 });
     resumeAudioAfterTempPause();
-  };
+  }, [resumeAudioAfterTempPause]);
 
   const goNext = useCallback(() => {
     setLightbox((prev) => ({
@@ -89,7 +54,7 @@ export default function AlbumViewer() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [lightbox.open, goNext, goPrev]);
+  }, [lightbox.open, closeLightbox, goNext, goPrev]);
 
   // Lock body scroll when lightbox is open
   useEffect(() => {
@@ -228,10 +193,12 @@ export default function AlbumViewer() {
                   >
                     {item.type === 'video' ? (
                       <div className="relative">
-                        <img
-                          src={resolveUrl(item, true)}
+                        <OptimizedImage
+                          src={item.url}
                           alt={`Album video thumbnail ${index + 1}`}
-                          loading="lazy"
+                          widths={[240, 360, 480, 720]}
+                          sizes="(min-width: 1024px) 208px, (min-width: 768px) 25vw, (min-width: 640px) 33vw, 50vw"
+                          videoThumbnail
                           className="w-full album-thumb-video rounded-xl"
                         />
                         {/* Play overlay */}
@@ -242,10 +209,12 @@ export default function AlbumViewer() {
                         </div>
                       </div>
                     ) : (
-                      <img
-                        src={resolveUrl(item, true)}
+                      <OptimizedImage
+                        src={item.url}
                         alt={`Album ${index + 1}`}
-                        loading="lazy"
+                        widths={[240, 360, 480, 720]}
+                        sizes="(min-width: 1024px) 208px, (min-width: 768px) 25vw, (min-width: 640px) 33vw, 50vw"
+                        cloudinaryOptions={{ crop: 'fill', gravity: 'auto' }}
                         className="w-full album-thumb rounded-xl group-hover:scale-105 transition-transform duration-500"
                       />
                     )}
@@ -317,20 +286,25 @@ export default function AlbumViewer() {
             {currentItem.type === 'video' ? (
               <video
                 key={lightbox.index}
-                src={resolveUrl(currentItem)}
+                src={getCompatibleVideoUrl(resolveMediaUrl(currentItem.url))}
                 controls
                 autoPlay
                 playsInline
+                preload="metadata"
                 onPlay={pauseAudioThmporarily}
                 onPause={resumeAudioAfterTempPause}
                 onEnded={resumeAudioAfterTempPause}
                 className="max-w-full max-h-[85vh] rounded-2xl shadow-[0_0_40px_rgba(241,216,158,0.2)]"
               />
             ) : (
-              <img
+              <OptimizedImage
                 key={lightbox.index}
-                src={resolveUrl(currentItem)}
+                src={currentItem.url}
                 alt={`Album ${lightbox.index + 1}`}
+                widths={[640, 960, 1280, 1600, 2048]}
+                sizes="90vw"
+                loading="eager"
+                fetchPriority="high"
                 className="max-w-full max-h-[85vh] rounded-2xl shadow-[0_0_40px_rgba(241,216,158,0.2)] object-contain"
               />
             )}

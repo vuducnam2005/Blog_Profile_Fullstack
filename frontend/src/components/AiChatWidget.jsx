@@ -63,8 +63,14 @@ QUY TẮC PHẢN HỒI QUAN TRỌNG:
 4. Nếu người dùng hỏi câu hỏi ngoài lề không liên quan đến Nam hay CNTT/Lập trình, hãy trả lời ngắn gọn và lịch sự hướng họ quay lại tìm hiểu kỹ năng, dự án của Nam.
 `;
 
-export default function AiChatWidget() {
-  const [isOpen, setIsOpen] = useState(false);
+export default function AiChatWidget({
+  initialOpen = false,
+  isOpen: controlledIsOpen,
+  onClose,
+  panelOnly = false,
+}) {
+  const [internalIsOpen, setInternalIsOpen] = useState(initialOpen);
+  const isOpen = controlledIsOpen ?? internalIsOpen;
   const { data } = useContext(PortfolioContext);
   const [messages, setMessages] = useState([
     {
@@ -254,16 +260,16 @@ export default function AiChatWidget() {
   };
 
   return (
-    <div className="fixed bottom-0 right-4 sm:right-6 z-50 flex flex-col items-end">
+    <div className={panelOnly ? '' : 'fixed bottom-0 right-4 sm:right-6 z-50 flex flex-col items-end'}>
       {/* KHUNG CHAT MODAL */}
       {isOpen && (
-        <div className="mb-2 w-[350px] sm:w-[390px] h-[500px] bg-[#0c0d12]/95 backdrop-blur-xl border border-[#F1D89E]/30 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-300">
+        <div className="ai-chat-panel mb-2 bg-[#0c0d12]/95 backdrop-blur-xl border border-[#F1D89E]/30 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-300">
           
           {/* HEADER CHAT */}
           <div className="p-4 bg-gradient-to-r from-[#141620] via-[#1a1d2e] to-[#141620] border-b border-[#F1D89E]/20 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 flex items-center justify-center">
-                <ChromaKeyVideo src="/avatar_AI.webm" width={48} height={48} sensitivity={35} />
+                <ChromaKeyVideo width={48} height={48} sensitivity={35} />
               </div>
               <div>
                 <h3 className="text-white text-sm font-semibold flex items-center gap-1.5">
@@ -275,7 +281,7 @@ export default function AiChatWidget() {
               </div>
             </div>
             <button 
-              onClick={() => setIsOpen(false)}
+              onClick={() => (onClose ? onClose() : setInternalIsOpen(false))}
               className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-white/10 transition"
             >
               <X className="w-5 h-5" />
@@ -283,7 +289,7 @@ export default function AiChatWidget() {
           </div>
 
           {/* DANH SÁCH TIN NHẮN */}
-          <div className="flex-1 p-4 overflow-y-auto space-y-3.5 scrollbar-thin scrollbar-thumb-white/10">
+          <div className="flex-1 min-h-0 p-4 overflow-y-auto space-y-3.5 scrollbar-thin scrollbar-thumb-white/10">
             {messages.map((msg, idx) => (
               <div
                 key={idx}
@@ -371,17 +377,16 @@ export default function AiChatWidget() {
       )}
 
       {/* NÚT PHÁT VIDEO AVATAR NỔI FULL BODY (DỊCH XUỐNG ĐÁY GIẤU MÉP CẮT) */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
+      {!panelOnly && <button
+        onClick={() => setInternalIsOpen(!isOpen)}
         className="group relative flex flex-col items-center justify-end -mb-2.5 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer outline-none select-none"
         title="Trò chuyện với Trợ lý AI Nam"
       >
         {/* Khung chứa Avatar Video Full Body nét căng, mở rộng không bị xén tay */}
         <div className="relative flex items-center justify-center filter drop-shadow-[0_8px_24px_rgba(0,0,0,0.7)]">
           <ChromaKeyVideo 
-            src="/avatar_AI.webm" 
-            width={150} 
-            height={170} 
+            width="clamp(112px, 24vw, 150px)"
+            height="clamp(127px, 27.2vw, 170px)"
             sensitivity={38} 
             smoothness={18}
           />
@@ -393,7 +398,7 @@ export default function AiChatWidget() {
             <Sparkles className="w-3 h-3 animate-spin" /> Hỏi AI
           </span>
         )}
-      </button>
+      </button>}
 
     </div>
   );
