@@ -39,9 +39,9 @@ $assetPaths = [regex]::Matches($html, '(?:src|href)="(?<path>/assets/[^"]+)"') |
 
 $resourcePaths = @("/") + $assetPaths + @(
     "/avatar_AI.webm",
-    "/avatar_AI_alpha.webm",
-    "/avatar_AI_fallback.mp4",
-    "/avatar_AI_poster.png"
+    "/avatar_AI_alpha_v2.webm",
+    "/avatar_AI_safari_mask_v2.mp4",
+    "/avatar_AI_poster_v2.png"
 )
 foreach ($resourcePath in $resourcePaths) {
     curl.exe -sS --compressed -o NUL -w "$resourcePath status=%{http_code} transfer=%{size_download}B ttfb=%{time_starttransfer}s total=%{time_total}s`n" "$SiteUrl$resourcePath"

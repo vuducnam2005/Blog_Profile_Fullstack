@@ -18,8 +18,6 @@ function AvatarButton({ isOpen, onClick }) {
         <ChromaKeyVideo
           width="clamp(112px, 24vw, 150px)"
           height="clamp(127px, 27.2vw, 170px)"
-          sensitivity={38}
-          smoothness={18}
         />
       </div>
 

@@ -269,7 +269,7 @@ export default function AiChatWidget({
           <div className="p-4 bg-gradient-to-r from-[#141620] via-[#1a1d2e] to-[#141620] border-b border-[#F1D89E]/20 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 flex items-center justify-center">
-                <ChromaKeyVideo width={48} height={48} sensitivity={35} />
+                <ChromaKeyVideo width={48} height={48} />
               </div>
               <div>
                 <h3 className="text-white text-sm font-semibold flex items-center gap-1.5">
@@ -387,8 +387,6 @@ export default function AiChatWidget({
           <ChromaKeyVideo 
             width="clamp(112px, 24vw, 150px)"
             height="clamp(127px, 27.2vw, 170px)"
-            sensitivity={38} 
-            smoothness={18}
           />
         </div>
 

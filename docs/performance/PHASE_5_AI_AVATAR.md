@@ -1,5 +1,10 @@
 # Phase 5 - AI Avatar Video Pipeline
 
+> Cập nhật 2026-08-04: Giai đoạn 10 thay đường Safari chroma-key runtime bằng
+> `avatar_AI_safari_mask_v2.mp4` đóng gói màu + alpha mask. Các asset runtime
+> `avatar_AI_alpha.webm`, `avatar_AI_fallback.mp4` và `avatar_AI_poster.png`
+> đã được thay bởi phiên bản v2; phần bên dưới được giữ làm lịch sử Phase 5.
+
 ## Mục tiêu
 
 Nâng độ nét avatar AI trên mobile, desktop và màn hình Retina, đồng thời loại bỏ vòng lặp JavaScript đọc và ghi toàn bộ pixel mỗi frame. Autoplay, loop, chuyển động, drop shadow, vị trí và kích thước desktop cũ phải được giữ nguyên.

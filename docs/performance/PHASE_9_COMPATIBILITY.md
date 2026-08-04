@@ -44,7 +44,7 @@ Kết quả tính toán:
 
 Mọi browser iOS đều dùng WebKit. Detection mới nhận cả iPhone, iPad, iPod và iPadOS desktop mode, không chỉ Safari.
 
-Chrome/Edge/Firefox trên iOS sẽ dùng MP4 + GPU chroma-key fallback thay vì thử VP9 alpha không tương thích. Shader, sensitivity, smoothness và độ phân giải canvas không giảm.
+Chrome/Edge/Firefox trên iOS dùng MP4 đóng gói màu + alpha mask trên GPU thay vì thử VP9 alpha không tương thích. Canvas vẫn render theo DPR và không xử lý từng pixel trên main thread.
 
 ### WebGL context recovery
 
@@ -96,9 +96,9 @@ Vite preview trả HTTP 200 và MIME đúng cho:
 Media hỗ trợ byte range với HTTP 206:
 
 - `avatar_AI.webm`: `video/webm`.
-- `avatar_AI_alpha.webm`: `video/webm`.
-- `avatar_AI_fallback.mp4`: `video/mp4`.
-- `avatar_AI_poster.png`: `image/png`.
+- `avatar_AI_alpha_v2.webm`: `video/webm`.
+- `avatar_AI_safari_mask_v2.mp4`: `video/mp4`.
+- `avatar_AI_poster_v2.png`: `image/png`.
 
 Byte range giúp browser seek/decode video mà không bắt buộc tải lại toàn bộ file.
 

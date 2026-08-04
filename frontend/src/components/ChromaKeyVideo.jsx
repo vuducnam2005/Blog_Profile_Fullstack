@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import GpuChromaKeyVideo from './GpuChromaKeyVideo';
 
-const DEFAULT_ALPHA_SRC = '/avatar_AI_alpha.webm';
-const DEFAULT_FALLBACK_MP4_SRC = '/avatar_AI_fallback.mp4';
-const DEFAULT_FALLBACK_WEBM_SRC = '/avatar_AI.webm';
-const DEFAULT_POSTER_SRC = '/avatar_AI_poster.png';
+const DEFAULT_ALPHA_SRC = '/avatar_AI_alpha_v2.webm';
+const DEFAULT_PACKED_MP4_SRC = '/avatar_AI_safari_mask_v2.mp4';
+const DEFAULT_POSTER_SRC = '/avatar_AI_poster_v2.png';
 
 function supportsNativeVp9Alpha() {
   if (typeof document === 'undefined' || typeof navigator === 'undefined') return false;
@@ -27,11 +26,8 @@ const ChromaKeyVideo = ({
   className = '',
   width = 105,
   height = 135,
-  sensitivity = 38,
-  smoothness = 18,
   alphaSrc = DEFAULT_ALPHA_SRC,
-  fallbackMp4Src = DEFAULT_FALLBACK_MP4_SRC,
-  fallbackWebmSrc = DEFAULT_FALLBACK_WEBM_SRC,
+  packedMp4Src = DEFAULT_PACKED_MP4_SRC,
   posterSrc = DEFAULT_POSTER_SRC,
 }) => {
   const videoRef = useRef(null);
@@ -84,11 +80,8 @@ const ChromaKeyVideo = ({
         />
       ) : (
         <GpuChromaKeyVideo
-          mp4Src={fallbackMp4Src}
-          webmSrc={fallbackWebmSrc}
+          packedMp4Src={packedMp4Src}
           posterSrc={posterSrc}
-          sensitivity={sensitivity}
-          smoothness={smoothness}
         />
       )}
     </div>

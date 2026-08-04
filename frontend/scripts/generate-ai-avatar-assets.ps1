@@ -6,7 +6,9 @@ param(
     [int]$Smoothness = 18,
     [double]$DespillMix = 0.5,
     [int]$Vp9Crf = 24,
-    [int]$H264Crf = 20,
+    [int]$PackedH264Crf = 16,
+    [int]$PackedColorWidth = 540,
+    [int]$PackedColorHeight = 960,
     [double]$PosterTime = 0.04
 )
 
@@ -60,9 +62,9 @@ $greenExpression = "if(gt(g(X,Y),50)*gt($greenDifference,$softThreshold),$maxRed
 $alphaExpression = "if(gt(g(X,Y),60)*gt($greenDifference,$Sensitivity),0,if(gt(g(X,Y),50)*gt($greenDifference,$softThreshold),clip(255*(1-($greenDifference-$softThreshold)/$Smoothness),0,255),255))"
 $keyFilter = "format=rgba,geq=r='r(X,Y)':g='$greenExpression':b='b(X,Y)':a='$alphaExpression',despill=green:mix=$DespillMix"
 
-$alphaPath = Join-Path $outputRoot "avatar_AI_alpha.webm"
-$fallbackPath = Join-Path $outputRoot "avatar_AI_fallback.mp4"
-$posterPath = Join-Path $outputRoot "avatar_AI_poster.png"
+$alphaPath = Join-Path $outputRoot "avatar_AI_alpha_v2.webm"
+$packedFallbackPath = Join-Path $outputRoot "avatar_AI_safari_mask_v2.mp4"
+$posterPath = Join-Path $outputRoot "avatar_AI_poster_v2.png"
 
 Invoke-Ffmpeg @(
     "-hide_banner", "-y",
@@ -75,13 +77,18 @@ Invoke-Ffmpeg @(
     $alphaPath
 )
 
+# Safari receives one H.264 stream with color on the left and its alpha mask on
+# the right. The WebGL fallback samples both halves, so no runtime chroma key is
+# required and compressed green pixels can never become a visible rectangle.
+$packedFilter = "[0:v]$keyFilter,split=2[colorAlpha][matte];[colorAlpha]scale=${PackedColorWidth}:${PackedColorHeight}:flags=lanczos,format=yuv420p[color];[matte]alphaextract,scale=${PackedColorWidth}:${PackedColorHeight}:flags=lanczos,format=yuv420p[mask];[color][mask]hstack=inputs=2,format=yuv420p[packed]"
 Invoke-Ffmpeg @(
     "-hide_banner", "-y",
     "-i", $sourceFile,
-    "-map", "0:v:0", "-an",
-    "-c:v", "libx264", "-preset", "slow", "-crf", "$H264Crf",
+    "-filter_complex", $packedFilter,
+    "-map", "[packed]", "-an",
+    "-c:v", "libx264", "-preset", "slow", "-crf", "$PackedH264Crf",
     "-pix_fmt", "yuv420p", "-movflags", "+faststart",
-    $fallbackPath
+    $packedFallbackPath
 )
 
 Invoke-Ffmpeg @(
@@ -93,5 +100,5 @@ Invoke-Ffmpeg @(
     $posterPath
 )
 
-Get-Item -LiteralPath $alphaPath, $fallbackPath, $posterPath |
+Get-Item -LiteralPath $alphaPath, $packedFallbackPath, $posterPath |
     Select-Object Name, Length, FullName

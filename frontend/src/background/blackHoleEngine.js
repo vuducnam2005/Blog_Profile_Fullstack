@@ -95,12 +95,12 @@ const CONFIG = {
     },
     lightRibbons: {
         // Shared by desktop and mobile: edit once and both layouts update.
-        outerWidth: 1.9,
-        innerWidth: 0.012,
+        outerWidth: isMobile ? 0.88 : 0.74,
+        innerWidth: 0.045,
         startRadius: 15.0,
         radiusVariation: 12.0,
-        taperPower: 0.82,
-        widthVariation: 0.36,
+        taperPower: 0.92,
+        widthVariation: 0.2,
     },
 };
 
@@ -809,8 +809,19 @@ blackHoleGroup.add(orbitalParticles);
  * ===================================================================== */
 const lightRayParts = [];
 const lightRayCount = CONFIG.particles.lightRays;
-const raySteps = 8;
+const raySteps = 14;
 const ribbonViewAxis = new THREE.Vector3(0, 0.34, 0.94).normalize();
+
+function createSeededRandom(initialSeed) {
+    let state = initialSeed >>> 0;
+    return () => {
+        state += 0x6D2B79F5;
+        let value = state;
+        value = Math.imul(value ^ (value >>> 15), value | 1);
+        value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+        return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+    };
+}
 
 function createLightRibbonGeometry(curve, widthScale, seed, hue) {
     const segments = CONFIG.particles.lightRaySegments;
@@ -865,30 +876,40 @@ function createLightRibbonGeometry(curve, widthScale, seed, hue) {
     return geometry;
 }
 
+const rayRandom = createSeededRandom(0xB1A6C40 + lightRayCount);
+const raySectorSize = (Math.PI * 2) / lightRayCount;
+
 for (let rayIndex = 0; rayIndex < lightRayCount; rayIndex++) {
-    const seed = Math.random();
-    const hue = Math.random();
-    const startAngle = (rayIndex / lightRayCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.65;
+    const seed = rayRandom();
+    const hue = rayRandom();
+    const startAngle = (rayIndex / lightRayCount) * Math.PI * 2
+        + (rayRandom() - 0.5) * raySectorSize * 0.32;
     const startRadius = CONFIG.lightRibbons.startRadius
-        + Math.random() * CONFIG.lightRibbons.radiusVariation;
-    const startHeight = (isMobile ? 0.5 : 2.0) + Math.random() * (isMobile ? 5.5 : 9.0);
-    const endHeight = (Math.random() - 0.5) * 0.75;
-    const bendDirection = Math.random() < 0.5 ? -1 : 1;
-    const bendAmount = bendDirection * (0.9 + Math.random() * 1.25);
-    const verticalArc = (Math.random() - 0.25) * (isMobile ? 1.2 : 2.2);
+        + rayRandom() * CONFIG.lightRibbons.radiusVariation;
+    const startHeight = (rayRandom() - 0.42) * (isMobile ? 5.5 : 9.0);
+    const endHeight = (rayRandom() - 0.5) * 0.28;
+    const bendAmount = 1.45 + rayRandom() * 0.55;
+    const verticalArc = (rayRandom() - 0.5) * (isMobile ? 1.0 : 1.7);
+    const photonEntry = 0.76 + rayRandom() * 0.06;
+    const photonOrbitRadius = CONFIG.blackHole.photonRingRadius * (1.02 + rayRandom() * 0.08);
+    const captureRadius = CONFIG.blackHole.eventHorizonRadius * 0.74;
     const controlPoints = [];
 
     for (let step = 0; step <= raySteps; step++) {
         const t = step / raySteps;
-        const pull = Math.pow(t, 0.72);
-        const radius = THREE.MathUtils.lerp(
-            startRadius,
-            CONFIG.blackHole.eventHorizonRadius * 0.84,
-            pull
+        const approach = THREE.MathUtils.smoothstep(Math.min(t / photonEntry, 1), 0, 1);
+        const capture = THREE.MathUtils.smoothstep(
+            Math.max((t - photonEntry) / (1 - photonEntry), 0),
+            0,
+            1
         );
-        const angle = startAngle + bendAmount * Math.pow(t, 1.85);
-        const y = THREE.MathUtils.lerp(startHeight, endHeight, Math.pow(t, 0.82))
-            + Math.sin(Math.PI * t) * verticalArc;
+        const radius = t < photonEntry
+            ? THREE.MathUtils.lerp(startRadius, photonOrbitRadius, approach)
+            : THREE.MathUtils.lerp(photonOrbitRadius, captureRadius, capture);
+        const lensingTurn = 0.3 * Math.pow(approach, 1.75) + 0.7 * Math.pow(capture, 1.08);
+        const angle = startAngle + bendAmount * lensingTurn;
+        const y = THREE.MathUtils.lerp(startHeight, endHeight, Math.pow(t, 0.86))
+            + Math.sin(Math.PI * t) * verticalArc * (1 - capture * 0.55);
         controlPoints.push(new THREE.Vector3(
             Math.cos(angle) * radius,
             y,
@@ -897,7 +918,8 @@ for (let rayIndex = 0; rayIndex < lightRayCount; rayIndex++) {
     }
 
     const curve = new THREE.CatmullRomCurve3(controlPoints, false, 'centripetal', 0.35);
-    const ribbonWidthScale = 0.82 + Math.random() * CONFIG.lightRibbons.widthVariation;
+    const ribbonWidthScale = 0.9
+        + (rayRandom() - 0.5) * CONFIG.lightRibbons.widthVariation;
     lightRayParts.push(createLightRibbonGeometry(curve, ribbonWidthScale, seed, hue));
 }
 
@@ -933,44 +955,51 @@ const lightRayMat = new THREE.ShaderMaterial({
         varying float vSeed;
         varying float vHue;
 
+        float wrappedDistance(float a, float b) {
+            float delta = abs(a - b);
+            return min(delta, 1.0 - delta);
+        }
+
         void main(){
-            float speed = 0.48 + vSeed * 0.22;
-            float waveA = sin(vProgress * 34.0 - uTime * speed * 5.0 + vSeed * 13.0) * 0.5 + 0.5;
-            float waveB = sin(vProgress * 13.0 - uTime * speed * 2.2 + vSeed * 7.0) * 0.5 + 0.5;
-            float flowingLight = 0.62 + waveA * 0.23 + waveB * 0.15;
-            float surge = pow(max(sin(vProgress * 11.0 - uTime * speed * 3.0 + vSeed * 9.0), 0.0), 6.0);
+            float speed = 0.16 + vSeed * 0.055;
+            float flowProgress = pow(vProgress, 0.62);
+            float headA = fract(uTime * speed + vSeed * 0.83);
+            float headB = fract(uTime * speed * 0.63 + vSeed * 0.37 + 0.46);
+            float pulseA = exp(-pow(wrappedDistance(flowProgress, headA) / 0.032, 2.0));
+            float pulseB = exp(-pow(wrappedDistance(flowProgress, headB) / 0.026, 2.0));
+            float tailA = exp(-mod(headA - flowProgress + 1.0, 1.0) / 0.11);
+            float tailB = exp(-mod(headB - flowProgress + 1.0, 1.0) / 0.085);
+            float photonPackets = pulseA * 1.25 + pulseB + tailA * 0.24 + tailB * 0.18;
 
-            // Smooth luminous heads travel from the outer edge toward the horizon.
-            float headSpeed = 0.18 + vSeed * 0.1;
-            float headA = fract(uTime * headSpeed + vSeed * 0.83);
-            float headB = fract(uTime * headSpeed * 0.68 + vSeed * 0.37 + 0.48);
-            float pulseA = exp(-pow((vProgress - headA) / 0.045, 2.0));
-            float pulseB = exp(-pow((vProgress - headB) / 0.04, 2.0));
-            float tailA = exp(-pow(max(headA - vProgress, 0.0) / 0.22, 2.0)) * step(vProgress, headA);
-            float tailB = exp(-pow(max(headB - vProgress, 0.0) / 0.18, 2.0)) * step(vProgress, headB);
-            float horizonAbsorption = mix(1.0, 0.46, smoothstep(0.7, 1.0, vProgress));
-            float incomingPulse = (pulseA * 1.7 + pulseB * 1.35 + tailA * 0.55 + tailB * 0.42)
-                * horizonAbsorption;
-            float inwardHeat = smoothstep(0.35, 0.98, vProgress);
-            float sourceFade = smoothstep(0.0, 0.09, vProgress);
-            float ribbonShape = max(sin(vAcross * 3.14159265), 0.0);
-            float softEdge = pow(ribbonShape, 0.62);
-            float hotCore = pow(ribbonShape, 9.0);
-            float filament = 0.86 + 0.14 * sin(vAcross * 31.0 + vProgress * 25.0 - uTime * speed * 4.0);
+            float sourceFade = smoothstep(0.0, 0.055, vProgress);
+            float horizonAbsorption = 1.0 - smoothstep(0.9, 1.0, vProgress);
+            float visibilityFade = sourceFade * horizonAbsorption;
+            float inwardHeat = smoothstep(0.38, 0.86, vProgress);
+            float redshift = smoothstep(0.76, 0.96, vProgress);
 
-            vec3 outerViolet = vec3(0.22, 0.06, 0.82);
-            vec3 outerCyan = vec3(0.08, 0.48, 1.0);
-            vec3 outerColor = mix(outerViolet, outerCyan, vHue);
-            vec3 gold = vec3(1.0, 0.45, 0.06);
-            vec3 whiteHot = vec3(1.0, 0.96, 0.78);
-            vec3 color = mix(outerColor, gold, smoothstep(0.2, 0.72, vProgress));
-            color = mix(color, whiteHot, pow(inwardHeat, 2.6));
-            color = mix(color, whiteHot, hotCore * (0.42 + inwardHeat * 0.5));
+            float centeredAcross = 1.0 - abs(vAcross * 2.0 - 1.0);
+            float bloomEnvelope = pow(max(centeredAcross, 0.0), 0.62);
+            float narrowHalo = pow(max(centeredAcross, 0.0), 3.4);
+            float photonCore = pow(max(centeredAcross, 0.0), 18.0);
+            float microVariation = 0.94 + 0.06
+                * sin(vProgress * 67.0 - uTime * (0.8 + speed) + vSeed * 19.0)
+                * sin(vProgress * 23.0 + vSeed * 11.0);
 
-            float intensity = (0.35 + flowingLight * 0.58 + surge * 0.32 + inwardHeat * 0.42 + incomingPulse * 0.72)
-                * (0.58 + hotCore * 1.35) * filament;
-            float alpha = sourceFade * softEdge
-                * (0.12 + flowingLight * 0.15 + inwardHeat * 0.13 + surge * 0.05 + incomingPulse * 0.09);
+            vec3 coolWhite = mix(vec3(0.48, 0.7, 1.0), vec3(0.78, 0.9, 1.0), vHue);
+            vec3 warmGold = vec3(1.0, 0.58, 0.16);
+            vec3 captureRed = vec3(1.0, 0.2, 0.035);
+            vec3 whiteCore = vec3(1.0, 0.985, 0.92);
+            vec3 color = mix(coolWhite, warmGold, inwardHeat);
+            color = mix(color, captureRed, redshift * 0.72);
+            color = mix(color, whiteCore, photonCore * (0.7 - redshift * 0.24));
+
+            float shapeEnergy = bloomEnvelope * 0.08 + narrowHalo * 0.34 + photonCore * 1.25;
+            float intensity = shapeEnergy
+                * (0.62 + inwardHeat * 0.2 + photonPackets * 0.72)
+                * microVariation;
+            float alpha = visibilityFade
+                * (bloomEnvelope * 0.052 + narrowHalo * 0.15 + photonCore * 0.42)
+                * (0.74 + photonPackets * 0.28);
             gl_FragColor = vec4(
                 color * intensity * uVisibility,
                 alpha * uVisibility

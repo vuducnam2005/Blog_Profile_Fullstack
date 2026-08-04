@@ -15,27 +15,16 @@ const FRAGMENT_SHADER = `
   precision mediump float;
 
   uniform sampler2D u_video;
-  uniform float u_sensitivity;
-  uniform float u_smoothness;
   varying vec2 v_texCoord;
 
   void main() {
-    vec4 color = texture2D(u_video, v_texCoord);
-    float maxRB = max(color.r, color.b);
-    float greenDiff = color.g - maxRB;
-    float hardThreshold = u_sensitivity / 255.0;
-    float softThreshold = max((u_sensitivity - u_smoothness) / 255.0, 0.0);
-    float alpha = 1.0;
+    vec2 colorUv = vec2(v_texCoord.x * 0.5, v_texCoord.y);
+    vec2 maskUv = vec2(0.5 + v_texCoord.x * 0.5, v_texCoord.y);
+    vec3 color = texture2D(u_video, colorUv).rgb;
+    float packedMask = texture2D(u_video, maskUv).r;
+    float alpha = smoothstep(0.025, 0.94, packedMask);
 
-    if (color.g > (60.0 / 255.0) && greenDiff > hardThreshold) {
-      alpha = 0.0;
-    } else if (color.g > (50.0 / 255.0) && greenDiff > softThreshold) {
-      float feather = max(hardThreshold - softThreshold, 0.001);
-      alpha = 1.0 - clamp((greenDiff - softThreshold) / feather, 0.0, 1.0);
-      color.g = maxRB;
-    }
-
-    gl_FragColor = vec4(color.rgb, color.a * alpha);
+    gl_FragColor = vec4(color, alpha);
   }
 `;
 
@@ -83,11 +72,8 @@ function createProgram(gl) {
 }
 
 export default function GpuChromaKeyVideo({
-  mp4Src,
-  webmSrc,
+  packedMp4Src,
   posterSrc,
-  sensitivity,
-  smoothness,
 }) {
   const containerRef = useRef(null);
   const videoRef = useRef(null);
@@ -175,8 +161,6 @@ export default function GpuChromaKeyVideo({
         2 * Float32Array.BYTES_PER_ELEMENT,
       );
 
-      gl.uniform1f(gl.getUniformLocation(program, 'u_sensitivity'), sensitivity);
-      gl.uniform1f(gl.getUniformLocation(program, 'u_smoothness'), smoothness);
       gl.uniform1i(gl.getUniformLocation(program, 'u_video'), 0);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -185,9 +169,10 @@ export default function GpuChromaKeyVideo({
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
       gl.clearColor(0, 0, 0, 0);
     } catch (error) {
-      console.warn('Không thể khởi tạo GPU chroma-key:', error);
+      console.warn('Không thể khởi tạo GPU alpha mask:', error);
       if (texture) gl.deleteTexture(texture);
       if (positionBuffer) gl.deleteBuffer(positionBuffer);
       if (program) gl.deleteProgram(program);
@@ -301,7 +286,7 @@ export default function GpuChromaKeyVideo({
       gl.deleteBuffer(positionBuffer);
       gl.deleteProgram(program);
     };
-  }, [contextVersion, mp4Src, sensitivity, smoothness, webmSrc]);
+  }, [contextVersion, packedMp4Src]);
 
   return (
     <div ref={containerRef} className="absolute inset-0">
@@ -322,8 +307,7 @@ export default function GpuChromaKeyVideo({
         aria-hidden="true"
         className="absolute w-px h-px opacity-0 pointer-events-none"
       >
-        <source src={mp4Src} type="video/mp4" />
-        <source src={webmSrc} type="video/webm" />
+        <source src={packedMp4Src} type="video/mp4" />
       </video>
       <canvas
         ref={canvasRef}
