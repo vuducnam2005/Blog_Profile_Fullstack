@@ -95,7 +95,7 @@ function AppContent() {
     <div className="min-h-screen font-sans tracking-wide">
       <ScrollProgressBar />
       <AudioPlayer />
-      <main className="w-full pb-20">
+      <main className="site-main w-full pb-20">
         <Suspense fallback={<div className="min-h-[50vh]" />}>
           <Routes>
             <Route path="/" element={<Home />} />

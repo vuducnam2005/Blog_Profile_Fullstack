@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 
-const DEFAULT_ALPHA_SRC = '/avatar_AI_alpha_v2.webm';
-const DEFAULT_ANIMATED_WEBP_SRC = '/avatar_AI_mobile_v3.webp';
-const DEFAULT_POSTER_SRC = '/avatar_AI_poster_v2.png';
+const DEFAULT_ALPHA_SRC = '/avatar_AI_alpha_v3.webm';
+const DEFAULT_ANIMATED_WEBP_SRC = '/avatar_AI_mobile_v4.webp';
+const DEFAULT_POSTER_SRC = '/avatar_AI_poster_v3.png';
 
 function supportsNativeVp9Alpha() {
   if (typeof document === 'undefined' || typeof navigator === 'undefined') return false;
@@ -73,7 +73,7 @@ const ChromaKeyVideo = ({
           preload="auto"
           crossOrigin="anonymous"
           aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-fill pointer-events-none drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
+          className="absolute inset-0 w-full h-full object-contain pointer-events-none drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
           onCanPlay={() => videoRef.current?.play().catch(() => {})}
           onError={() => setRenderMode('animated-webp')}
         />
@@ -84,7 +84,7 @@ const ChromaKeyVideo = ({
           aria-hidden="true"
           decoding="async"
           draggable="false"
-          className="absolute inset-0 w-full h-full object-fill pointer-events-none drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
+          className="absolute inset-0 w-full h-full object-contain pointer-events-none drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
           onError={() => setRenderMode('poster')}
         />
       ) : (
@@ -93,7 +93,7 @@ const ChromaKeyVideo = ({
           alt=""
           aria-hidden="true"
           draggable="false"
-          className="absolute inset-0 w-full h-full object-fill pointer-events-none drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
+          className="absolute inset-0 w-full h-full object-contain pointer-events-none drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
         />
       )}
     </div>

@@ -60,7 +60,9 @@ function CommentSection({ postId, isOpen, onCommentAdded }) {
     if (!isOpen) return undefined;
 
     const controller = new AbortController();
-    setLoading(true);
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) setLoading(true);
+    });
 
     axios.get(`${API_BASE_URL}/api/comments/bypost/${postId}`, {
       signal: controller.signal,
@@ -104,17 +106,17 @@ function CommentSection({ postId, isOpen, onCommentAdded }) {
   return (
     <div className="comment-section-enter mt-4 border-t border-white/10 pt-4">
       {/* Form nhập bình luận */}
-      <form onSubmit={handleSubmit} className="flex gap-2 mb-3">
+      <form onSubmit={handleSubmit} className="flex min-w-0 gap-2 mb-3">
         <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-[#F1D89E]/30 to-[#F1D89E]/10 border border-[#F1D89E]/20 flex items-center justify-center">
           <User className="w-4 h-4 text-[#F1D89E]/70" />
         </div>
-        <div className="flex-1 flex gap-2">
+        <div className="flex-1 min-w-0 flex gap-2">
           <input
             type="text"
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder={`${anonymousName}: ${t('blog.commentPlaceholder', 'Viết bình luận...')}`}
-            className="flex-1 bg-white/5 border border-white/10 rounded-full px-4 py-2 text-sm text-white placeholder-gray-500 outline-none focus:border-[#F1D89E]/40 focus:bg-white/[0.07] transition-all"
+            className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-full px-4 py-2 text-sm text-white placeholder-gray-500 outline-none focus:border-[#F1D89E]/40 focus:bg-white/[0.07] transition-all"
             maxLength={500}
           />
           <button
@@ -344,7 +346,7 @@ export default function BlogSection() {
   const filteredPosts = posts.filter(p => p.tieuDe?.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <section id="blog" className="deferred-section deferred-section--blog min-h-screen pt-20 md:pt-24 pb-16 md:pb-24 px-3 md:px-12 lg:px-24">
+    <section id="blog" className="portfolio-section deferred-section deferred-section--blog min-h-screen pt-20 md:pt-24 pb-16 md:pb-24 px-3 md:px-12 lg:px-24">
       <h2 className="text-3xl md:text-5xl font-extrabold text-[#F1D89E] mb-8 md:mb-12 flex items-center" data-aos="fade-right">
         <span className="bg-[#F1D89E] w-8 md:w-12 h-1 mr-3 md:mr-4"></span> {t('blog.title', 'Góc Cá Nhân (Blog)')}
       </h2>

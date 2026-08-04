@@ -227,10 +227,10 @@ Ngoài ra phải giữ nguyên:
 - Tia vẫn giữ `7/9/11` ray và `64/96` segment; toàn bộ particle cùng global bloom giữ nguyên baseline.
 - Shader mới có photon core, narrow halo, bloom envelope, photon packet gia tốc, phổ màu có kiểm soát và fade hấp thụ tại event horizon.
 - Event horizon opaque tiếp tục ghi depth; ray giữ `depthTest: true` và `depthWrite: false` để phần phía sau bị che đúng pipeline trong suốt.
-- Chrome/Edge/Firefox dùng `avatar_AI_alpha_v2.webm` 720 x 1280, VP9 alpha, 24 FPS, 240 frame.
+- Chrome/Edge/Firefox dùng `avatar_AI_alpha_v3.webm` 720 x 1280, VP9 alpha, 24 FPS, 240 frame.
 - Bản packed-alpha v2 đã bị loại sau khi ảnh chụp iPhone thật cho thấy Safari vẫn composite nền thành opaque.
-- Safari/iOS hiện dùng `avatar_AI_mobile_v3.webp` 450 x 510, alpha animation native, 24 FPS, 240 frame và loop vô hạn.
-- Poster dùng `avatar_AI_poster_v2.png` 720 x 1280 RGBA; alpha có dải 0-255 và 55,87% pixel hoàn toàn trong suốt.
+- Safari/iOS hiện dùng `avatar_AI_mobile_v4.webp` 360 x 640, alpha animation native, đúng tỷ lệ 9:16, 24 FPS, 240 frame và loop vô hạn.
+- Poster dùng `avatar_AI_poster_v3.png` 720 x 1280 RGBA; alpha có dải 0-255 và 55,87% pixel hoàn toàn trong suốt.
 - Asset v3 dùng tên mới để tránh Safari/iPhone tiếp tục lấy media v2 từ cache.
 - Ba asset runtime cũ đã được xóa; `avatar_AI.webm` vẫn được giữ làm video nguồn để tái tạo pipeline.
 

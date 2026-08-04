@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useContext, useRef } from 'react';
+import { useState, useEffect, useContext, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { ArrowLeft, Edit, Trash2, Heart, Send, User, MessageCircle, CornerDownRight } from 'lucide-react';
@@ -212,19 +212,26 @@ function DetailCommentSection({ postId }) {
     data?.about?.image ||
     null;
 
-  const fetchComments = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await axios.get(`${API_BASE_URL}/api/comments/bypost/${postId}`);
-      setComments(res.data);
-    } catch (err) {
-      console.error('Lỗi tải bình luận:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [postId]);
+  useEffect(() => {
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) setLoading(true);
+    });
 
-  useEffect(() => { fetchComments(); }, [fetchComments]);
+    axios.get(`${API_BASE_URL}/api/comments/bypost/${postId}`, {
+      signal: controller.signal,
+    }).then((res) => {
+      setComments(res.data);
+    }).catch((err) => {
+      if (err.code !== 'ERR_CANCELED') {
+        console.error('Lỗi tải bình luận:', err);
+      }
+    }).finally(() => {
+      if (!controller.signal.aborted) setLoading(false);
+    });
+
+    return () => controller.abort();
+  }, [postId]);
 
   // Tổ chức comments thành cây: parents + replies của từng parent
   const rootComments = comments.filter((c) => !c.parentId);

@@ -18,6 +18,7 @@ HỒ SƠ CÁ NHÂN VŨ ĐỨC NAM:
    - Vị trí định hướng: Backend Developer (Intern / Fresher)
    - Số điện thoại / Zalo: 0362 183 511
    - Email: vuducnam12345678@gmail.com
+   - Quê quán: Hợp Nhất, Đoan Hùng, Phú Thọ
    - Địa chỉ hiện tại: 43 Thanh Lương, Bình Minh, Hà Nội
    - Website cá nhân: ducnamdev.site
    - GitHub: https://github.com/vuducnam2005
@@ -61,7 +62,30 @@ QUY TẮC PHẢN HỒI QUAN TRỌNG:
 2. Nam sinh ngày 23/06/2005. NĂM NAY LÀ NĂM 2026 -> Nam hiện tại 21 tuổi (hoặc 20 tuổi nếu tính đến trước ngày 23/06). Tuyệt đối KHÔNG ĐƯỢC tính nhầm Nam 19 tuổi (đó là năm 2024 cũ).
 3. Nếu người dùng hỏi các câu như 'Nam sinh năm bao nhiêu', 'sinh nhật Nam', 'Nam bao nhiêu tuổi': Trả lời chính xác Nam sinh ngày 23/06/2005 (năm nay 21 tuổi).
 4. Nếu người dùng hỏi câu hỏi ngoài lề không liên quan đến Nam hay CNTT/Lập trình, hãy trả lời ngắn gọn và lịch sự hướng họ quay lại tìm hiểu kỹ năng, dự án của Nam.
+5. Nếu người dùng xúc phạm, hạ thấp, bịa đặt hoặc công kích cá nhân Nam, phải bác bỏ dứt khoát. Nói rõ công kích cá nhân là không chấp nhận được và yêu cầu trao đổi bằng dữ kiện, thái độ tôn trọng.
+6. Khi bảo vệ Nam, chỉ dùng thông tin đã xác minh trong hồ sơ: quá trình học tập, GPA, giải thưởng, kỹ năng, kinh nghiệm và dự án. Không bịa thành tích, không vu cáo ngược người hỏi và không khẳng định một lời phê bình có căn cứ là sai.
+7. Giọng điệu được phép mạnh, thẳng và cứng rắn nhưng tuyệt đối không chửi tục, đe dọa, miệt thị, phân biệt đối xử hay kích động người khác tấn công. Không lặp lại nguyên văn lời lẽ tục tĩu nếu không cần thiết.
+8. Nếu người dùng tiếp tục lăng mạ sau khi đã được nhắc, kết thúc dứt khoát: Trợ lý không tiếp tục cuộc trao đổi mang tính xúc phạm và chỉ sẵn sàng thảo luận dựa trên sự thật.
 `;
+
+function normalizeForIntent(value) {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd');
+}
+
+function isPersonalAttackOnNam(value) {
+  const normalized = normalizeForIntent(value);
+  const targetsNam = ['nam', 'vu duc nam', 'duc nam'].some((term) => normalized.includes(term));
+  const hostileTerms = [
+    'ngu', 'dot', 'vo dung', 'bat tai', 'kem coi', 'rac ruoi', 'khong ra gi',
+    'an hai', 'thang dien', 'oc cho', 'loser', 'fuck', 'shit', 'khon nan',
+  ];
+
+  return targetsNam && hostileTerms.some((term) => normalized.includes(term));
+}
 
 export default function AiChatWidget({
   initialOpen = false,
@@ -239,7 +263,12 @@ export default function AiChatWidget({
       let fallbackAnswer = `Trợ lý AI đang sẵn sàng hỗ trợ! Bạn có thể hỏi mình các thông tin chi tiết về kinh nghiệm, kỹ năng và các dự án của Vũ Đức Nam nhé 😊.`;
 
       const qLower = query.toLowerCase();
-      if (qLower.includes('sinh') || qLower.includes('năm sinh') || qLower.includes('ngày sinh') || qLower.includes('tuổi')) {
+      const qNormalized = normalizeForIntent(query);
+      if (isPersonalAttackOnNam(query)) {
+        fallbackAnswer = `Mình bác bỏ cách công kích đó. Đánh giá một người bằng lời lẽ xúc phạm là không chấp nhận được. Nếu muốn nhận xét về Nam, bạn hãy đưa ra dữ kiện cụ thể và trao đổi tôn trọng. Hồ sơ công khai cho thấy Nam học CNTT tại Đại học Đại Nam, đạt GPA loại Giỏi, có giải Nhì cuộc thi lập trình và đã thực hiện nhiều dự án backend/fullstack. Mình sẵn sàng trao đổi thẳng thắn dựa trên sự thật, nhưng sẽ không tiếp tục một cuộc nói chuyện chỉ nhằm hạ nhục cá nhân.`;
+      } else if (qNormalized.includes('que') || qNormalized.includes('que quan') || qNormalized.includes('sinh ra o dau')) {
+        fallbackAnswer = `Quê quán của Vũ Đức Nam là Hợp Nhất, Đoan Hùng, Phú Thọ 📍. Hiện Nam đang sinh sống tại Hà Nội.`;
+      } else if (qLower.includes('sinh') || qLower.includes('năm sinh') || qLower.includes('ngày sinh') || qLower.includes('tuổi')) {
         fallbackAnswer = `Vũ Đức Nam sinh ngày 23/06/2005 🎂. Hiện Nam là sinh viên CNTT năm cuối tại Đại học Đại Nam!`;
       } else if (qLower.includes('giới thiệu') || qLower.includes('bản thân') || qLower.includes('nam')) {
         fallbackAnswer = `${heroName} sinh ngày 23/06/2005, là Backend Developer Intern / Fresher đầy nhiệt huyết. Nam đang học CNTT tại Đại học Đại Nam (GPA 3.2 Loại Giỏi), giàu kinh nghiệm làm web với C# .NET, Python, Node.js, SQL Server và Microservices!`;
@@ -260,13 +289,13 @@ export default function AiChatWidget({
   };
 
   return (
-    <div className={panelOnly ? '' : 'fixed bottom-0 right-4 sm:right-6 z-50 flex flex-col items-end'}>
+    <div className={panelOnly ? '' : 'ai-chat-launcher flex flex-col items-end'}>
       {/* KHUNG CHAT MODAL */}
       {isOpen && (
         <div className="ai-chat-panel mb-2 bg-[#0c0d12]/95 backdrop-blur-xl border border-[#F1D89E]/30 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-300">
           
           {/* HEADER CHAT */}
-          <div className="p-4 bg-gradient-to-r from-[#141620] via-[#1a1d2e] to-[#141620] border-b border-[#F1D89E]/20 flex items-center justify-between">
+          <div className="p-3 sm:p-4 bg-gradient-to-r from-[#141620] via-[#1a1d2e] to-[#141620] border-b border-[#F1D89E]/20 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 flex items-center justify-center">
                 <ChromaKeyVideo width={48} height={48} />
@@ -289,7 +318,7 @@ export default function AiChatWidget({
           </div>
 
           {/* DANH SÁCH TIN NHẮN */}
-          <div className="flex-1 min-h-0 p-4 overflow-y-auto space-y-3.5 scrollbar-thin scrollbar-thumb-white/10">
+          <div className="flex-1 min-h-0 p-3 sm:p-4 overflow-y-auto overscroll-contain space-y-3.5 scrollbar-thin scrollbar-thumb-white/10">
             {messages.map((msg, idx) => (
               <div
                 key={idx}
@@ -383,10 +412,10 @@ export default function AiChatWidget({
         title="Trò chuyện với Trợ lý AI Nam"
       >
         {/* Khung chứa Avatar Video Full Body nét căng, mở rộng không bị xén tay */}
-        <div className="relative flex items-center justify-center filter drop-shadow-[0_8px_24px_rgba(0,0,0,0.7)]">
+        <div className="ai-avatar-media relative flex items-center justify-center filter drop-shadow-[0_8px_24px_rgba(0,0,0,0.7)]">
           <ChromaKeyVideo 
-            width="clamp(112px, 24vw, 150px)"
-            height="clamp(127px, 27.2vw, 170px)"
+            width="100%"
+            height="100%"
           />
         </div>
 

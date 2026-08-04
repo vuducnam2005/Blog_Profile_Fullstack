@@ -9,7 +9,7 @@ export default function Experience() {
   const experiences = data?.experiences || [];
 
   return (
-    <section id="experience" className="deferred-section deferred-section--experience min-h-screen pt-20 md:pt-24 pb-12 md:pb-16 px-3 md:px-12 lg:px-24">
+    <section id="experience" className="portfolio-section deferred-section deferred-section--experience min-h-screen pt-20 md:pt-24 pb-12 md:pb-16 px-3 md:px-12 lg:px-24">
       <h2 className="text-3xl md:text-5xl font-extrabold text-[#F1D89E] mb-10 md:mb-16 flex items-center" data-aos="fade-right">
         <span className="bg-[#F1D89E] w-8 md:w-12 h-1 mr-3 md:mr-4"></span> {t('exp.title', 'Kinh nghiệm & Học vấn')}
       </h2>

@@ -14,10 +14,10 @@ function AvatarButton({ isOpen, onClick }) {
       aria-label="Mo tro ly AI"
       aria-expanded={isOpen}
     >
-      <div className="relative flex items-center justify-center filter drop-shadow-[0_8px_24px_rgba(0,0,0,0.7)]">
+      <div className="ai-avatar-media relative flex items-center justify-center filter drop-shadow-[0_8px_24px_rgba(0,0,0,0.7)]">
         <ChromaKeyVideo
-          width="clamp(112px, 24vw, 150px)"
-          height="clamp(127px, 27.2vw, 170px)"
+          width="100%"
+          height="100%"
         />
       </div>
 
@@ -40,7 +40,7 @@ export default function AiChatLauncher() {
   };
 
   return (
-    <div className="fixed bottom-0 right-4 sm:right-6 z-50 flex flex-col items-end">
+    <div className="ai-chat-launcher flex flex-col items-end">
       {isActivated && (
         <Suspense key="ai-chat-panel" fallback={null}>
           <AiChatWidget

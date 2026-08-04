@@ -39,6 +39,16 @@ export default function Navbar() {
     return undefined;
   }, [clickCount]);
 
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileOpen]);
+
   const handleLogoClick = () => {
     scrollTo('hero');
     setClickCount((prev) => prev + 1);
@@ -56,7 +66,7 @@ export default function Navbar() {
   return (
     <nav className="fixed top-0 w-full z-50">
       {/* ===== TOP BAR ===== */}
-      <div className="px-4 md:px-8 py-4 md:py-5 flex justify-between items-center bg-black/50 backdrop-blur-md border-b border-[#F1D89E]/20">
+      <div className="pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 px-4 md:px-8 md:py-5 flex justify-between items-center bg-black/70 md:bg-black/50 backdrop-blur-xl md:backdrop-blur-md border-b border-[#F1D89E]/20 shadow-[0_8px_28px_rgba(0,0,0,0.22)] md:shadow-none">
         {/* Logo */}
         <div
           onClick={handleLogoClick}
@@ -120,7 +130,9 @@ export default function Navbar() {
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
           className="md:hidden text-[#F1D89E] p-2 rounded-lg hover:bg-[#F1D89E]/10 transition-colors"
-          aria-label="Toggle menu"
+          aria-label={mobileOpen ? 'Đóng menu' : 'Mở menu'}
+          aria-expanded={mobileOpen}
+          aria-controls="mobile-navigation"
         >
           {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
@@ -128,7 +140,8 @@ export default function Navbar() {
 
       {/* ===== MOBILE DROPDOWN MENU ===== */}
       <div
-        className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${mobileOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
+        id="mobile-navigation"
+        className={`mobile-nav-menu md:hidden overflow-hidden transition-all duration-300 ease-in-out ${mobileOpen ? 'max-h-[calc(100dvh-64px)] opacity-100' : 'max-h-0 opacity-0'
           }`}
       >
         <div className="bg-black/80 backdrop-blur-xl border-b border-[#F1D89E]/20 px-6 py-4 flex flex-col gap-1">

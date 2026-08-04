@@ -2,7 +2,7 @@
 
 > Cập nhật 2026-08-04: Sau kiểm tra iPhone thật, đường WebGL packed-alpha của
 > Giai đoạn 10 vẫn có thể xuất nền opaque trên Safari. Bản sửa v3 chuyển iOS
-> sang `avatar_AI_mobile_v3.webp` có alpha animation native. Phần bên dưới được
+> sang `avatar_AI_mobile_v4.webp` có alpha animation native và đúng tỷ lệ 9:16. Phần bên dưới được
 > giữ làm lịch sử Phase 5.
 
 ## Mục tiêu

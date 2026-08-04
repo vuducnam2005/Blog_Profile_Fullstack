@@ -44,7 +44,7 @@ Kết quả tính toán:
 
 Mọi browser iOS đều dùng WebKit. Detection mới nhận cả iPhone, iPad, iPod và iPadOS desktop mode, không chỉ Safari.
 
-Chrome/Edge/Firefox trên iOS dùng `avatar_AI_mobile_v3.webp` có alpha animation native thay vì VP9 alpha hoặc canvas WebGL. Asset giữ đủ 240 frame, 24 FPS và loop vô hạn.
+Chrome/Edge/Firefox trên iOS dùng `avatar_AI_mobile_v4.webp` có alpha animation native thay vì VP9 alpha hoặc canvas WebGL. Asset giữ đúng tỷ lệ 9:16, đủ 240 frame, 24 FPS và loop vô hạn.
 
 ### Native alpha fallback
 
@@ -91,9 +91,9 @@ Vite preview trả HTTP 200 và MIME đúng cho:
 Media hỗ trợ byte range với HTTP 206:
 
 - `avatar_AI.webm`: `video/webm`.
-- `avatar_AI_alpha_v2.webm`: `video/webm`.
-- `avatar_AI_mobile_v3.webp`: `image/webp`.
-- `avatar_AI_poster_v2.png`: `image/png`.
+- `avatar_AI_alpha_v3.webm`: `video/webm`.
+- `avatar_AI_mobile_v4.webp`: `image/webp`.
+- `avatar_AI_poster_v3.png`: `image/png`.
 
 Byte range giúp browser seek/decode video mà không bắt buộc tải lại toàn bộ file.
 

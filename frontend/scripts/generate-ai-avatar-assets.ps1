@@ -6,8 +6,8 @@ param(
     [int]$Smoothness = 18,
     [double]$DespillMix = 0.5,
     [int]$Vp9Crf = 24,
-    [int]$AnimatedWebpWidth = 450,
-    [int]$AnimatedWebpHeight = 510,
+    [int]$AnimatedWebpWidth = 360,
+    [int]$AnimatedWebpHeight = 640,
     [int]$AnimatedWebpQuality = 84,
     [double]$PosterTime = 0.04
 )
@@ -62,9 +62,9 @@ $greenExpression = "if(gt(g(X,Y),50)*gt($greenDifference,$softThreshold),$maxRed
 $alphaExpression = "if(gt(g(X,Y),60)*gt($greenDifference,$Sensitivity),0,if(gt(g(X,Y),50)*gt($greenDifference,$softThreshold),clip(255*(1-($greenDifference-$softThreshold)/$Smoothness),0,255),255))"
 $keyFilter = "format=rgba,geq=r='r(X,Y)':g='$greenExpression':b='b(X,Y)':a='$alphaExpression',despill=green:mix=$DespillMix"
 
-$alphaPath = Join-Path $outputRoot "avatar_AI_alpha_v2.webm"
-$animatedWebpPath = Join-Path $outputRoot "avatar_AI_mobile_v3.webp"
-$posterPath = Join-Path $outputRoot "avatar_AI_poster_v2.png"
+$alphaPath = Join-Path $outputRoot "avatar_AI_alpha_v3.webm"
+$animatedWebpPath = Join-Path $outputRoot "avatar_AI_mobile_v4.webp"
+$posterPath = Join-Path $outputRoot "avatar_AI_poster_v3.png"
 
 Invoke-Ffmpeg @(
     "-hide_banner", "-y",

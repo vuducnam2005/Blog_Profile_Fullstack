@@ -29,7 +29,7 @@ export default function About() {
   const aboutTitle = data?.about?.title || t('about.title', 'Giới thiệu');
 
   return (
-    <section id="about" className="deferred-section deferred-section--about min-h-screen flex flex-col justify-center pt-20 md:pt-24 pb-12 md:pb-16 px-3 md:px-12 lg:px-24">
+    <section id="about" className="portfolio-section deferred-section deferred-section--about min-h-screen flex flex-col justify-center pt-20 md:pt-24 pb-12 md:pb-16 px-3 md:px-12 lg:px-24">
       <h2 className="text-3xl md:text-5xl font-extrabold text-[#F1D89E] mb-8 md:mb-12 flex items-center" data-aos="fade-right">
         <span className="bg-[#F1D89E] w-8 md:w-12 h-1 mr-3 md:mr-4"></span> {aboutTitle}
       </h2>
@@ -49,13 +49,13 @@ export default function About() {
           </div>
           
           {/* Thông số dự án */}
-          <div className="flex justify-between items-center mt-8 md:mt-12 gap-3 md:gap-4">
+          <div className="grid grid-cols-3 items-stretch mt-8 md:mt-12 gap-2 md:gap-4">
             {(data?.stats?.length > 0 ? data.stats : [
               { id: 1, value: '1+', label: t('about.stat1_label', 'Năm mài dũa code') },
               { id: 2, value: '3+', label: t('about.stat2_label', 'Dự án hoàn thành') },
               { id: 3, value: '10+', label: t('about.stat3_label', 'Công nghệ nền tảng') }
             ]).map((stat, idx) => (
-              <div key={stat.id || idx} className="text-center">
+              <div key={stat.id || idx} className="text-center rounded-xl border border-white/10 bg-black/30 px-1.5 py-3 md:border-0 md:bg-transparent md:px-0 md:py-0">
                 <p className="text-3xl md:text-5xl font-black text-[#F1D89E] mb-1 md:mb-2">{stat.value}</p>
                 <p className="text-xs md:text-sm text-gray-400">{stat.label}</p>
               </div>

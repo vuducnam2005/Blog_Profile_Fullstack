@@ -22,7 +22,7 @@ export default function Contact() {
   const hero = data?.hero || {};
 
   return (
-    <section id="contact" className="deferred-section deferred-section--contact py-16 md:py-24 px-3 md:px-12 lg:px-24 relative z-10 w-full mb-6 md:mb-10">
+    <section id="contact" className="portfolio-section deferred-section deferred-section--contact py-16 md:py-24 px-3 md:px-12 lg:px-24 relative z-10 w-full mb-6 md:mb-10">
       <h2 className="text-3xl md:text-5xl font-extrabold text-[#F1D89E] mb-8 md:mb-12 flex items-center" data-aos="fade-right">
         <span className="bg-[#F1D89E] w-8 md:w-12 h-1 mr-3 md:mr-4"></span> {t('contact.title', 'Liên hệ')}
       </h2>
@@ -46,7 +46,7 @@ export default function Contact() {
 
         <p className="text-gray-500 mb-6 text-sm uppercase tracking-widest font-semibold" data-aos="fade-up" data-aos-delay="400">{t('contact.socials', 'Hoặc kết nối qua:')}</p>
 
-        <div className="flex gap-5 justify-center" data-aos="fade-up" data-aos-delay="500">
+        <div className="flex flex-wrap gap-4 sm:gap-5 justify-center" data-aos="fade-up" data-aos-delay="500">
           <a
             href={hero.github?.startsWith('http') ? hero.github : `https://github.com${hero.github || "/vuducnam2005"}`}
             target="_blank"

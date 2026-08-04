@@ -13,7 +13,7 @@ export default function Home() {
   return (
     <>
       <Navbar />
-      <div className="w-full relative z-10 mx-auto max-w-[1400px]">
+      <div className="portfolio-shell w-full relative z-10 mx-auto max-w-[1400px]">
         <Hero />
         <About />
         <Experience />
