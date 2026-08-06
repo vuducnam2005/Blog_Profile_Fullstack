@@ -4,7 +4,10 @@ import Home from './pages/Home';
 import { PortfolioProvider, PortfolioContext } from './context/PortfolioContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AudioProvider } from './context/AudioContext';
+import { BackgroundProvider, BackgroundContext } from './context/BackgroundContext';
 import AudioPlayer from './components/AudioPlayer';
+import VideoBackground from './components/VideoBackground';
+import BlackHoleBackground from './components/BlackHoleBackground';
 import ScrollProgressBar from './components/ScrollProgressBar';
 import MaintenanceOverlay from './components/MaintenanceOverlay';
 import AiChatLauncher from './components/AiChatLauncher';
@@ -29,6 +32,7 @@ const AlbumViewer = lazy(() => import('./pages/AlbumViewer'));
 
 function AppContent() {
   const { data } = useContext(PortfolioContext);
+  const { bgMode } = useContext(BackgroundContext);
   const { isAdmin } = useAuth();
   const [bypassedMaintenance, setBypassedMaintenance] = useState(false);
   const location = useLocation();
@@ -92,7 +96,8 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen font-sans tracking-wide">
+    <div className="min-h-screen font-sans tracking-wide relative">
+      {bgMode === 'video' ? <VideoBackground /> : <BlackHoleBackground />}
       <ScrollProgressBar />
       <AudioPlayer />
       <main className="site-main w-full pb-20">
@@ -118,9 +123,11 @@ function App() {
     <AuthProvider>
       <PortfolioProvider>
         <AudioProvider>
-          <Router>
-            <AppContent />
-          </Router>
+          <BackgroundProvider>
+            <Router>
+              <AppContent />
+            </Router>
+          </BackgroundProvider>
         </AudioProvider>
       </PortfolioProvider>
     </AuthProvider>

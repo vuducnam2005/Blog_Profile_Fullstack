@@ -13,7 +13,7 @@ export function useDeferredSections() {
       if (refreshFrameId !== null) return;
       refreshFrameId = window.requestAnimationFrame(() => {
         refreshFrameId = null;
-        AOS.refreshHard();
+        AOS.refresh();
       });
     };
 

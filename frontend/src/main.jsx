@@ -11,8 +11,9 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 )
 
-const stopBlackHoleBackground = startBlackHoleBackground()
+// Three.js background replaced by video.mov background
+// const stopBlackHoleBackground = startBlackHoleBackground()
 
-if (import.meta.hot) {
-  import.meta.hot.dispose(stopBlackHoleBackground)
-}
+// if (import.meta.hot) {
+//   import.meta.hot.dispose(stopBlackHoleBackground)
+// }
