@@ -129,7 +129,7 @@ export default function AiChatWidget({
 
   // Gọi trực tiếp Gemini API từ Frontend (Hoàn toàn độc lập, siêu mượt trên Vercel)
   const callGeminiDirectly = async (queryText, historyMsgs) => {
-    const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash-lite'];
+    const candidateModels = ['gemini-2.5-flash', 'gemini-3-flash', 'gemini-3.5-flash', 'gemini-3.0-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
 
     // Lọc và chuyển đổi lịch sử trò chuyện sang mảng contents xen kẽ role chuẩn Gemini (user -> model -> user)
     const contents = [];
@@ -269,7 +269,9 @@ export default function AiChatWidget({
           });
           if (res.ok) {
             const backendData = await res.json();
-            if (backendData.reply) aiReply = backendData.reply;
+            if (backendData.reply && !backendData.reply.includes("cấu hình Gemini API Key")) {
+              aiReply = backendData.reply;
+            }
           }
         } catch (backendErr) {
           console.warn("Backend API chat endpoint error:", backendErr);
@@ -288,6 +290,8 @@ export default function AiChatWidget({
       const qNormalized = normalizeForIntent(query);
       if (isPersonalAttackOnNam(query)) {
         fallbackAnswer = `Mình bác bỏ cách công kích đó. Đánh giá một người bằng lời lẽ xúc phạm là không chấp nhận được. Nếu muốn nhận xét về Nam, bạn hãy đưa ra dữ kiện cụ thể và trao đổi tôn trọng. Hồ sơ công khai cho thấy Nam học CNTT tại Đại học Đại Nam, đạt GPA loại Giỏi, có giải Nhì cuộc thi lập trình và đã thực hiện nhiều dự án backend/fullstack. Mình sẵn sàng trao đổi thẳng thắn dựa trên sự thật, nhưng sẽ không tiếp tục một cuộc nói chuyện chỉ nhằm hạ nhục cá nhân.`;
+      } else if (qNormalized.includes('chao') || qNormalized.includes('hi') || qNormalized.includes('hello') || qNormalized.includes('dmm')) {
+        fallbackAnswer = `Xin chào bạn! Mình là Trợ lý AI đại diện cho Vũ Đức Nam 🤖. Bạn có thể hỏi mình bất kỳ câu hỏi nào về kinh nghiệm, kỹ năng, dự án hoặc thông tin liên hệ của Nam nhé!`;
       } else if (qNormalized.includes('que') || qNormalized.includes('que quan') || qNormalized.includes('sinh ra o dau')) {
         fallbackAnswer = `Quê quán của Vũ Đức Nam là Hợp Nhất, Đoan Hùng, Phú Thọ 📍. Hiện Nam đang sinh sống tại Hà Nội.`;
       } else if (qLower.includes('sinh') || qLower.includes('năm sinh') || qLower.includes('ngày sinh') || qLower.includes('tuổi')) {

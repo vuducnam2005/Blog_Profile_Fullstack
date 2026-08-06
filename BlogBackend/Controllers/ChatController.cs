@@ -130,7 +130,7 @@ Dữ liệu bổ sung từ hệ thống (JSON):
                 };
 
                 string configModel = _configuration["GeminiSettings:Model"] ?? "gemini-2.5-flash";
-                var candidateModels = new List<string> { configModel, "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash-lite" };
+                var candidateModels = new List<string> { configModel, "gemini-2.5-flash", "gemini-3-flash", "gemini-3.5-flash", "gemini-3.0-flash", "gemini-2.0-flash", "gemini-1.5-flash" };
                 // Loại bỏ các phần tử trùng lặp nhưng giữ nguyên thứ tự
                 candidateModels = candidateModels.Distinct().ToList();
 
