@@ -6,12 +6,12 @@ export default function BlackHoleBackground() {
 
   useEffect(() => {
     let stopFn = null;
-    const timer = setTimeout(() => {
+    const rafId = requestAnimationFrame(() => {
       stopFn = startBlackHoleBackground();
-    }, 50);
+    });
 
     return () => {
-      clearTimeout(timer);
+      cancelAnimationFrame(rafId);
       if (typeof stopFn === 'function') {
         stopFn();
       }
