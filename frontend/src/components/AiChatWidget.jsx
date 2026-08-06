@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useContext } from 'react';
 import { MessageSquare, X, Send, Bot, User, Sparkles, RefreshCw, ChevronDown } from 'lucide-react';
 import ChromaKeyVideo from './ChromaKeyVideo';
 import { PortfolioContext } from '../context/PortfolioContext';
+import { API_BASE_URL } from '../config';
 
 // API Key Gemini đọc an toàn từ biến môi trường Vercel (VITE_GEMINI_API_KEY)
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
@@ -128,7 +129,7 @@ export default function AiChatWidget({
 
   // Gọi trực tiếp Gemini API từ Frontend (Hoàn toàn độc lập, siêu mượt trên Vercel)
   const callGeminiDirectly = async (queryText, historyMsgs) => {
-    const candidateModels = ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-2.5-pro'];
+    const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash-lite'];
 
     // Lọc và chuyển đổi lịch sử trò chuyện sang mảng contents xen kẽ role chuẩn Gemini (user -> model -> user)
     const contents = [];
@@ -255,11 +256,32 @@ export default function AiChatWidget({
     setLoading(true);
 
     try {
-      // Gọi trực tiếp Gemini API từ Frontend
-      const aiReply = await callGeminiDirectly(query, messages);
-      typeWriterReply(aiReply);
-    } catch (err) {
-      console.warn("Direct Gemini API error, using offline smart fallback:", err);
+      let aiReply = null;
+      try {
+        aiReply = await callGeminiDirectly(query, messages);
+      } catch (directErr) {
+        console.warn("Direct Gemini API call failed, trying Backend API proxy:", directErr);
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: query })
+          });
+          if (res.ok) {
+            const backendData = await res.json();
+            if (backendData.reply) aiReply = backendData.reply;
+          }
+        } catch (backendErr) {
+          console.warn("Backend API chat endpoint error:", backendErr);
+        }
+      }
+
+      if (aiReply) {
+        typeWriterReply(aiReply);
+        return;
+      }
+
+      // Offline smart fallback rules when both Gemini direct & backend fail
       let fallbackAnswer = `Trợ lý AI đang sẵn sàng hỗ trợ! Bạn có thể hỏi mình các thông tin chi tiết về kinh nghiệm, kỹ năng và các dự án của Vũ Đức Nam nhé 😊.`;
 
       const qLower = query.toLowerCase();
