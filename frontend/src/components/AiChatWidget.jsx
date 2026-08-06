@@ -1,73 +1,8 @@
-import React, { useState, useRef, useEffect, useContext } from 'react';
-import { MessageSquare, X, Send, Bot, User, Sparkles, RefreshCw, ChevronDown } from 'lucide-react';
+import { useState, useRef, useEffect, useContext } from 'react';
+import { X, Send, Bot, Sparkles } from 'lucide-react';
 import ChromaKeyVideo from './ChromaKeyVideo';
 import { PortfolioContext } from '../context/PortfolioContext';
 import { API_BASE_URL } from '../config';
-
-// API Key Gemini được đọc an toàn từ biến môi trường .env (KHÔNG BAO GIỜ lộ trên GitHub)
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
-
-// Tri thức đầy đủ từ CV cá nhân của Vũ Đức Nam
-const SYSTEM_INSTRUCTION = `
-Bạn là Trợ lý AI thông minh đại diện chính thức cho Vũ Đức Nam trên website Blog Profile cá nhân.
-Nhiệm vụ của bạn là trả lời mọi câu hỏi của người xem (nhà tuyển dụng, đối tác, bạn bè) một cách tự nhiên, chuẩn xác 100% và lịch sự dựa trên dữ liệu CV cá nhân dưới đây.
-
-HỒ SƠ CÁ NHÂN VŨ ĐỨC NAM:
-1. THÔNG TIN CƠ BẢN:
-   - Họ và tên: Vũ Đức Nam
-   - Ngày sinh: 23/06/2005 (Sinh ngày 23 tháng 6 năm 2005)
-   - Vị trí định hướng: Backend Developer (Intern / Fresher)
-   - Số điện thoại / Zalo: 0362 183 511
-   - Email: vuducnam12345678@gmail.com
-   - Quê quán: Hợp Nhất, Đoan Hùng, Phú Thọ
-   - Địa chỉ hiện tại: 43 Thanh Lương, Bình Minh, Hà Nội
-   - Website cá nhân: ducnamdev.site
-   - GitHub: https://github.com/vuducnam2005
-   - Facebook: https://www.facebook.com/ucnam.382441 | Instagram: https://www.instagram.com/duc_nam205/
-
-2. TRÌNH ĐỘ HỌC VẤN & THÀNH TÍCH:
-   - Trường học: Đại học Đại Nam (Chuyên ngành Công nghệ Thông tin, Thời gian: 2023 - 2027)
-   - GPA tích lũy: 3.2 / 4.0 (Đạt loại Giỏi)
-   - Môn học tiêu biểu: Lập trình C#, C++, Python, JavaScript, Cơ sở dữ liệu...
-   - Thành tích tiêu biểu:
-     + Đạt giải Nhì cuộc thi Tài năng Lập trình cơ bản của Khoa CNTT
-     + Sở hữu chứng chỉ 'Gemini University Student'
-     + Đạt học bổng khuyến khích học tập trong nhiều kỳ liên tiếp
-     + Đạt danh hiệu sinh viên loại Giỏi
-
-3. KINH NGHIỆM LÀM VIỆC:
-   - 03/2024 - 06/2025: Tư vấn viên (Giao tiếp tốt, xử lý tình huống linh hoạt)
-   - 09/2024 - 11/2025: Trợ giảng CNTT tại trường Đại học (Hỗ trợ giảng viên đánh giá sinh viên, rèn luyện kỹ năng truyền đạt và chuyên môn)
-
-4. KỸ NĂNG & CÔNG NGHỆ CHUYÊN MÔN:
-   - Ngôn ngữ lập trình: Python, C#, JavaScript, TypeScript, PHP, Node.js, C++
-   - Framework & Công nghệ: .NET, Vue 3, ReactJS, Node.js, Flutter, REST API, HTML/CSS
-   - Cơ sở dữ liệu & Hệ thống: SQL Server, PostgreSQL, RabbitMQ (Event-driven Microservices), Docker, Git/GitHub, SQLite
-   - Kỹ năng mềm: Tin học văn phòng (Word, Excel, PowerPoint), Làm việc nhóm, Tư duy logic hệ thống, Tiếng Anh đọc hiểu tài liệu chuyên ngành tốt
-
-5. DỰ ÁN ĐÃ THỰC HIỆN:
-   - Dự án 1: Hệ thống Quản lý phòng khám đa khoa Medicare (FullStack Developer)
-     + Công nghệ: C#, Vue 3, TypeScript, RabbitMQ, PostgreSQL, Docker (Kiến trúc Microservices)
-     + Link live demo: https://medicarednu.shop/
-     + Đặc điểm: Phân quyền 4 vai trò, tích hợp AI Chatbot (Gemini) tư vấn sức khỏe & đặt lịch, quản lý bệnh án điện tử (EMR), quản lý kho dược duyệt chéo (Maker-Checker), tự động tính viện phí & thanh toán.
-   - Dự án 2: Dự án web Quản lý và bán khóa học online (FullStack Developer)
-     + Công nghệ: PHP, HTML/CSS, Node.js, SQL Server
-     + Link GitHub: https://github.com/vuducnam2005/QLKH_online.git
-     + Đặc điểm: Phân quyền Admin - Giảng viên - Học viên, thanh toán online, thống kê doanh thu, diễn đàn bình luận.
-   - Dự án 3: Ứng dụng Quản lý Chi tiêu AI (One More Coin) - Flutter, Dart, SQLite, AI phân tích xu hướng chi tiêu.
-   - Dự án 4: Nền tảng Xác thực Chữ ký số An toàn - Python Flask, RSA-2048, SHA-256.
-   - Dự án 5: Hệ thống Voice Chat Âm thanh Bảo mật E2EE - Python, DES-CBC, RSA.
-
-QUY TẮC PHẢN HỒI QUAN TRỌNG:
-1. Xưng 'Mình' (hoặc 'Trợ lý của Nam') và gọi người hỏi là 'bạn'. Trả lời bằng tiếng Việt thân thiện, rõ ràng, ngắn gọn và có icon sinh động.
-2. Nam sinh ngày 23/06/2005. NĂM NAY LÀ NĂM 2026 -> Nam hiện tại 21 tuổi (hoặc 20 tuổi nếu tính đến trước ngày 23/06). Tuyệt đối KHÔNG ĐƯỢC tính nhầm Nam 19 tuổi (đó là năm 2024 cũ).
-3. Nếu người dùng hỏi các câu như 'Nam sinh năm bao nhiêu', 'sinh nhật Nam', 'Nam bao nhiêu tuổi': Trả lời chính xác Nam sinh ngày 23/06/2005 (năm nay 21 tuổi).
-4. Nếu người dùng hỏi câu hỏi ngoài lề không liên quan đến Nam hay CNTT/Lập trình, hãy trả lời ngắn gọn và lịch sự hướng họ quay lại tìm hiểu kỹ năng, dự án của Nam.
-5. Nếu người dùng xúc phạm, hạ thấp, bịa đặt hoặc công kích cá nhân Nam, phải bác bỏ dứt khoát. Nói rõ công kích cá nhân là không chấp nhận được và yêu cầu trao đổi bằng dữ kiện, thái độ tôn trọng.
-6. Khi bảo vệ Nam, chỉ dùng thông tin đã xác minh trong hồ sơ: quá trình học tập, GPA, giải thưởng, kỹ năng, kinh nghiệm và dự án. Không bịa thành tích, không vu cáo ngược người hỏi và không khẳng định một lời phê bình có căn cứ là sai.
-7. Giọng điệu được phép mạnh, thẳng và cứng rắn nhưng tuyệt đối không chửi tục, đe dọa, miệt thị, phân biệt đối xử hay kích động người khác tấn công. Không lặp lại nguyên văn lời lẽ tục tĩu nếu không cần thiết.
-8. Nếu người dùng tiếp tục lăng mạ sau khi đã được nhắc, kết thúc dứt khoát: Trợ lý không tiếp tục cuộc trao đổi mang tính xúc phạm và chỉ sẵn sàng thảo luận dựa trên sự thật.
-`;
 
 function normalizeForIntent(value) {
   return value
@@ -118,7 +53,7 @@ export default function AiChatWidget({
   ];
 
   const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    chatEndRef.current?.scrollIntoView({ block: 'end' });
   };
 
   useEffect(() => {
@@ -127,130 +62,90 @@ export default function AiChatWidget({
     }
   }, [messages, isOpen]);
 
-  // Gọi trực tiếp Gemini API từ Frontend (Key được bảo mật trong file .env, KHÔNG bao giờ push lên GitHub)
-  const callGeminiDirectly = async (queryText, historyMsgs) => {
-    if (!GEMINI_API_KEY) {
-      throw new Error("API Key chưa được cấu hình trong .env");
+  useEffect(() => {
+    if (isOpen) {
+      fetch(`${API_BASE_URL}/api/health`, { method: 'HEAD' }).catch(() => {});
     }
+  }, [isOpen]);
 
-    // Danh sách model Gemini miễn phí không giới hạn, thử lần lượt từ trên xuống
-    const candidateModels = [
-      'gemini-2.0-flash',
-      'gemini-2.5-flash',
-      'gemini-1.5-flash',
-      'gemini-2.0-flash-exp',
-      'gemini-3-flash',
-      'gemini-3.5-flash'
-    ];
+  const streamReply = async (queryText, historyMessages) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 50000);
+    const replyId = `ai-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    let started = false;
+    let fullText = '';
 
-    // Lọc và chuyển đổi lịch sử trò chuyện sang mảng contents xen kẽ role chuẩn Gemini (user -> model -> user)
-    const contents = [];
-    
-    // Loại bỏ tin nhắn chào mừng ban đầu của AI nếu có, để đảm bảo message đầu tiên gửi cho Gemini là 'user'
-    const conversationHistory = historyMsgs.filter((m, idx) => !(idx === 0 && m.sender === 'ai'));
+    try {
+      const history = historyMessages
+        .filter((message) => message.text?.trim())
+        .slice(-10)
+        .map((message) => ({
+          role: message.sender === 'ai' ? 'model' : 'user',
+          content: message.text
+        }));
 
-    conversationHistory.forEach(m => {
-      const role = m.sender === 'user' ? 'user' : 'model';
-      // Đảm bảo mảng bắt đầu bằng 'user' và không có 2 role trùng lặp đứng cạnh nhau
-      if (contents.length === 0 && role === 'model') return;
-      if (contents.length > 0 && contents[contents.length - 1].role === role) return;
-
-      contents.push({
-        role: role,
-        parts: [{ text: m.text }]
+      const response = await fetch(`${API_BASE_URL}/api/chat/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: queryText, history }),
+        signal: controller.signal
       });
-    });
 
-    // Thêm câu hỏi mới nhất của người dùng
-    if (contents.length > 0 && contents[contents.length - 1].role === 'user') {
-      contents[contents.length - 1].parts[0].text += `\n${queryText}`;
-    } else {
-      contents.push({
-        role: 'user',
-        parts: [{ text: queryText }]
-      });
-    }
-
-    const payload = {
-      system_instruction: {
-        parts: [{ text: SYSTEM_INSTRUCTION }]
-      },
-      contents: contents,
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 1000
+      if (!response.ok) {
+        const errorMessage = await response.text();
+        throw new Error(errorMessage || `Chat API trả về HTTP ${response.status}`);
       }
-    };
 
-    let lastError = null;
-    for (const m of candidateModels) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${GEMINI_API_KEY}`;
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
+      if (!response.body) {
+        throw new Error('Trình duyệt không hỗ trợ đọc phản hồi streaming.');
+      }
 
-        if (res.ok) {
-          const resData = await res.json();
-          const reply = resData.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (reply) return reply;
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        if (!chunk) continue;
+        fullText += chunk;
+
+        if (!started) {
+          started = true;
+          setMessages((previous) => [
+            ...previous,
+            { id: replyId, sender: 'ai', text: fullText, time, isTyping: true }
+          ]);
         } else {
-          const errText = await res.text();
-          console.warn(`Gemini Model ${m} error:`, errText);
-          lastError = errText;
+          setMessages((previous) => previous.map((message) =>
+            message.id === replyId ? { ...message, text: fullText } : message
+          ));
         }
-      } catch (err) {
-        console.warn(`Fetch error for model ${m}:`, err);
-        lastError = err.message;
       }
+
+      const finalChunk = decoder.decode();
+      if (finalChunk) fullText += finalChunk;
+      if (!started || !fullText.trim()) {
+        throw new Error('AI không trả về nội dung.');
+      }
+
+      setMessages((previous) => previous.map((message) =>
+        message.id === replyId ? { ...message, text: fullText, isTyping: false } : message
+      ));
+      return true;
+    } catch (error) {
+      if (started) {
+        setMessages((previous) => previous.map((message) =>
+          message.id === replyId ? { ...message, isTyping: false } : message
+        ));
+        error.partialReply = true;
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    throw new Error(lastError || "Không thể gọi Gemini API trực tiếp");
-  };
-
-  // Hiệu ứng gõ chữ từng ký tự mượt mà như ChatGPT / Gemini
-  const typeWriterReply = (fullText) => {
-    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    
-    // Thêm tin nhắn trống ban đầu của AI với con trỏ nhấp nháy isTyping: true
-    setMessages(prev => [
-      ...prev,
-      {
-        sender: 'ai',
-        text: '',
-        time: timeStr,
-        isTyping: true
-      }
-    ]);
-
-    let i = 0;
-    const chunkSize = 8; // Gõ 8 ký tự mỗi nhịp siêu tốc Lightning
-    const speed = 4; // 4ms per chunk - chữ chảy ra trong chớp mắt
-
-    const timer = setInterval(() => {
-      i += chunkSize;
-      const currentText = fullText.slice(0, i);
-      const isDone = i >= fullText.length;
-
-      setMessages(prev => {
-        const updated = [...prev];
-        const lastIdx = updated.length - 1;
-        if (lastIdx >= 0 && updated[lastIdx].sender === 'ai') {
-          updated[lastIdx] = {
-            ...updated[lastIdx],
-            text: currentText,
-            isTyping: !isDone
-          };
-        }
-        return updated;
-      });
-
-      if (isDone) {
-        clearInterval(timer);
-      }
-    }, speed);
   };
 
   const handleSend = async (textToSend) => {
@@ -268,37 +163,16 @@ export default function AiChatWidget({
     setLoading(true);
 
     try {
-      let aiReply = null;
       try {
-        // Lớp 1: Gọi trực tiếp Gemini API (Key ẩn trong .env)
-        aiReply = await callGeminiDirectly(query, messages);
-      } catch (directErr) {
-        console.warn("Direct Gemini API call failed, trying Backend API proxy:", directErr);
-        try {
-          // Lớp 2: Backend C# .NET proxy /api/chat
-          const res = await fetch(`${API_BASE_URL}/api/chat`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: query })
-          });
-          if (res.ok) {
-            const backendData = await res.json();
-            if (backendData.reply && !backendData.reply.includes("cấu hình Gemini API Key")) {
-              aiReply = backendData.reply;
-            }
-          }
-        } catch (backendErr) {
-          console.warn("Backend API chat endpoint error:", backendErr);
-        }
-      }
-
-      if (aiReply) {
-        typeWriterReply(aiReply);
+        await streamReply(query, messages);
         return;
+      } catch (streamError) {
+        console.warn('Streaming chat API failed:', streamError);
+        if (streamError.partialReply) return;
       }
 
-      // Lớp 3: Bộ tri thức AI Offline thông minh
-      let fallbackAnswer = `Mình đã nhận được câu hỏi của bạn. Mình là Trợ lý AI đại diện cho Vũ Đức Nam 🤖, luôn sẵn sàng giải đáp mọi thông tin về học vấn (GPA 3.2), kỹ năng chuyên môn (C# .NET, Python, SQL, Docker...) và các dự án của Nam nhé!`;
+      // Giữ chatbot hữu ích khi backend hoặc Gemini tạm thời không sẵn sàng.
+      let fallbackAnswer = `Kết nối AI đang tạm gián đoạn. Trong lúc chờ kết nối lại, mình vẫn có thể trả lời nhanh từ hồ sơ của Vũ Đức Nam 🤖: GPA 3.2, kỹ năng C# .NET, Python, SQL, Docker và nhiều dự án backend/fullstack.`;
 
       const qLower = query.toLowerCase();
       const qNormalized = normalizeForIntent(query);
@@ -322,7 +196,15 @@ export default function AiChatWidget({
         fallbackAnswer = `Trình độ học vấn của Nam:\n🎓 Đại học Đại Nam - Chuyên ngành CNTT (2023-2027)\n📊 GPA: 3.2 / 4.0 (Loại Giỏi)\n🏆 Giải Nhì cuộc thi Lập trình cơ bản khoa CNTT, Chứng chỉ Gemini University Student & Học bổng nhiều kỳ liên tiếp.`;
       }
 
-      typeWriterReply(fallbackAnswer);
+      setMessages((previous) => [
+        ...previous,
+        {
+          sender: 'ai',
+          text: fallbackAnswer,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          isTyping: false
+        }
+      ]);
     } finally {
       setLoading(false);
     }
@@ -386,7 +268,7 @@ export default function AiChatWidget({
                 </div>
               </div>
             ))}
-            {loading && (
+            {loading && messages.at(-1)?.sender !== 'ai' && (
               <div className="flex gap-2.5 items-center">
                 <div className="w-7 h-7 rounded-full bg-[#F1D89E]/10 border border-[#F1D89E]/30 flex items-center justify-center">
                   <Bot className="w-4 h-4 text-[#F1D89E] animate-bounce" />

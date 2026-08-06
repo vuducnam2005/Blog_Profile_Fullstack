@@ -25,6 +25,12 @@ builder.Services.Configure<FormOptions>(options =>
 // Add services to the container.
 
 builder.Services.AddControllers();
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient("Gemini", client =>
+{
+    // Streaming requests control their own timeout so headers can arrive immediately.
+    client.Timeout = Timeout.InfiniteTimeSpan;
+});
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 

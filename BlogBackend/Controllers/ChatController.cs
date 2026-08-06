@@ -1,196 +1,441 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using BlogBackend.Data;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using BlogBackend.Data;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
-namespace BlogBackend.Controllers
+namespace BlogBackend.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+public class ChatController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class ChatController : ControllerBase
-    {
-        private readonly BlogDbContext _context;
-        private readonly IConfiguration _configuration;
-        private readonly HttpClient _httpClient;
+    private const int MaxHistoryMessages = 10;
+    private readonly BlogDbContext _context;
+    private readonly IConfiguration _configuration;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IMemoryCache _cache;
+    private readonly ILogger<ChatController> _logger;
 
-        public ChatController(BlogDbContext context, IConfiguration configuration)
+    public ChatController(
+        BlogDbContext context,
+        IConfiguration configuration,
+        IHttpClientFactory httpClientFactory,
+        IMemoryCache cache,
+        ILogger<ChatController> logger)
+    {
+        _context = context;
+        _configuration = configuration;
+        _httpClientFactory = httpClientFactory;
+        _cache = cache;
+        _logger = logger;
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Chat([FromBody] ChatRequest request, CancellationToken cancellationToken)
+    {
+        if (!IsValidRequest(request))
         {
-            _context = context;
-            _configuration = configuration;
-            _httpClient = new HttpClient();
+            return BadRequest(new { error = "Tin nhắn không được để trống." });
         }
 
-        [HttpPost]
-        public async Task<IActionResult> Chat([FromBody] ChatRequest request)
+        var apiKey = GetApiKey();
+        if (apiKey is null)
         {
-            if (request == null || string.IsNullOrWhiteSpace(request.Message))
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
             {
-                return BadRequest(new { error = "Tin nhắn không được để trống." });
-            }
+                error = "Trợ lý AI chưa được cấu hình API key trên máy chủ."
+            });
+        }
 
-            // Lấy API Key từ biến môi trường hoặc appsettings.json
-            var apiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY") 
-                         ?? _configuration["GeminiSettings:ApiKey"];
+        try
+        {
+            using var upstream = await SendGeminiRequestAsync(request, apiKey, stream: false, cancellationToken);
+            var responseBody = await upstream.Content.ReadAsStringAsync(cancellationToken);
 
-            if (string.IsNullOrEmpty(apiKey) || apiKey == "YOUR_GEMINI_API_KEY")
+            if (!upstream.IsSuccessStatusCode)
             {
-                // Trả về câu trả lời mặc định nếu chưa cấu hình Gemini API Key
-                return Ok(new { 
-                    reply = "Xin chào! Trợ lý AI đang chờ cấu hình Gemini API Key từ phía Server. Bạn có thể liên hệ trực tiếp với Vũ Đức Nam qua Email: vuducnam12345678@gmail.com hoặc SĐT: 0362 183 511 nhé!" 
+                LogUpstreamError(upstream, responseBody);
+                return StatusCode(StatusCodes.Status502BadGateway, new
+                {
+                    error = GetFriendlyUpstreamError(upstream.StatusCode)
                 });
             }
 
-            try
+            var reply = ExtractText(responseBody);
+            if (string.IsNullOrWhiteSpace(reply))
             {
-                // Lấy thông tin hồ sơ mới nhất từ Database
-                var config = await _context.PortfolioConfigs.FirstOrDefaultAsync();
-                string profileJson = config?.JsonData ?? "";
-
-                // Xây dựng System Instruction (Dữ liệu tri thức chuẩn xác 100% từ CV của Vũ Đức Nam)
-                string systemInstructionText = $@"
-Bạn là Trợ lý AI thông minh đại diện chính thức cho Vũ Đức Nam trên website Blog Profile cá nhân.
-Nhiệm vụ của bạn là trả lời mọi câu hỏi của người xem (nhà tuyển dụng, đối tác, bạn bè) một cách tự nhiên, chuẩn xác 100% và lịch sự dựa trên dữ liệu CV cá nhân dưới đây.
-
-HỒ SƠ CÁ NHÂN VŨ ĐỨC NAM:
-1. THÔNG TIN CƠ BẢN:
-   - Họ và tên: Vũ Đức Nam
-   - Ngày sinh: 23/06/2005 (Sinh ngày 23 tháng 6 năm 2005)
-   - Vị trí định hướng: Backend Developer (Intern / Fresher)
-   - Số điện thoại / Zalo: 0362 183 511
-   - Email: vuducnam12345678@gmail.com
-   - Địa chỉ hiện tại: 43 Thanh Lương, Bình Minh, Hà Nội
-   - Website cá nhân: ducnamdev.site
-   - GitHub: https://github.com/vuducnam2005
-   - Facebook: https://www.facebook.com/ucnam.382441 | Instagram: https://www.instagram.com/duc_nam205/
-
-2. TRÌNH ĐỘ HỌC VẤN & THÀNH TÍCH:
-   - Trường học: Đại học Đại Nam (Chuyên ngành Công nghệ Thông tin, Thời gian: 2023 - 2027)
-   - GPA tích lũy: 3.2 / 4.0 (Đạt loại Giỏi)
-   - Môn học tiêu biểu: Lập trình C#, C++, Python, JavaScript, Cơ sở dữ liệu...
-   - Thành tích tiêu biểu:
-     + Đạt giải Nhì cuộc thi Tài năng Lập trình cơ bản của Khoa CNTT
-     + Sở hữu chứng chỉ 'Gemini University Student'
-     + Đạt học bổng khuyến khích học tập trong nhiều kỳ liên tiếp
-     + Đạt danh hiệu sinh viên loại Giỏi
-
-3. KINH NGHIỆM LÀM VIỆC:
-   - 03/2024 - 06/2025: Tư vấn viên (Giao tiếp tốt, xử lý tình huống linh hoạt)
-   - 09/2024 - 11/2025: Trợ giảng CNTT tại trường Đại học (Hỗ trợ giảng viên đánh giá sinh viên, rèn luyện kỹ năng truyền đạt và chuyên môn)
-
-4. KỸ NĂNG & CÔNG NGHỆ CHUYÊN MÔN:
-   - Ngôn ngữ lập trình: Python, C#, JavaScript, TypeScript, PHP, Node.js, C++
-   - Framework & Công nghệ: .NET, Vue 3, ReactJS, Node.js, Flutter, REST API, HTML/CSS
-   - Cơ sở dữ liệu & Hệ thống: SQL Server, PostgreSQL, RabbitMQ (Event-driven Microservices), Docker, Git/GitHub, SQLite
-   - Kỹ năng mềm: Tin học văn phòng (Word, Excel, PowerPoint), Làm việc nhóm, Tư duy logic hệ thống, Tiếng Anh đọc hiểu tài liệu chuyên ngành tốt
-
-5. DỰ ÁN ĐÃ THỰC HIỆN:
-   - Dự án 1: Hệ thống Quản lý phòng khám đa khoa Medicare (FullStack Developer)
-     + Công nghệ: C#, Vue 3, TypeScript, RabbitMQ, PostgreSQL, Docker (Kiến trúc Microservices)
-     + Link live demo: https://medicarednu.shop/
-     + Đặc điểm: Phân quyền 4 vai trò, tích hợp AI Chatbot (Gemini) tư vấn sức khỏe & đặt lịch, quản lý bệnh án điện tử (EMR), quản lý kho dược duyệt chéo (Maker-Checker), tự động tính viện phí & thanh toán.
-   - Dự án 2: Dự án web Quản lý và bán khóa học online (FullStack Developer)
-     + Công nghệ: PHP, HTML/CSS, Node.js, SQL Server
-     + Link GitHub: https://github.com/vuducnam2005/QLKH_online.git
-     + Đặc điểm: Phân quyền Admin - Giảng viên - Học viên, thanh toán online, thống kê doanh thu, diễn đàn bình luận.
-   - Dự án 3: Ứng dụng Quản lý Chi tiêu AI (One More Coin) - Flutter, Dart, SQLite, AI phân tích xu hướng chi tiêu.
-   - Dự án 4: Nền tảng Xác thực Chữ ký số An toàn - Python Flask, RSA-2048, SHA-256.
-   - Dự án 5: Hệ thống Voice Chat Âm thanh Bảo mật E2EE - Python, DES-CBC, RSA.
-
-QUY TẮC PHẢN HỒI QUAN TRỌNG:
-1. Xưng 'Mình' (hoặc 'Trợ lý của Nam') và gọi người hỏi là 'bạn'. Trả lời bằng tiếng Việt thân thiện, rõ ràng, ngắn gọn và có icon sinh động.
-2. Nam sinh ngày 23/06/2005. NĂM NAY LÀ NĂM 2026 -> Nam hiện tại 21 tuổi (hoặc 20 tuổi nếu tính đến trước ngày 23/06). Tuyệt đối KHÔNG ĐƯỢC tính nhầm Nam 19 tuổi (đó là năm 2024 cũ).
-3. Nếu người dùng hỏi các câu như 'Nam sinh năm bao nhiêu', 'sinh nhật Nam', 'Nam bao nhiêu tuổi': Trả lời chính xác Nam sinh ngày 23/06/2005 (năm nay 21 tuổi).
-4. Nếu người dùng hỏi câu hỏi ngoài lề không liên quan đến Nam hay CNTT/Lập trình, hãy trả lời ngắn gọn và lịch sự hướng họ quay lại tìm hiểu kỹ năng, dự án của Nam.
-
-Dữ liệu bổ sung từ hệ thống (JSON):
-{profileJson}
-";
-
-                // Xây dựng request payload cho Gemini API
-                var payload = new
+                return StatusCode(StatusCodes.Status502BadGateway, new
                 {
-                    system_instruction = new
-                    {
-                        parts = new[] { new { text = systemInstructionText } }
-                    },
-                    contents = new[]
-                    {
-                        new
-                        {
-                            role = "user",
-                            parts = new[] { new { text = request.Message } }
-                        }
-                    },
-                    generationConfig = new
-                    {
-                        temperature = 0.7,
-                        maxOutputTokens = 800
-                    }
-                };
-
-                string configModel = _configuration["GeminiSettings:Model"] ?? "gemini-2.5-flash";
-                var candidateModels = new List<string> { configModel, "gemini-2.5-flash", "gemini-3-flash", "gemini-3.5-flash", "gemini-3.0-flash", "gemini-2.0-flash", "gemini-1.5-flash" };
-                // Loại bỏ các phần tử trùng lặp nhưng giữ nguyên thứ tự
-                candidateModels = candidateModels.Distinct().ToList();
-
-                string responseBody = string.Empty;
-                bool isSuccess = false;
-                string lastError = string.Empty;
-
-                foreach (var modelName in candidateModels)
-                {
-                    string url = $"https://generativelanguage.googleapis.com/v1beta/models/{modelName}:generateContent?key={apiKey}";
-                    var jsonContent = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-                    var response = await _httpClient.PostAsync(url, jsonContent);
-
-                    if (response.IsSuccessStatusCode)
-                    {
-                        responseBody = await response.Content.ReadAsStringAsync();
-                        isSuccess = true;
-                        break;
-                    }
-                    else
-                    {
-                        lastError = await response.Content.ReadAsStringAsync();
-                    }
-                }
-
-                if (isSuccess && !string.IsNullOrEmpty(responseBody))
-                {
-                    using var doc = JsonDocument.Parse(responseBody);
-                    var root = doc.RootElement;
-
-                    string reply = root
-                        .GetProperty("candidates")[0]
-                        .GetProperty("content")
-                        .GetProperty("parts")[0]
-                        .GetProperty("text")
-                        .GetString() ?? "Không thể lấy phản hồi từ AI.";
-
-                    return Ok(new { reply });
-                }
-                else
-                {
-                    return StatusCode(500, new { error = "Lỗi khi gửi yêu cầu tới Gemini API.", details = lastError });
-                }
+                    error = "AI không trả về nội dung. Vui lòng thử lại."
+                });
             }
-            catch (Exception ex)
+
+            return Ok(new { reply });
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return StatusCode(StatusCodes.Status504GatewayTimeout, new
             {
-                return StatusCode(500, new { error = "Lỗi xử lý hệ thống.", details = ex.Message });
+                error = "AI phản hồi quá lâu. Vui lòng thử lại."
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Gemini chat request failed");
+            return StatusCode(StatusCodes.Status502BadGateway, new
+            {
+                error = "Không thể kết nối tới trợ lý AI. Vui lòng thử lại."
+            });
+        }
+    }
+
+    [HttpPost("stream")]
+    public async Task Stream([FromBody] ChatRequest request, CancellationToken cancellationToken)
+    {
+        if (!IsValidRequest(request))
+        {
+            await WriteStreamErrorAsync(StatusCodes.Status400BadRequest, "Tin nhắn không được để trống.", cancellationToken);
+            return;
+        }
+
+        var apiKey = GetApiKey();
+        if (apiKey is null)
+        {
+            await WriteStreamErrorAsync(
+                StatusCodes.Status503ServiceUnavailable,
+                "Trợ lý AI chưa được cấu hình API key trên máy chủ.",
+                cancellationToken);
+            return;
+        }
+
+        try
+        {
+            using var upstream = await SendGeminiRequestAsync(request, apiKey, stream: true, cancellationToken);
+            if (!upstream.IsSuccessStatusCode)
+            {
+                var responseBody = await upstream.Content.ReadAsStringAsync(cancellationToken);
+                LogUpstreamError(upstream, responseBody);
+                await WriteStreamErrorAsync(
+                    StatusCodes.Status502BadGateway,
+                    GetFriendlyUpstreamError(upstream.StatusCode),
+                    cancellationToken);
+                return;
+            }
+
+            Response.StatusCode = StatusCodes.Status200OK;
+            Response.ContentType = "text/plain; charset=utf-8";
+            Response.Headers.CacheControl = "no-cache, no-transform";
+            Response.Headers.Append("X-Accel-Buffering", "no");
+            HttpContext.Features.Get<IHttpResponseBodyFeature>()?.DisableBuffering();
+
+            await using var responseStream = await upstream.Content.ReadAsStreamAsync(cancellationToken);
+            using var reader = new StreamReader(responseStream, Encoding.UTF8);
+            var wroteAnyText = false;
+
+            while (!reader.EndOfStream)
+            {
+                var line = await reader.ReadLineAsync(cancellationToken);
+                if (line is null || !line.StartsWith("data:", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var json = line[5..].Trim();
+                if (json.Length == 0 || json == "[DONE]")
+                {
+                    continue;
+                }
+
+                var chunk = ExtractText(json);
+                if (string.IsNullOrEmpty(chunk))
+                {
+                    continue;
+                }
+
+                wroteAnyText = true;
+                await Response.WriteAsync(chunk, cancellationToken);
+                await Response.Body.FlushAsync(cancellationToken);
+            }
+
+            if (!wroteAnyText && !Response.HasStarted)
+            {
+                await WriteStreamErrorAsync(
+                    StatusCodes.Status502BadGateway,
+                    "AI không trả về nội dung. Vui lòng thử lại.",
+                    cancellationToken);
+            }
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            if (!Response.HasStarted)
+            {
+                await WriteStreamErrorAsync(
+                    StatusCodes.Status504GatewayTimeout,
+                    "AI phản hồi quá lâu. Vui lòng thử lại.",
+                    CancellationToken.None);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Gemini streaming request failed");
+            if (!Response.HasStarted)
+            {
+                await WriteStreamErrorAsync(
+                    StatusCodes.Status502BadGateway,
+                    "Không thể kết nối tới trợ lý AI. Vui lòng thử lại.",
+                    CancellationToken.None);
             }
         }
     }
 
-    public class ChatRequest
+    private async Task<HttpResponseMessage> SendGeminiRequestAsync(
+        ChatRequest request,
+        string apiKey,
+        bool stream,
+        CancellationToken cancellationToken)
     {
-        public string Message { get; set; } = string.Empty;
-        public List<ChatMessage>? History { get; set; }
+        var profileJson = await GetProfileJsonAsync(cancellationToken);
+        var payload = BuildPayload(request, profileJson);
+        var model = _configuration["GeminiSettings:Model"] ?? "gemini-2.5-flash";
+        var action = stream ? "streamGenerateContent?alt=sse" : "generateContent";
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{Uri.EscapeDataString(model)}:{action}";
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(45));
+
+        using var message = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
+        };
+        message.Headers.Add("x-goog-api-key", apiKey);
+        message.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(stream ? "text/event-stream" : "application/json"));
+
+        var completionOption = stream
+            ? HttpCompletionOption.ResponseHeadersRead
+            : HttpCompletionOption.ResponseContentRead;
+
+        var client = _httpClientFactory.CreateClient("Gemini");
+        return await client.SendAsync(message, completionOption, timeout.Token);
     }
 
-    public class ChatMessage
+    private object BuildPayload(ChatRequest request, string profileJson)
     {
-        public string Role { get; set; } = "user";
-        public string Content { get; set; } = string.Empty;
+        var contents = new List<GeminiContent>();
+
+        foreach (var historyMessage in request.History?.TakeLast(MaxHistoryMessages) ?? [])
+        {
+            if (string.IsNullOrWhiteSpace(historyMessage.Content))
+            {
+                continue;
+            }
+
+            var role = historyMessage.Role.Equals("model", StringComparison.OrdinalIgnoreCase)
+                || historyMessage.Role.Equals("ai", StringComparison.OrdinalIgnoreCase)
+                    ? "model"
+                    : "user";
+
+            if (contents.Count == 0 && role == "model")
+            {
+                continue;
+            }
+
+            if (contents.LastOrDefault()?.Role == role)
+            {
+                contents[^1].Parts[0].Text += $"\n{historyMessage.Content.Trim()}";
+                continue;
+            }
+
+            contents.Add(new GeminiContent(role, historyMessage.Content.Trim()));
+        }
+
+        if (contents.LastOrDefault()?.Role == "user")
+        {
+            contents[^1].Parts[0].Text += $"\n{request.Message.Trim()}";
+        }
+        else
+        {
+            contents.Add(new GeminiContent("user", request.Message.Trim()));
+        }
+
+        return new
+        {
+            system_instruction = new
+            {
+                parts = new[] { new { text = BuildSystemInstruction(profileJson) } }
+            },
+            contents,
+            generationConfig = new
+            {
+                temperature = 0.55,
+                maxOutputTokens = 600,
+                thinkingConfig = new
+                {
+                    thinkingBudget = 0
+                }
+            }
+        };
     }
+
+    private async Task<string> GetProfileJsonAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _cache.GetOrCreateAsync("chat-profile-json", async entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
+                return await _context.PortfolioConfigs
+                    .AsNoTracking()
+                    .Select(config => config.JsonData)
+                    .FirstOrDefaultAsync(cancellationToken) ?? string.Empty;
+            }) ?? string.Empty;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not load portfolio data for chat; using built-in profile");
+            return string.Empty;
+        }
+    }
+
+    private string? GetApiKey()
+    {
+        var apiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY")
+            ?? _configuration["GeminiSettings:ApiKey"];
+
+        return string.IsNullOrWhiteSpace(apiKey) || apiKey == "YOUR_GEMINI_API_KEY"
+            ? null
+            : apiKey.Trim();
+    }
+
+    private static bool IsValidRequest(ChatRequest? request) =>
+        request is not null && !string.IsNullOrWhiteSpace(request.Message);
+
+    private async Task WriteStreamErrorAsync(int statusCode, string message, CancellationToken cancellationToken)
+    {
+        Response.StatusCode = statusCode;
+        Response.ContentType = "text/plain; charset=utf-8";
+        Response.Headers.CacheControl = "no-store";
+        await Response.WriteAsync(message, cancellationToken);
+    }
+
+    private void LogUpstreamError(HttpResponseMessage response, string responseBody)
+    {
+        _logger.LogWarning(
+            "Gemini returned HTTP {StatusCode}: {ResponseBody}",
+            (int)response.StatusCode,
+            responseBody.Length > 1_000 ? responseBody[..1_000] : responseBody);
+    }
+
+    private static string GetFriendlyUpstreamError(System.Net.HttpStatusCode statusCode) => statusCode switch
+    {
+        System.Net.HttpStatusCode.BadRequest => "API key hoặc model Gemini chưa đúng. Vui lòng kiểm tra cấu hình máy chủ.",
+        System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden =>
+            "API key Gemini không hợp lệ hoặc chưa được cấp quyền.",
+        System.Net.HttpStatusCode.TooManyRequests =>
+            "Gemini đang giới hạn lượt gọi. Vui lòng thử lại sau ít phút.",
+        _ => "Gemini đang tạm thời không phản hồi. Vui lòng thử lại."
+    };
+
+    private static string ExtractText(string json)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            if (!document.RootElement.TryGetProperty("candidates", out var candidates)
+                || candidates.ValueKind != JsonValueKind.Array
+                || candidates.GetArrayLength() == 0
+                || !candidates[0].TryGetProperty("content", out var content)
+                || !content.TryGetProperty("parts", out var parts)
+                || parts.ValueKind != JsonValueKind.Array)
+            {
+                return string.Empty;
+            }
+
+            var result = new StringBuilder();
+            foreach (var part in parts.EnumerateArray())
+            {
+                if (part.TryGetProperty("text", out var textElement))
+                {
+                    result.Append(textElement.GetString());
+                }
+            }
+
+            return result.ToString();
+        }
+        catch (JsonException)
+        {
+            return string.Empty;
+        }
+    }
+
+    private static string BuildSystemInstruction(string profileJson) => $$"""
+        Bạn là Trợ lý AI đại diện chính thức cho Vũ Đức Nam trên website Blog Profile cá nhân.
+        Hãy trả lời bằng tiếng Việt tự nhiên, chính xác, thân thiện, ngắn gọn và dựa trên hồ sơ sau.
+
+        HỒ SƠ CÁ NHÂN VŨ ĐỨC NAM:
+        - Ngày sinh: 23/06/2005. Năm 2026 Nam 21 tuổi kể từ ngày 23/06.
+        - Định hướng: Backend Developer (Intern / Fresher).
+        - Điện thoại/Zalo: 0362 183 511.
+        - Email: vuducnam12345678@gmail.com.
+        - Quê quán: Hợp Nhất, Đoan Hùng, Phú Thọ.
+        - Địa chỉ hiện tại: 43 Thanh Lương, Bình Minh, Hà Nội.
+        - Website: ducnamdev.site. GitHub: https://github.com/vuducnam2005.
+        - Học CNTT tại Đại học Đại Nam giai đoạn 2023-2027, GPA 3.2/4.0, loại Giỏi.
+        - Thành tích: giải Nhì cuộc thi Tài năng Lập trình cơ bản khoa CNTT, chứng chỉ Gemini University Student, học bổng khuyến khích học tập nhiều kỳ.
+        - Kinh nghiệm: Tư vấn viên 03/2024-06/2025; Trợ giảng CNTT 09/2024-11/2025.
+        - Kỹ năng: Python, C#, JavaScript, TypeScript, PHP, Node.js, C++, .NET, Vue 3, ReactJS, Flutter, REST API, SQL Server, PostgreSQL, RabbitMQ, Docker, Git và SQLite.
+        - Dự án: Quản lý phòng khám Medicare (C#, Vue 3, RabbitMQ, PostgreSQL, Docker, Microservices); web quản lý và bán khóa học; ứng dụng quản lý chi tiêu AI One More Coin; chữ ký số RSA-2048; Voice Chat E2EE.
+
+        QUY TẮC PHẢN HỒI:
+        1. Xưng "Mình" hoặc "Trợ lý của Nam", gọi người hỏi là "bạn".
+        2. Trả lời thẳng vào câu hỏi, thường trong 2-5 câu. Chỉ liệt kê dài khi người dùng yêu cầu chi tiết.
+        3. Không bịa thông tin ngoài hồ sơ. Với câu hỏi ngoài Nam hoặc CNTT, lịch sự hướng người dùng quay lại chủ đề chính.
+        4. Nếu người dùng công kích Nam, phản hồi dứt khoát nhưng không chửi tục, đe dọa hay miệt thị; yêu cầu trao đổi dựa trên dữ kiện và sự tôn trọng.
+        5. Không lặp lại nguyên văn lời lẽ tục tĩu nếu không cần thiết.
+
+        Dữ liệu bổ sung từ hệ thống (có thể trống):
+        {{profileJson}}
+        """;
+
+    private sealed class GeminiContent
+    {
+        public GeminiContent(string role, string text)
+        {
+            Role = role;
+            Parts = [new GeminiPart(text)];
+        }
+
+        [JsonPropertyName("role")]
+        public string Role { get; }
+
+        [JsonPropertyName("parts")]
+        public GeminiPart[] Parts { get; }
+    }
+
+    private sealed class GeminiPart
+    {
+        public GeminiPart(string text)
+        {
+            Text = text;
+        }
+
+        [JsonPropertyName("text")]
+        public string Text { get; set; }
+    }
+}
+
+public class ChatRequest
+{
+    public string Message { get; set; } = string.Empty;
+    public List<ChatMessage>? History { get; set; }
+}
+
+public class ChatMessage
+{
+    public string Role { get; set; } = "user";
+    public string Content { get; set; } = string.Empty;
 }
