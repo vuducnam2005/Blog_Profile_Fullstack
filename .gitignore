@@ -7,3 +7,7 @@ dist/
 .vscode/
 *.user
 *.log
+
+# Environment secrets
+.env
+.env.*

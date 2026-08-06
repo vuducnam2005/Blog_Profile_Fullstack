@@ -1,19 +1,11 @@
 import React, { useState, useRef, useEffect, useContext } from 'react';
-import { MessageSquare, X, Send, Bot, User, Sparkles, RefreshCw, ChevronDown, Key, Check } from 'lucide-react';
+import { MessageSquare, X, Send, Bot, User, Sparkles, RefreshCw, ChevronDown } from 'lucide-react';
 import ChromaKeyVideo from './ChromaKeyVideo';
 import { PortfolioContext } from '../context/PortfolioContext';
 import { API_BASE_URL } from '../config';
 
-// API Key Gemini đọc an toàn từ biến môi trường (VITE_GEMINI_API_KEY) hoặc localStorage
-const ENV_GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
-
-const getEffectiveApiKey = () => {
-  try {
-    return ENV_GEMINI_API_KEY || localStorage.getItem('userGeminiApiKey') || "";
-  } catch {
-    return ENV_GEMINI_API_KEY;
-  }
-};
+// API Key Gemini được đọc an toàn từ biến môi trường .env (KHÔNG BAO GIỜ lộ trên GitHub)
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 
 // Tri thức đầy đủ từ CV cá nhân của Vũ Đức Nam
 const SYSTEM_INSTRUCTION = `
@@ -70,7 +62,11 @@ QUY TẮC PHẢN HỒI QUAN TRỌNG:
 1. Xưng 'Mình' (hoặc 'Trợ lý của Nam') và gọi người hỏi là 'bạn'. Trả lời bằng tiếng Việt thân thiện, rõ ràng, ngắn gọn và có icon sinh động.
 2. Nam sinh ngày 23/06/2005. NĂM NAY LÀ NĂM 2026 -> Nam hiện tại 21 tuổi (hoặc 20 tuổi nếu tính đến trước ngày 23/06). Tuyệt đối KHÔNG ĐƯỢC tính nhầm Nam 19 tuổi (đó là năm 2024 cũ).
 3. Nếu người dùng hỏi các câu như 'Nam sinh năm bao nhiêu', 'sinh nhật Nam', 'Nam bao nhiêu tuổi': Trả lời chính xác Nam sinh ngày 23/06/2005 (năm nay 21 tuổi).
-4. Nếu người dùng trao đổi thông thường hoặc thô lỗ, luôn trả lời lịch sự, nhẹ nhàng và hướng họ quay lại tìm hiểu kỹ năng, dự án của Nam.
+4. Nếu người dùng hỏi câu hỏi ngoài lề không liên quan đến Nam hay CNTT/Lập trình, hãy trả lời ngắn gọn và lịch sự hướng họ quay lại tìm hiểu kỹ năng, dự án của Nam.
+5. Nếu người dùng xúc phạm, hạ thấp, bịa đặt hoặc công kích cá nhân Nam, phải bác bỏ dứt khoát. Nói rõ công kích cá nhân là không chấp nhận được và yêu cầu trao đổi bằng dữ kiện, thái độ tôn trọng.
+6. Khi bảo vệ Nam, chỉ dùng thông tin đã xác minh trong hồ sơ: quá trình học tập, GPA, giải thưởng, kỹ năng, kinh nghiệm và dự án. Không bịa thành tích, không vu cáo ngược người hỏi và không khẳng định một lời phê bình có căn cứ là sai.
+7. Giọng điệu được phép mạnh, thẳng và cứng rắn nhưng tuyệt đối không chửi tục, đe dọa, miệt thị, phân biệt đối xử hay kích động người khác tấn công. Không lặp lại nguyên văn lời lẽ tục tĩu nếu không cần thiết.
+8. Nếu người dùng tiếp tục lăng mạ sau khi đã được nhắc, kết thúc dứt khoát: Trợ lý không tiếp tục cuộc trao đổi mang tính xúc phạm và chỉ sẵn sàng thảo luận dựa trên sự thật.
 `;
 
 function normalizeForIntent(value) {
@@ -79,6 +75,17 @@ function normalizeForIntent(value) {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/đ/g, 'd');
+}
+
+function isPersonalAttackOnNam(value) {
+  const normalized = normalizeForIntent(value);
+  const targetsNam = ['nam', 'vu duc nam', 'duc nam'].some((term) => normalized.includes(term));
+  const hostileTerms = [
+    'ngu', 'dot', 'vo dung', 'bat tai', 'kem coi', 'rac ruoi', 'khong ra gi',
+    'an hai', 'thang dien', 'oc cho', 'loser', 'fuck', 'shit', 'khon nan',
+  ];
+
+  return targetsNam && hostileTerms.some((term) => normalized.includes(term));
 }
 
 export default function AiChatWidget({
@@ -99,16 +106,8 @@ export default function AiChatWidget({
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showKeyModal, setShowKeyModal] = useState(false);
-  const [userKeyInput, setUserKeyInput] = useState(() => {
-    try {
-      return localStorage.getItem('userGeminiApiKey') || '';
-    } catch {
-      return '';
-    }
-  });
-
   const chatEndRef = useRef(null);
+
   const heroName = data?.hero?.name || 'Vũ Đức Nam';
 
   const quickQuestions = [
@@ -128,28 +127,13 @@ export default function AiChatWidget({
     }
   }, [messages, isOpen]);
 
-  const saveUserApiKey = (val) => {
-    const trimmed = val.trim();
-    try {
-      if (trimmed) {
-        localStorage.setItem('userGeminiApiKey', trimmed);
-      } else {
-        localStorage.removeItem('userGeminiApiKey');
-      }
-    } catch {
-      // Storage unavailable
-    }
-    setUserKeyInput(trimmed);
-    setShowKeyModal(false);
-  };
-
-  // Gọi trực tiếp Gemini API từ Frontend (Sử dụng các Model chính thức miễn phí vô hạn của Google)
+  // Gọi trực tiếp Gemini API từ Frontend (Key được bảo mật trong file .env, KHÔNG bao giờ push lên GitHub)
   const callGeminiDirectly = async (queryText, historyMsgs) => {
-    const apiKey = getEffectiveApiKey();
-    if (!apiKey) {
-      throw new Error("Missing API Key");
+    if (!GEMINI_API_KEY) {
+      throw new Error("API Key chưa được cấu hình trong .env");
     }
 
+    // Danh sách model Gemini miễn phí không giới hạn, thử lần lượt từ trên xuống
     const candidateModels = [
       'gemini-2.0-flash',
       'gemini-2.5-flash',
@@ -159,11 +143,15 @@ export default function AiChatWidget({
       'gemini-3.5-flash'
     ];
 
+    // Lọc và chuyển đổi lịch sử trò chuyện sang mảng contents xen kẽ role chuẩn Gemini (user -> model -> user)
     const contents = [];
+    
+    // Loại bỏ tin nhắn chào mừng ban đầu của AI nếu có, để đảm bảo message đầu tiên gửi cho Gemini là 'user'
     const conversationHistory = historyMsgs.filter((m, idx) => !(idx === 0 && m.sender === 'ai'));
 
     conversationHistory.forEach(m => {
       const role = m.sender === 'user' ? 'user' : 'model';
+      // Đảm bảo mảng bắt đầu bằng 'user' và không có 2 role trùng lặp đứng cạnh nhau
       if (contents.length === 0 && role === 'model') return;
       if (contents.length > 0 && contents[contents.length - 1].role === role) return;
 
@@ -173,6 +161,7 @@ export default function AiChatWidget({
       });
     });
 
+    // Thêm câu hỏi mới nhất của người dùng
     if (contents.length > 0 && contents[contents.length - 1].role === 'user') {
       contents[contents.length - 1].parts[0].text += `\n${queryText}`;
     } else {
@@ -196,7 +185,7 @@ export default function AiChatWidget({
     let lastError = null;
     for (const m of candidateModels) {
       try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${GEMINI_API_KEY}`;
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -218,13 +207,14 @@ export default function AiChatWidget({
       }
     }
 
-    throw new Error(lastError || "Không thể kết nối Gemini API");
+    throw new Error(lastError || "Không thể gọi Gemini API trực tiếp");
   };
 
   // Hiệu ứng gõ chữ từng ký tự mượt mà như ChatGPT / Gemini
   const typeWriterReply = (fullText) => {
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
+    // Thêm tin nhắn trống ban đầu của AI với con trỏ nhấp nháy isTyping: true
     setMessages(prev => [
       ...prev,
       {
@@ -236,8 +226,8 @@ export default function AiChatWidget({
     ]);
 
     let i = 0;
-    const chunkSize = 8;
-    const speed = 4;
+    const chunkSize = 8; // Gõ 8 ký tự mỗi nhịp siêu tốc Lightning
+    const speed = 4; // 4ms per chunk - chữ chảy ra trong chớp mắt
 
     const timer = setInterval(() => {
       i += chunkSize;
@@ -280,10 +270,12 @@ export default function AiChatWidget({
     try {
       let aiReply = null;
       try {
+        // Lớp 1: Gọi trực tiếp Gemini API (Key ẩn trong .env)
         aiReply = await callGeminiDirectly(query, messages);
       } catch (directErr) {
         console.warn("Direct Gemini API call failed, trying Backend API proxy:", directErr);
         try {
+          // Lớp 2: Backend C# .NET proxy /api/chat
           const res = await fetch(`${API_BASE_URL}/api/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -305,31 +297,22 @@ export default function AiChatWidget({
         return;
       }
 
-      // Bộ quy tắc AI Offline thông minh tự động đáp ứng mọi loại câu hỏi linh hoạt
-      let fallbackAnswer = `Mình đã nhận được câu hỏi của bạn: "${query}". Mình là Trợ lý AI đại diện cho Vũ Đức Nam 🤖, luôn sẵn sàng giải đáp mọi thông tin về học vấn (GPA 3.2), kỹ năng chuyên môn (C# .NET, Python, SQL, Docker...) và các dự án của Nam nhé!`;
+      // Lớp 3: Bộ tri thức AI Offline thông minh
+      let fallbackAnswer = `Mình đã nhận được câu hỏi của bạn. Mình là Trợ lý AI đại diện cho Vũ Đức Nam 🤖, luôn sẵn sàng giải đáp mọi thông tin về học vấn (GPA 3.2), kỹ năng chuyên môn (C# .NET, Python, SQL, Docker...) và các dự án của Nam nhé!`;
 
       const qLower = query.toLowerCase();
       const qNormalized = normalizeForIntent(query);
-
-      if (
-        qNormalized.includes('dit') ||
-        qNormalized.includes('clm') ||
-        qNormalized.includes('vcl') ||
-        qNormalized.includes('dm') ||
-        qNormalized.includes('dmm') ||
-        qNormalized.includes('ngu') ||
-        qNormalized.includes('oc cho')
-      ) {
-        fallbackAnswer = `Trợ lý AI luôn trao đổi lịch sự và văn minh 😊. Bạn có muốn mình hỗ trợ thông tin gì về kỹ năng backend, học vấn hay dự án thực tế của Vũ Đức Nam không?`;
+      if (isPersonalAttackOnNam(query)) {
+        fallbackAnswer = `Mình bác bỏ cách công kích đó. Đánh giá một người bằng lời lẽ xúc phạm là không chấp nhận được. Nếu muốn nhận xét về Nam, bạn hãy đưa ra dữ kiện cụ thể và trao đổi tôn trọng. Hồ sơ công khai cho thấy Nam học CNTT tại Đại học Đại Nam, đạt GPA loại Giỏi, có giải Nhì cuộc thi lập trình và đã thực hiện nhiều dự án backend/fullstack. Mình sẵn sàng trao đổi thẳng thắn dựa trên sự thật, nhưng sẽ không tiếp tục một cuộc nói chuyện chỉ nhằm hạ nhục cá nhân.`;
       } else if (qNormalized.includes('chao') || qNormalized.includes('hi') || qNormalized.includes('hello') || qNormalized.includes('alo')) {
-        fallbackAnswer = `Xin chào bạn! Mình là Trợ lý AI đại diện cho Vũ Đức Nam 🤖. Bạn có thể hỏi mình bất kỳ thông tin nào về quá trình học tập, các kỹ năng chuyên môn hay các sản phẩm dự án của Nam nhé!`;
+        fallbackAnswer = `Xin chào bạn! Mình là Trợ lý AI đại diện cho Vũ Đức Nam 🤖. Bạn có thể hỏi mình bất kỳ câu hỏi nào về kinh nghiệm, kỹ năng, dự án hoặc thông tin liên hệ của Nam nhé!`;
       } else if (qNormalized.includes('que') || qNormalized.includes('que quan') || qNormalized.includes('sinh ra o dau')) {
-        fallbackAnswer = `Quê quán của Vũ Đức Nam là Hợp Nhất, Đoan Hùng, Phú Thọ 📍. Hiện Nam đang sinh sống và làm việc tại Hà Nội.`;
+        fallbackAnswer = `Quê quán của Vũ Đức Nam là Hợp Nhất, Đoan Hùng, Phú Thọ 📍. Hiện Nam đang sinh sống tại Hà Nội.`;
       } else if (qLower.includes('sinh') || qLower.includes('năm sinh') || qLower.includes('ngày sinh') || qLower.includes('tuổi')) {
         fallbackAnswer = `Vũ Đức Nam sinh ngày 23/06/2005 🎂. Năm nay 2026, Nam 21 tuổi và là sinh viên năm cuối ngành CNTT tại Đại học Đại Nam!`;
       } else if (qLower.includes('giới thiệu') || qLower.includes('bản thân') || qLower.includes('nam')) {
         fallbackAnswer = `${heroName} sinh ngày 23/06/2005, là Backend Developer Intern / Fresher đầy nhiệt huyết. Nam đang học CNTT tại Đại học Đại Nam (GPA 3.2 Loại Giỏi), giàu kinh nghiệm làm web với C# .NET, Python, Node.js, SQL Server và Microservices!`;
-      } else if (qLower.includes('kỹ năng') || qLower.includes('skill') || qLower.includes('công nghệ') || qLower.includes('code') || qLower.includes('python') || qLower.includes('c#')) {
+      } else if (qLower.includes('kỹ năng') || qLower.includes('skill') || qLower.includes('công nghệ')) {
         fallbackAnswer = `Kỹ năng chuyên môn của Nam:\n• Ngôn ngữ: Python, C#, JavaScript, TypeScript, PHP, Node.js, C++\n• Framework & DB: .NET, Vue 3, ReactJS, PostgreSQL, SQL Server, RabbitMQ, Docker, Git`;
       } else if (qLower.includes('dự án') || qLower.includes('project') || qLower.includes('sản phẩm')) {
         fallbackAnswer = `Một số dự án tiêu biểu của Nam:\n1. 🏥 Hệ thống Quản lý phòng khám Medicare (C#, Vue 3, RabbitMQ, Microservices - Demo: https://medicarednu.shop/)\n2. 📚 Web Quản lý & Bán khóa học Online (PHP, Node.js, SQL Server)\n3. 📱 App Quản lý Chi tiêu AI One More Coin (Flutter & SQLite)\n4. 🔐 Chữ ký số RSA-2048 & Voice Chat E2EE`;
@@ -366,58 +349,13 @@ export default function AiChatWidget({
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              <button 
-                onClick={() => setShowKeyModal(!showKeyModal)}
-                className={`p-1.5 rounded-lg transition ${
-                  getEffectiveApiKey() ? 'text-emerald-400 hover:bg-emerald-500/10' : 'text-gray-400 hover:text-white hover:bg-white/10'
-                }`}
-                title={getEffectiveApiKey() ? "Đã cài Gemini API Key" : "Nhập Gemini API Key của bạn (miễn phí)"}
-              >
-                <Key className="w-4 h-4" />
-              </button>
-              <button 
-                onClick={() => (onClose ? onClose() : setInternalIsOpen(false))}
-                className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-white/10 transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+            <button 
+              onClick={() => (onClose ? onClose() : setInternalIsOpen(false))}
+              className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-white/10 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-
-          {/* Ô CẤU HÌNH API KEY TRỰC TIẾP */}
-          {showKeyModal && (
-            <div className="p-3 bg-[#141622] border-b border-[#F1D89E]/30 flex flex-col gap-2">
-              <div className="flex justify-between items-center text-xs text-gray-300">
-                <span className="font-semibold text-[#F1D89E] flex items-center gap-1">
-                  <Key className="w-3.5 h-3.5" /> Dán Gemini API Key của bạn:
-                </span>
-                {getEffectiveApiKey() && (
-                  <span className="text-emerald-400 text-[10px] bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                    Đã hoạt động
-                  </span>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  type="password"
-                  value={userKeyInput}
-                  onChange={(e) => setUserKeyInput(e.target.value)}
-                  placeholder="Dán AIzaSy... từ Google AI Studio"
-                  className="flex-1 bg-black/50 border border-[#F1D89E]/40 rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#F1D89E]"
-                />
-                <button
-                  onClick={() => saveUserApiKey(userKeyInput)}
-                  className="bg-[#F1D89E] text-black px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-[#d4b775] transition flex items-center gap-1"
-                >
-                  <Check className="w-3.5 h-3.5" /> Lưu
-                </button>
-              </div>
-              <p className="text-[10px] text-gray-400">
-                Chạy 100% trực tiếp trên trình duyệt, không giới hạn lượt hỏi miễn phí từ Google Studio.
-              </p>
-            </div>
-          )}
 
           {/* DANH SÁCH TIN NHẮN */}
           <div className="flex-1 min-h-0 p-3 sm:p-4 overflow-y-auto overscroll-contain space-y-3.5 scrollbar-thin scrollbar-thumb-white/10">
