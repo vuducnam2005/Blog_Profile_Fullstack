@@ -1,16 +1,16 @@
 import { createContext, useState } from 'react';
 
 export const BackgroundContext = createContext({
-  bgMode: 'video',
+  bgMode: 'blackhole',
   toggleBgMode: () => {},
 });
 
 export function BackgroundProvider({ children }) {
   const [bgMode, setBgMode] = useState(() => {
     try {
-      return localStorage.getItem('appBgMode') || 'video';
+      return sessionStorage.getItem('appBgMode') || 'blackhole';
     } catch {
-      return 'video';
+      return 'blackhole';
     }
   });
 
@@ -18,7 +18,7 @@ export function BackgroundProvider({ children }) {
     setBgMode((prev) => {
       const next = prev === 'video' ? 'blackhole' : 'video';
       try {
-        localStorage.setItem('appBgMode', next);
+        sessionStorage.setItem('appBgMode', next);
       } catch {
         // Fallback
       }
