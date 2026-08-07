@@ -1,15 +1,24 @@
 import { useState, useContext, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { User, FileText, Globe, Menu, X, Camera, Music, Volume2, VolumeX, Video, Sparkles } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { User, FileText, Globe, Menu, X, Camera, Volume2, VolumeX, Video, Sparkles, Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { AudioContext } from '../context/AudioContext';
 import { BackgroundContext } from '../context/BackgroundContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const { isPlaying, toggleAudio, audioUrl } = useContext(AudioContext);
   const { bgMode, toggleBgMode } = useContext(BackgroundContext);
+  const { isAdmin, login } = useAuth();
+  
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [clickCount, setClickCount] = useState(0);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState(false);
 
   const toggleLanguage = () => {
     const newLang = i18n.language === 'vi' ? 'en' : 'vi';
@@ -29,9 +38,6 @@ export default function Navbar() {
     // Gửi sự kiện resetGalaxy cho MỌI tab để quay góc nhìn về như cũ
     window.dispatchEvent(new Event('resetGalaxy'));
   };
-
-  const [clickCount, setClickCount] = useState(0);
-  const isAdminVisible = clickCount >= 3;
 
   useEffect(() => {
     if (clickCount > 0 && clickCount < 3) {
@@ -53,7 +59,31 @@ export default function Navbar() {
 
   const handleLogoClick = () => {
     scrollTo('hero');
-    setClickCount((prev) => prev + 1);
+    setClickCount((prev) => {
+      const next = prev + 1;
+      if (next >= 3) {
+        if (isAdmin) {
+          navigate('/admin/create');
+        } else {
+          setShowLoginModal(true);
+        }
+      }
+      return next;
+    });
+  };
+
+  const handleAdminLogin = (e) => {
+    e.preventDefault();
+    if (username === "0362183511" && password === "Vuducnam2005@") {
+      login();
+      setAuthError(false);
+      setShowLoginModal(false);
+      setUsername('');
+      setPassword('');
+      navigate('/admin/create');
+    } else {
+      setAuthError(true);
+    }
   };
 
   const navItems = [
@@ -77,7 +107,7 @@ export default function Navbar() {
           Vũ Đức Nam
         </div>
 
-        {/* ===== DESKTOP NAV (md trở lên - Tối ưu 1 hàng không bị rớt dòng) ===== */}
+        {/* ===== DESKTOP NAV ===== */}
         <div className="hidden md:flex items-center gap-3 lg:gap-5 xl:gap-6 text-xs lg:text-sm font-semibold text-gray-300">
           {navItems.map((item) => (
             <button
@@ -132,18 +162,18 @@ export default function Navbar() {
             >
               <FileText className="w-3.5 h-3.5" /> CV
             </Link>
-            {isAdminVisible && (
+            {isAdmin && (
               <Link
                 to="/admin/create"
-                className="border border-[#F1D89E]/40 text-[#F1D89E] px-2.5 lg:px-3 py-1 rounded-full hover:bg-[#F1D89E]/10 transition-colors flex items-center gap-1 text-xs font-bold shrink-0"
+                className="border border-[#F1D89E]/40 text-[#F1D89E] px-2.5 lg:px-3 py-1 rounded-full hover:bg-[#F1D89E]/10 transition-colors flex items-center gap-1 text-xs font-bold shrink-0 animate-pulse"
               >
-                <User className="w-3.5 h-3.5" /> Admin
+                <User className="w-3.5 h-3.5 text-emerald-400" /> Admin
               </Link>
             )}
           </div>
         </div>
 
-        {/* ===== MOBILE HAMBURGER BUTTON (chỉ hiện trên mobile) ===== */}
+        {/* ===== MOBILE HAMBURGER BUTTON ===== */}
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
           className="md:hidden text-[#F1D89E] p-2 rounded-lg hover:bg-[#F1D89E]/10 transition-colors"
@@ -162,7 +192,6 @@ export default function Navbar() {
           }`}
       >
         <div className="bg-black/80 backdrop-blur-xl border-b border-[#F1D89E]/20 px-6 py-4 flex flex-col gap-1">
-          {/* Các tab điều hướng */}
           {navItems.map((item) => (
             <button
               key={item.id}
@@ -173,10 +202,8 @@ export default function Navbar() {
             </button>
           ))}
 
-          {/* Đường phân cách */}
           <div className="w-full h-px bg-gradient-to-r from-transparent via-[#F1D89E]/30 to-transparent my-2"></div>
 
-          {/* Nút chức năng */}
           <div className="flex flex-wrap gap-3 px-4 py-2">
             {audioUrl && (
               <button
@@ -214,7 +241,7 @@ export default function Navbar() {
             >
               <FileText className="w-4 h-4" /> CV
             </Link>
-            {isAdminVisible && (
+            {isAdmin && (
               <Link
                 to="/admin/create"
                 onClick={() => setMobileOpen(false)}
@@ -226,6 +253,71 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+
+      {/* ===== MODAL ĐĂNG NHẬP ADMIN BẢO MẬT ===== */}
+      {showLoginModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="max-w-md w-full glass rounded-3xl p-8 bg-[#0c0d12]/95 border border-[#F1D89E]/30 shadow-[0_12px_40px_rgba(0,0,0,0.9)] relative">
+            <button 
+              onClick={() => setShowLoginModal(false)}
+              className="absolute top-5 right-5 text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex flex-col items-center mb-6 mt-2">
+              <div className="p-3 bg-[#F1D89E]/10 rounded-2xl border border-[#F1D89E]/20 mb-3">
+                <Lock className="w-7 h-7 text-[#F1D89E]" />
+              </div>
+              <h2 className="text-xl font-bold text-center text-white tracking-wide">
+                Xác Thực Quản Trị Hệ Thống
+              </h2>
+              <p className="text-xs text-gray-400 mt-1">Vui lòng nhập tài khoản quản trị viên</p>
+            </div>
+
+            <form onSubmit={handleAdminLogin} className="flex flex-col gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#F1D89E] mb-1.5 uppercase tracking-wider">Tài khoản (SĐT)</label>
+                <input 
+                  type="text" 
+                  required 
+                  autoComplete="off"
+                  value={username} 
+                  onChange={e => setUsername(e.target.value)}
+                  className="w-full bg-black/50 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#F1D89E] focus:ring-1 focus:ring-[#F1D89E] transition-all"
+                  placeholder="Nhập SĐT quản trị..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#F1D89E] mb-1.5 uppercase tracking-wider">Mật khẩu</label>
+                <input 
+                  type="password" 
+                  required 
+                  autoComplete="new-password"
+                  value={password} 
+                  onChange={e => setPassword(e.target.value)}
+                  className="w-full bg-black/50 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#F1D89E] focus:ring-1 focus:ring-[#F1D89E] transition-all"
+                  placeholder="Nhập mật khẩu..."
+                />
+              </div>
+
+              {authError && (
+                <p className="text-red-400 text-xs text-center font-medium bg-red-500/10 border border-red-500/20 py-2 rounded-lg">
+                  Tài khoản hoặc mật khẩu không chính xác!
+                </p>
+              )}
+
+              <button 
+                type="submit" 
+                className="mt-2 bg-[#F1D89E] text-black font-bold text-sm py-3 rounded-xl hover:bg-white transition-all uppercase tracking-widest shadow-md"
+              >
+                ĐĂNG NHẬP QUẢN TRỊ
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
