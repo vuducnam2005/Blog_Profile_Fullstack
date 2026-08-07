@@ -19,9 +19,8 @@ if (typeof window !== "undefined") {
         // Trường hợp 2: Chạy qua mạng LAN (dùng điện thoại bắt chung WiFi)
         apiUrl = `http://${hostname}:5020`;
     } else {
-        // Trường hợp 3: Thay vì gọi localhost:5020 vốn cần chạy backend phức tạp,
-        // giờ nối thẳng lên Backend thật để dễ dàng test UI, CSS.
-        apiUrl = "https://blog-api-ducnam.onrender.com";
+        // Trường hợp 3: Chạy trên localhost → gọi backend local
+        apiUrl = "http://localhost:5020";
     }
 }
 

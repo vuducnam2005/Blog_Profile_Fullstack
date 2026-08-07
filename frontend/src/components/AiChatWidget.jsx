@@ -2,7 +2,65 @@ import { useState, useRef, useEffect, useContext } from 'react';
 import { X, Send, Bot, Sparkles } from 'lucide-react';
 import ChromaKeyVideo from './ChromaKeyVideo';
 import { PortfolioContext } from '../context/PortfolioContext';
-import { API_BASE_URL } from '../config';
+
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const GEMINI_MODELS = ['gemini-3.1-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
+
+function getStreamUrl(model) {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`;
+}
+
+function buildSystemInstruction(portfolioData) {
+  const extra = portfolioData ? JSON.stringify(portfolioData) : '';
+  return `Bạn là Trợ lý AI đại diện chính thức cho Vũ Đức Nam trên website Blog Profile cá nhân.
+Hãy trả lời bằng tiếng Việt tự nhiên, chính xác, thân thiện và tuân thủ tuyệt đối quy tắc bố cục sau:
+
+HỒ SƠ CÁ NHÂN VŨ ĐỨC NAM:
+- Ngày sinh: 23/06/2005. Năm 2026 Nam 21 tuổi kể từ ngày 23/06.
+- Định hướng: Backend Developer (Intern / Fresher).
+- Điện thoại/Zalo: 0362 183 511.
+- Email: vuducnam12345678@gmail.com.
+- Quê quán: Hợp Nhất, Đoan Hùng, Phú Thọ.
+- Địa chỉ hiện tại: 43 Thanh Lương, Bình Minh, Hà Nội.
+- Website: ducnamdev.site. GitHub: https://github.com/vuducnam2005.
+- Học CNTT tại Đại học Đại Nam giai đoạn 2023-2027, GPA 3.2/4.0, loại Giỏi.
+- Thành tích: giải Nhì cuộc thi Tài năng Lập trình cơ bản khoa CNTT, chứng chỉ Gemini University Student, học bổng khuyến khích học tập nhiều kỳ.
+- Kinh nghiệm: Tư vấn viên 03/2024-06/2025; Trợ giảng CNTT 09/2024-11/2025.
+- Kỹ năng: Python, C#, JavaScript, TypeScript, PHP, Node.js, C++, .NET, Vue 3, ReactJS, Flutter, REST API, SQL Server, PostgreSQL, RabbitMQ, Docker, Git và SQLite.
+- Dự án: Quản lý phòng khám Medicare (C#, Vue 3, RabbitMQ, PostgreSQL, Docker, Microservices); web quản lý và bán khóa học; ứng dụng quản lý chi tiêu AI One More Coin; chữ ký số RSA-2048; Voice Chat E2EE.
+
+QUY TẮC BỐ CỤC VÀ PHẢN HỒI (BẮT BUỘC):
+1. Xưng "Mình" hoặc "Trợ lý của Nam", gọi người hỏi là "bạn".
+2. BỐ CỤC RÕ RÀNG, CHIA NHỎ Ý: Không được viết thành một đoạn văn dài dính liền. Luôn luôn chia câu trả lời thành từng mục nhỏ/gạch đầu dòng cụ thể (- hoặc •), xuống dòng giữa các ý và in đậm các từ khóa trọng tâm (**từ khóa**).
+3. ĐÚNG TRỌNG TÂM: Ngắn gọn, súc tích, trình bày thoáng mắt dễ đọc trên cả máy tính và điện thoại.
+4. Không bịa thông tin ngoài hồ sơ. Nếu hỏi chủ đề ngoài Nam hoặc CNTT, hướng nhẹ nhàng quay lại chủ đề chính.
+5. Nếu bị công kích, bác bỏ dứt khoát dựa trên dữ kiện và sự tôn trọng.
+
+Dữ liệu bổ sung từ hệ thống (có thể trống):
+${extra}`;
+}
+
+function renderFormattedText(text) {
+  if (!text) return null;
+  const lines = text.split('\n');
+  return lines.map((line, lineIdx) => {
+    const parts = line.split(/(\*\*.*?\*\*)/g);
+    const formattedLine = parts.map((part, partIdx) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={partIdx} className="font-semibold text-[#F1D89E]">{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+
+    const isBullet = line.trim().startsWith('- ') || line.trim().startsWith('* ') || line.trim().startsWith('• ');
+
+    return (
+      <span key={lineIdx} className={isBullet ? 'block pl-2 my-1 border-l-2 border-[#F1D89E]/40 text-gray-100' : 'block my-0.5'}>
+        {formattedLine}
+      </span>
+    );
+  });
+}
 
 function normalizeForIntent(value) {
   return value
@@ -62,11 +120,7 @@ export default function AiChatWidget({
     }
   }, [messages, isOpen]);
 
-  useEffect(() => {
-    if (isOpen) {
-      fetch(`${API_BASE_URL}/api/health`, { method: 'HEAD' }).catch(() => {});
-    }
-  }, [isOpen]);
+  // Không cần health check backend — gọi Gemini trực tiếp từ frontend
 
   const streamReply = async (queryText, historyMessages) => {
     const controller = new AbortController();
@@ -75,67 +129,167 @@ export default function AiChatWidget({
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     let started = false;
     let fullText = '';
+    let displayedText = '';
+    let timerId = null;
 
     try {
-      const history = historyMessages
-        .filter((message) => message.text?.trim())
-        .slice(-10)
-        .map((message) => ({
-          role: message.sender === 'ai' ? 'model' : 'user',
-          content: message.text
-        }));
+      // Build Gemini conversation history
+      const contents = [];
+      const filtered = historyMessages
+        .filter((m) => m.text?.trim())
+        .slice(-10);
 
-      const response = await fetch(`${API_BASE_URL}/api/chat/stream`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: queryText, history }),
-        signal: controller.signal
-      });
+      for (const m of filtered) {
+        const role = m.sender === 'ai' ? 'model' : 'user';
+        if (contents.length === 0 && role === 'model') continue;
+        if (contents.length > 0 && contents[contents.length - 1].role === role) {
+          contents[contents.length - 1].parts[0].text += '\n' + m.text.trim();
+        } else {
+          contents.push({ role, parts: [{ text: m.text.trim() }] });
+        }
+      }
 
-      if (!response.ok) {
-        const errorMessage = await response.text();
-        throw new Error(errorMessage || `Chat API trả về HTTP ${response.status}`);
+      if (contents.length > 0 && contents[contents.length - 1].role === 'user') {
+        contents[contents.length - 1].parts[0].text += '\n' + queryText.trim();
+      } else {
+        contents.push({ role: 'user', parts: [{ text: queryText.trim() }] });
+      }
+
+      let response = null;
+      let lastError = null;
+
+      // Thử từng model Gemini theo thứ tự ưu tiên (ưu tiên model lite có tốc độ phản hồi cực nhanh < 500ms)
+      for (const modelName of GEMINI_MODELS) {
+        try {
+          const res = await fetch(getStreamUrl(modelName), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': GEMINI_API_KEY,
+            },
+            body: JSON.stringify({
+              system_instruction: {
+                parts: [{ text: buildSystemInstruction(data) }]
+              },
+              contents,
+              generationConfig: {
+                temperature: 0.55,
+                maxOutputTokens: 2048
+              }
+            }),
+            signal: controller.signal
+          });
+
+          if (res.ok && res.body) {
+            response = res;
+            break;
+          } else {
+            const errText = await res.text();
+            lastError = new Error(`Model ${modelName} trả về HTTP ${res.status}: ${errText}`);
+          }
+        } catch (e) {
+          lastError = e;
+        }
+      }
+
+      if (!response) {
+        throw lastError || new Error('Tất cả các model Gemini đều không phản hồi.');
       }
 
       if (!response.body) {
         throw new Error('Trình duyệt không hỗ trợ đọc phản hồi streaming.');
       }
 
+      // Vòng lặp gõ chữ mượt từng ký tự (typewriter) như ChatGPT / Gemini
+      const startTypingLoop = () => {
+        if (timerId) return;
+        timerId = setInterval(() => {
+          if (displayedText.length < fullText.length) {
+            // Lấy từ 1 đến 3 ký tự mỗi nhịp (15ms) để tạo nhịp gõ chữ cực mượt
+            const diff = fullText.length - displayedText.length;
+            const step = diff > 30 ? 6 : diff > 10 ? 3 : 1;
+            displayedText = fullText.slice(0, displayedText.length + step);
+
+            setMessages((previous) => previous.map((message) =>
+              message.id === replyId ? { ...message, text: displayedText } : message
+            ));
+          }
+        }, 15);
+      };
+
+      const processLine = (line) => {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data:')) return;
+        const json = trimmed.slice(5).trim();
+        if (!json || json === '[DONE]') return;
+
+        try {
+          const parsed = JSON.parse(json);
+          const parts = parsed.candidates?.[0]?.content?.parts;
+          if (!parts) return;
+          for (const part of parts) {
+            if (!part.thought && part.text) {
+              fullText += part.text;
+            }
+          }
+        } catch {
+          return;
+        }
+
+        if (!started && fullText) {
+          started = true;
+          displayedText = fullText.slice(0, 1);
+          setMessages((previous) => [
+            ...previous,
+            { id: replyId, sender: 'ai', text: displayedText, time, isTyping: true }
+          ]);
+          startTypingLoop();
+        }
+      };
+
+      // Đọc SSE stream từ Gemini
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
+      let buffer = '';
 
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        if (!chunk) continue;
-        fullText += chunk;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
 
-        if (!started) {
-          started = true;
-          setMessages((previous) => [
-            ...previous,
-            { id: replyId, sender: 'ai', text: fullText, time, isTyping: true }
-          ]);
-        } else {
-          setMessages((previous) => previous.map((message) =>
-            message.id === replyId ? { ...message, text: fullText } : message
-          ));
+        for (const line of lines) {
+          processLine(line);
         }
       }
 
-      const finalChunk = decoder.decode();
-      if (finalChunk) fullText += finalChunk;
+      if (buffer.trim()) {
+        processLine(buffer);
+      }
+
       if (!started || !fullText.trim()) {
         throw new Error('AI không trả về nội dung.');
       }
+
+      // Chờ cho đến khi hiệu ứng gõ chữ in hết toàn bộ fullText
+      await new Promise((resolve) => {
+        const checkDone = setInterval(() => {
+          if (displayedText.length >= fullText.length) {
+            clearInterval(checkDone);
+            if (timerId) clearInterval(timerId);
+            resolve();
+          }
+        }, 30);
+      });
 
       setMessages((previous) => previous.map((message) =>
         message.id === replyId ? { ...message, text: fullText, isTyping: false } : message
       ));
       return true;
     } catch (error) {
+      if (timerId) clearInterval(timerId);
       if (started) {
         setMessages((previous) => previous.map((message) =>
           message.id === replyId ? { ...message, isTyping: false } : message
@@ -144,6 +298,7 @@ export default function AiChatWidget({
       }
       throw error;
     } finally {
+      if (timerId) clearInterval(timerId);
       clearTimeout(timeoutId);
     }
   };
@@ -256,7 +411,7 @@ export default function AiChatWidget({
                     ? 'bg-gradient-to-r from-[#F1D89E] to-[#d4b775] text-black font-medium rounded-tr-none'
                     : 'bg-[#181a24] text-gray-200 border border-white/10 rounded-tl-none shadow-md'
                 }`}>
-                  <p className="whitespace-pre-wrap">{msg.text}</p>
+                  <div>{renderFormattedText(msg.text)}</div>
                   {msg.isTyping && (
                     <span className="inline-block w-1.5 h-3 ml-1 bg-[#F1D89E] animate-pulse" />
                   )}
