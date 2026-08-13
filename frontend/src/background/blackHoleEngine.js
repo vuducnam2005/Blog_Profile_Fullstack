@@ -3,6 +3,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { createMeteorSystem } from './meteorSystem.js';
 
 const defaultRequestFrame = (callback) => {
     if (typeof globalThis.requestAnimationFrame === 'function') {
@@ -1017,80 +1018,21 @@ swallowedLightRays.renderOrder = 2;
 blackHoleGroup.add(swallowedLightRays);
 
 /* =====================================================================
- * SHOOTING STARS
+ * GRAVITATIONAL METEOR - procedural rock, plasma trail and tidal breakup
  * ===================================================================== */
-const activeMeteors = [];
-const MAX_METEORS = isMobile ? 1 : 2;
-let nextMeteorTime = performance.now() + 1500;
-
-function spawnMeteor() {
-    if (activeMeteors.length >= MAX_METEORS) return;
-    const segments = isMobile ? 10 : 16;
-    const positions = new Float32Array(segments * 3);
-    const colors = new Float32Array(segments * 3);
-
-    const startX = (Math.random() * 30) - 5;
-    const startY = 12 + Math.random() * 10;
-    const startZ = (Math.random() * 20) - 10;
-
-    for (let i = 0; i < segments; i++) {
-        positions[i * 3] = startX;
-        positions[i * 3 + 1] = startY;
-        positions[i * 3 + 2] = startZ;
-        const ratio = i / (segments - 1);
-        const alpha = Math.pow(1 - ratio, 2);
-        colors[i * 3] = 0.95 * alpha;
-        colors[i * 3 + 1] = (0.85 + ratio * 0.15) * alpha;
-        colors[i * 3 + 2] = (0.62 + ratio * 0.38) * alpha;
-    }
-
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    const mat = new THREE.LineBasicMaterial({
-        vertexColors: true, transparent: true, opacity: 0.95,
-        blending: THREE.AdditiveBlending,
-    });
-    const line = new THREE.Line(geo, mat);
-    scene.add(line);
-
-    const speed = isMobile ? 0.45 : 0.65;
-    activeMeteors.push({
-        line, geometry: geo, positions,
-        headPos: new THREE.Vector3(startX, startY, startZ),
-        velocity: new THREE.Vector3(-speed, -speed * 0.55, -speed * 0.2),
-        segments, life: 0, maxLife: isMobile ? 65 : 85,
-    });
-}
-
-function updateMeteors() {
-    const now = performance.now();
-    if (now > nextMeteorTime) {
-        spawnMeteor();
-        nextMeteorTime = now + 2500 + Math.random() * 3500;
-    }
-    for (let m = activeMeteors.length - 1; m >= 0; m--) {
-        const meteor = activeMeteors[m];
-        meteor.life++;
-        meteor.headPos.add(meteor.velocity);
-        for (let i = meteor.segments - 1; i > 0; i--) {
-            meteor.positions[i * 3] = meteor.positions[(i - 1) * 3];
-            meteor.positions[i * 3 + 1] = meteor.positions[(i - 1) * 3 + 1];
-            meteor.positions[i * 3 + 2] = meteor.positions[(i - 1) * 3 + 2];
-        }
-        meteor.positions[0] = meteor.headPos.x;
-        meteor.positions[1] = meteor.headPos.y;
-        meteor.positions[2] = meteor.headPos.z;
-        meteor.geometry.attributes.position.needsUpdate = true;
-
-        if (meteor.life >= meteor.maxLife || meteor.headPos.y < -15 || meteor.headPos.x < -30) {
-            scene.remove(meteor.line);
-            meteor.geometry.dispose();
-            meteor.line.material.dispose();
-            activeMeteors.splice(m, 1);
-        }
-    }
-}
+const meteorSystemCount = prefersReducedMotion ? 1 : (isMobile ? 3 : 4);
+const meteorSystems = Array.from({ length: meteorSystemCount }, (_, index) => createMeteorSystem({
+    scene,
+    camera,
+    starTexture,
+    eventHorizonRadius: CONFIG.blackHole.eventHorizonRadius,
+    photonRingRadius: CONFIG.blackHole.photonRingRadius,
+    isMobile,
+    prefersReducedMotion,
+    seedOffset: index * 13,
+    initialDelay: 0.35 + index * (isMobile ? 2.25 : 1.55),
+    allowImpact: true,
+}));
 
 /* =====================================================================
  * STATE VARIABLES
@@ -1252,8 +1194,10 @@ function tick() {
     }
     nearDustGeo.attributes.position.needsUpdate = true;
 
-    // --- SHOOTING STARS ---
-    updateMeteors();
+    // --- GRAVITATIONAL METEOR ---
+    for (let index = 0; index < meteorSystems.length; index++) {
+        meteorSystems[index].update(dt, elapsedTime);
+    }
 
     // --- BLOOM DYNAMIC ---
     const bloomBoost = Math.min(scrollEnergy * 0.22, CONFIG.bloom.strengthMax - CONFIG.bloom.strength);
@@ -1303,13 +1247,9 @@ function dispose() {
     orbGeo.dispose(); orbMat.dispose();
     lightRayGeo.dispose(); lightRayMat.dispose();
 
-    // Dispose meteors
-    activeMeteors.forEach(m => {
-        scene.remove(m.line);
-        m.geometry.dispose();
-        m.line.material.dispose();
-    });
-    activeMeteors.length = 0;
+    for (let index = 0; index < meteorSystems.length; index++) {
+        meteorSystems[index].dispose();
+    }
 
     // Dispose texture, composer, renderer
     starTexture.dispose();
