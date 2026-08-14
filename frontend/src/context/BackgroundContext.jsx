@@ -8,7 +8,8 @@ export const BackgroundContext = createContext({
 export function BackgroundProvider({ children }) {
   const [bgMode, setBgMode] = useState(() => {
     try {
-      return sessionStorage.getItem('appBgMode') || 'blackhole';
+      const storedMode = sessionStorage.getItem('appBgMode');
+      return storedMode === 'spline' || storedMode === 'video' ? 'spline' : 'blackhole';
     } catch {
       return 'blackhole';
     }
@@ -16,7 +17,7 @@ export function BackgroundProvider({ children }) {
 
   const toggleBgMode = () => {
     setBgMode((prev) => {
-      const next = prev === 'video' ? 'blackhole' : 'video';
+      const next = prev === 'spline' ? 'blackhole' : 'spline';
       try {
         sessionStorage.setItem('appBgMode', next);
       } catch {

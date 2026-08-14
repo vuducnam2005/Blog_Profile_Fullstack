@@ -26,7 +26,7 @@ export default function Projects() {
           ];
           const c = projectColors[idx % projectColors.length];
           return (
-            <div key={p.id} className={`bg-gradient-to-br ${c.bg} border ${c.border} rounded-xl md:rounded-2xl p-5 md:p-8 ${c.hover} transition-all duration-300 hover:-translate-y-2 group relative overflow-hidden`} data-aos="zoom-in" data-aos-delay={200 + (idx * 50)}>
+            <div key={p.id} className={`nexbot-content-card bg-gradient-to-br ${c.bg} border ${c.border} rounded-xl md:rounded-2xl p-5 md:p-8 ${c.hover} transition-all duration-300 hover:-translate-y-2 group relative overflow-hidden`} data-aos="zoom-in" data-aos-delay={200 + (idx * 50)}>
                <div className="flex justify-between items-start mb-6">
                   <h3 className="text-xl md:text-2xl font-bold text-white group-hover:text-[#F1D89E] transition-colors">{p.title}</h3>
                   <div className="flex gap-3">

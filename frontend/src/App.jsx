@@ -6,11 +6,12 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { AudioProvider } from './context/AudioContext';
 import { BackgroundProvider, BackgroundContext } from './context/BackgroundContext';
 import AudioPlayer from './components/AudioPlayer';
-import VideoBackground from './components/VideoBackground';
+import SplineBackground from './components/SplineBackground';
 import BlackHoleBackground from './components/BlackHoleBackground';
 import ScrollProgressBar from './components/ScrollProgressBar';
 import MaintenanceOverlay from './components/MaintenanceOverlay';
 import AiChatLauncher from './components/AiChatLauncher';
+import BackgroundPrompt from './components/BackgroundPrompt';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 
@@ -96,8 +97,10 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen font-sans tracking-wide relative">
-      {bgMode === 'video' ? <VideoBackground /> : <BlackHoleBackground />}
+    <div className={`app-shell min-h-screen font-sans tracking-wide relative ${
+      bgMode === 'spline' ? 'theme-nexbot' : 'theme-cosmic'
+    }`}>
+      {bgMode === 'spline' ? <SplineBackground /> : <BlackHoleBackground />}
       <ScrollProgressBar />
       <AudioPlayer />
       <main className="site-main w-full pb-20">
@@ -114,6 +117,7 @@ function AppContent() {
         </Suspense>
       </main>
       <AiChatLauncher />
+      {isNormalRoute && <BackgroundPrompt />}
     </div>
   );
 }

@@ -27,7 +27,7 @@ export default function Contact() {
         <span className="bg-[#F1D89E] w-8 md:w-12 h-1 mr-3 md:mr-4"></span> {t('contact.title', 'Liên hệ')}
       </h2>
 
-      <div className="flex flex-col items-center justify-center text-center mt-4 md:mt-8">
+      <div className="contact-shell flex flex-col items-center justify-center text-center mt-4 md:mt-8">
         <p className="text-lg md:text-2xl text-white font-semibold mb-3 md:mb-4 tracking-wide" data-aos="fade-up" data-aos-delay="200">
           {t('contact.subtitle', 'Hãy cùng nhau tạo nên điều gì đó tuyệt vời! 🚀')}
         </p>

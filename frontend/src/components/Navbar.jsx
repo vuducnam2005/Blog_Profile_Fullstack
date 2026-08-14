@@ -1,6 +1,6 @@
 import { useState, useContext, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, FileText, Globe, Menu, X, Camera, Volume2, VolumeX, Video, Sparkles, Lock } from 'lucide-react';
+import { User, FileText, Globe, Menu, X, Camera, Volume2, VolumeX, Bot, Sparkles, Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { AudioContext } from '../context/AudioContext';
 import { BackgroundContext } from '../context/BackgroundContext';
@@ -96,9 +96,9 @@ export default function Navbar() {
   ];
 
   return (
-    <nav className="fixed top-0 w-full z-50">
+    <nav className="site-navbar fixed top-0 w-full z-50">
       {/* ===== TOP BAR ===== */}
-      <div className="pt-[max(0.6rem,env(safe-area-inset-top))] pb-2.5 px-3 md:px-6 xl:px-8 md:py-3.5 flex justify-between items-center bg-black/75 md:bg-black/60 backdrop-blur-xl md:backdrop-blur-md border-b border-[#F1D89E]/20 shadow-[0_8px_28px_rgba(0,0,0,0.22)] md:shadow-none">
+      <div className="navbar-surface pt-[max(0.6rem,env(safe-area-inset-top))] pb-2.5 px-3 md:px-6 xl:px-8 md:py-3.5 flex justify-between items-center bg-black/75 md:bg-black/60 backdrop-blur-xl md:backdrop-blur-md border-b border-[#F1D89E]/20 shadow-[0_8px_28px_rgba(0,0,0,0.22)] md:shadow-none">
         {/* Logo */}
         <div
           onClick={handleLogoClick}
@@ -138,11 +138,11 @@ export default function Navbar() {
             <button
               onClick={toggleBgMode}
               className="flex items-center gap-1.5 border border-[#F1D89E]/40 text-[#F1D89E] px-2.5 lg:px-3 py-1 rounded-full hover:bg-[#F1D89E]/10 transition-colors font-bold text-xs select-none shrink-0"
-              title={bgMode === 'video' ? 'Đổi sang nền 3D Hố Đen' : 'Đổi sang nền Video Vũ Trụ'}
+              title={bgMode === 'spline' ? 'Đổi sang nền 3D Hố Đen' : 'Đổi sang nền 3D Nexbot'}
             >
-              {bgMode === 'video' ? (
+              {bgMode === 'spline' ? (
                 <>
-                  <Video className="w-3.5 h-3.5 text-[#00D0C8]" /> <span>Video</span>
+                  <Bot className="w-3.5 h-3.5 text-[#00D0C8]" /> <span>Nexbot</span>
                 </>
               ) : (
                 <>
@@ -191,7 +191,7 @@ export default function Navbar() {
         className={`mobile-nav-menu md:hidden overflow-hidden transition-all duration-300 ease-in-out ${mobileOpen ? 'max-h-[calc(100dvh-64px)] opacity-100' : 'max-h-0 opacity-0'
           }`}
       >
-        <div className="bg-black/80 backdrop-blur-xl border-b border-[#F1D89E]/20 px-6 py-4 flex flex-col gap-1">
+        <div className="navbar-mobile-surface bg-black/80 backdrop-blur-xl border-b border-[#F1D89E]/20 px-6 py-4 flex flex-col gap-1">
           {navItems.map((item) => (
             <button
               key={item.id}
@@ -224,8 +224,8 @@ export default function Navbar() {
               onClick={() => { toggleBgMode(); setMobileOpen(false); }}
               className="flex items-center gap-2 border border-[#F1D89E]/40 text-[#F1D89E] px-4 py-2 rounded-full hover:bg-[#F1D89E]/10 transition-colors font-bold text-xs"
             >
-              {bgMode === 'video' ? <Video className="w-4 h-4 text-[#00D0C8]"/> : <Sparkles className="w-4 h-4 text-[#F1D89E]"/>}
-              {bgMode === 'video' ? 'NỀN VIDEO' : 'NỀN 3D HỐ ĐEN'}
+              {bgMode === 'spline' ? <Bot className="w-4 h-4 text-[#00D0C8]"/> : <Sparkles className="w-4 h-4 text-[#F1D89E]"/>}
+              {bgMode === 'spline' ? 'NỀN 3D NEXBOT' : 'NỀN 3D HỐ ĐEN'}
             </button>
             <Link
               to="/album"

@@ -28,7 +28,7 @@ export default function CvViewer() {
     <>
       {/* ====== NAVBAR CỦA TRANG CV ====== */}
       <nav
-        className="fixed top-0 w-full z-50 px-4 md:px-8 py-3 md:py-4 flex justify-between items-center bg-black/60 backdrop-blur-xl border-b border-[#F1D89E]/20"
+        className="secondary-navbar fixed top-0 w-full z-50 px-4 md:px-8 py-3 md:py-4 flex justify-between items-center bg-black/60 backdrop-blur-xl border-b border-[#F1D89E]/20"
         style={{ pointerEvents: 'auto' }}
       >
         <Link

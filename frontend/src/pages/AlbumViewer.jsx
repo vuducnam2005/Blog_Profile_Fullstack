@@ -114,7 +114,7 @@ export default function AlbumViewer() {
 
       {/* ====== NAVBAR ====== */}
       <nav
-        className="fixed top-0 w-full z-50 px-4 md:px-8 py-3 md:py-4 flex justify-between items-center bg-black/60 backdrop-blur-xl border-b border-[#F1D89E]/20"
+        className="secondary-navbar fixed top-0 w-full z-50 px-4 md:px-8 py-3 md:py-4 flex justify-between items-center bg-black/60 backdrop-blur-xl border-b border-[#F1D89E]/20"
         style={{ pointerEvents: 'auto' }}
       >
         <Link
@@ -188,7 +188,7 @@ export default function AlbumViewer() {
                 return (
                   <div
                     key={index}
-                    className="album-item relative group rounded-xl overflow-hidden cursor-pointer bg-black/40 border border-white/10 hover:border-[#F1D89E]/40 transition-all duration-300 hover:shadow-[0_0_20px_rgba(241,216,158,0.15)]"
+                    className="album-item nexbot-content-card relative group rounded-xl overflow-hidden cursor-pointer bg-black/40 border border-white/10 hover:border-[#F1D89E]/40 transition-all duration-300 hover:shadow-[0_0_20px_rgba(241,216,158,0.15)]"
                     onClick={() => openLightbox(index)}
                   >
                     {item.type === 'video' ? (

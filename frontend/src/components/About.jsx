@@ -36,7 +36,7 @@ export default function About() {
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16">
         {/* Cột trái */}
-        <div className="flex flex-col justify-between" data-aos="fade-right" data-aos-delay="200">
+        <div className="nexbot-copy-panel flex flex-col justify-between" data-aos="fade-right" data-aos-delay="200">
           <div>
             <p className="text-gray-300 text-sm md:text-lg leading-relaxed mb-4 md:mb-6 font-light whitespace-pre-line">
               {data?.about?.p1 ? data.about.p1 : (
@@ -55,7 +55,7 @@ export default function About() {
               { id: 2, value: '3+', label: t('about.stat2_label', 'Dự án hoàn thành') },
               { id: 3, value: '10+', label: t('about.stat3_label', 'Công nghệ nền tảng') }
             ]).map((stat, idx) => (
-              <div key={stat.id || idx} className="text-center rounded-xl border border-white/10 bg-black/30 px-1.5 py-3 md:border-0 md:bg-transparent md:px-0 md:py-0">
+              <div key={stat.id || idx} className="nexbot-stat text-center rounded-xl border border-white/10 bg-black/30 px-1.5 py-3 md:border-0 md:bg-transparent md:px-0 md:py-0">
                 <p className="text-3xl md:text-5xl font-black text-[#F1D89E] mb-1 md:mb-2">{stat.value}</p>
                 <p className="text-xs md:text-sm text-gray-400">{stat.label}</p>
               </div>
@@ -79,7 +79,7 @@ export default function About() {
             ];
             const c = skillColors[idx % skillColors.length];
             return (
-              <div key={cat.id || idx} className={`rounded-xl md:rounded-2xl p-4 md:p-6 ${c.bg} border ${c.border} transition-all duration-300`} data-aos="zoom-in" data-aos-delay={200 + (idx * 100)}>
+              <div key={cat.id || idx} className={`nexbot-content-card rounded-xl md:rounded-2xl p-4 md:p-6 ${c.bg} border ${c.border} transition-all duration-300`} data-aos="zoom-in" data-aos-delay={200 + (idx * 100)}>
                 <p className={`${c.title} font-bold mb-3 md:mb-4 uppercase text-xs md:text-sm tracking-wider`}>{cat.title}</p>
                 <div className="flex flex-wrap gap-2 md:gap-3">
                   {cat.items?.map((s, itemIdx) => (
