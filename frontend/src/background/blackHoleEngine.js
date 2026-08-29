@@ -68,23 +68,23 @@ const CONFIG = {
         scrollPunch: prefersReducedMotion ? 0.4 : 2.4,
     },
     bloom: {
-        strength: isMobile ? 0.58 : isTablet ? 0.72 : 0.82,
-        strengthMax: isMobile ? 0.78 : 1.08,
-        radius: isMobile ? 0.24 : 0.32,
-        threshold: 0.9,
+        strength: isMobile ? 0.45 : isTablet ? 0.65 : 0.82,
+        strengthMax: isMobile ? 0.65 : isTablet ? 0.88 : 1.08,
+        radius: isMobile ? 0.18 : isTablet ? 0.26 : 0.32,
+        threshold: isMobile ? 0.92 : 0.9,
     },
     parallax: {
         strength: prefersReducedMotion ? 0.06 : (isMobile ? 0 : 0.3),
         lerp: 0.03,
     },
     particles: {
-        galaxy: isMobile ? 50000 : isTablet ? 100000 : 180000,
-        farStars: isMobile ? 1000 : isTablet ? 2000 : 3000,
-        midDust: isMobile ? 600 : isTablet ? 1200 : 2000,
-        nearDust: isMobile ? 150 : isTablet ? 300 : 500,
-        orbital: isMobile ? 60 : isTablet ? 120 : 200,
-        lightRays: isMobile ? 7 : isTablet ? 9 : 11,
-        lightRaySegments: isMobile ? 64 : 96,
+        galaxy: isMobile ? 24000 : isTablet ? 60000 : 150000,
+        farStars: isMobile ? 500 : isTablet ? 1200 : 2500,
+        midDust: isMobile ? 250 : isTablet ? 600 : 1500,
+        nearDust: isMobile ? 60 : isTablet ? 150 : 350,
+        orbital: isMobile ? 30 : isTablet ? 80 : 160,
+        lightRays: isMobile ? 4 : isTablet ? 7 : 10,
+        lightRaySegments: isMobile ? 40 : isTablet ? 64 : 96,
     },
     galaxy: {
         radius: 17,
@@ -92,7 +92,7 @@ const CONFIG = {
         spin: 1.8,
         randomness: 0.6,
         randomnessPower: 3.5,
-        particleSize: isMobile ? 0.02 : 0.015,
+        particleSize: isMobile ? 0.024 : 0.015,
     },
     lightRibbons: {
         // Shared by desktop and mobile: edit once and both layouts update.
@@ -117,9 +117,14 @@ const camera = new THREE.PerspectiveCamera(CONFIG.camera.fov, sizes.width / size
 camera.position.set(0, CONFIG.camera.yFar, CONFIG.camera.zFar);
 scene.add(camera);
 
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: !isMobile, alpha: true });
+const renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: !isMobile,
+    alpha: true,
+    powerPreference: 'high-performance'
+});
 renderer.setSize(sizes.width, sizes.height, false);
-renderer.setPixelRatio(Math.min(sizes.devicePixelRatio, isMobile ? 1.0 : 1.5));
+renderer.setPixelRatio(Math.min(sizes.devicePixelRatio, isMobile ? 1.0 : (isTablet ? 1.25 : 1.5)));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.82;
 
@@ -1020,7 +1025,7 @@ blackHoleGroup.add(swallowedLightRays);
 /* =====================================================================
  * GRAVITATIONAL METEOR - procedural rock, plasma trail and tidal breakup
  * ===================================================================== */
-const meteorSystemCount = prefersReducedMotion ? 1 : (isMobile ? 3 : 4);
+const meteorSystemCount = prefersReducedMotion ? 1 : (isMobile ? 1 : (isTablet ? 2 : 3));
 const meteorSystems = Array.from({ length: meteorSystemCount }, (_, index) => createMeteorSystem({
     scene,
     camera,
@@ -1030,7 +1035,7 @@ const meteorSystems = Array.from({ length: meteorSystemCount }, (_, index) => cr
     isMobile,
     prefersReducedMotion,
     seedOffset: index * 13,
-    initialDelay: 0.35 + index * (isMobile ? 2.25 : 1.55),
+    initialDelay: 0.35 + index * (isMobile ? 3.0 : 1.75),
     allowImpact: true,
 }));
 
@@ -1088,7 +1093,7 @@ function resize(nextWidth, nextHeight, nextDevicePixelRatio = sizes.devicePixelR
     camera.aspect = sizes.width / sizes.height;
     camera.updateProjectionMatrix();
     renderer.setSize(sizes.width, sizes.height, false);
-    renderer.setPixelRatio(Math.min(sizes.devicePixelRatio, isMobile ? 1.0 : 1.5));
+    renderer.setPixelRatio(Math.min(sizes.devicePixelRatio, isMobile ? 1.0 : (isTablet ? 1.25 : 1.5)));
     composer.setSize(sizes.width, sizes.height);
 }
 

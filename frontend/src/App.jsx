@@ -15,16 +15,6 @@ import BackgroundPrompt from './components/BackgroundPrompt';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 
-function parseTransitionTime(value) {
-  return value.split(',').reduce((maxTime, part) => {
-    const time = part.trim();
-    const milliseconds = time.endsWith('ms')
-      ? Number.parseFloat(time)
-      : Number.parseFloat(time) * 1000;
-    return Number.isFinite(milliseconds) ? Math.max(maxTime, milliseconds) : maxTime;
-  }, 0);
-}
-
 // Lazy loading các route phụ và Chatbot AI giúp tối ưu 75% dung lượng file ban đầu
 const Detail = lazy(() => import('./pages/Detail'));
 const Admin = lazy(() => import('./pages/Admin'));
@@ -39,44 +29,16 @@ function AppContent() {
   const location = useLocation();
 
   useEffect(() => {
-    const activeTimers = new Map();
-    const manageWillChange = (event) => {
-      const element = event.detail;
-      if (!(element instanceof HTMLElement)) return;
+    const isTouchDevice =
+      typeof window !== 'undefined' &&
+      ('ontouchstart' in window || navigator.maxTouchPoints > 0 || window.innerWidth < 768);
 
-      const current = activeTimers.get(element);
-      if (current) window.clearTimeout(current.timerId);
-
-      const originalValue = current?.originalValue ?? element.style.willChange;
-      element.style.willChange = 'transform, opacity';
-
-      const computedStyle = window.getComputedStyle(element);
-      const activeDuration = parseTransitionTime(computedStyle.transitionDuration)
-        + parseTransitionTime(computedStyle.transitionDelay);
-      const timerId = window.setTimeout(() => {
-        element.style.willChange = originalValue;
-        activeTimers.delete(element);
-      }, Math.max(activeDuration, 1000) + 80);
-
-      activeTimers.set(element, { timerId, originalValue });
-    };
-
-    document.addEventListener('aos:in', manageWillChange);
-    document.addEventListener('aos:out', manageWillChange);
     AOS.init({
-      duration: 1000,
-      once: false,
+      duration: isTouchDevice ? 500 : 750,
+      once: isTouchDevice, // Trên thiết bị di động/iOS, kích hoạt 1 lần khi cuộn tới giúp 60-120fps mượt mà
+      offset: isTouchDevice ? 30 : 80,
+      easing: 'ease-out-cubic',
     });
-
-    return () => {
-      document.removeEventListener('aos:in', manageWillChange);
-      document.removeEventListener('aos:out', manageWillChange);
-      activeTimers.forEach(({ timerId, originalValue }, element) => {
-        window.clearTimeout(timerId);
-        element.style.willChange = originalValue;
-      });
-      activeTimers.clear();
-    };
   }, []);
 
   const isNormalRoute = !location.pathname.startsWith('/admin');

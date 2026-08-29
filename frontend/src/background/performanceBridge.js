@@ -156,7 +156,11 @@ export function startBlackHoleBackground() {
         return fallbackPromise;
     };
 
-    const canUseWorker = typeof Worker === 'function'
+    const isIOS = typeof navigator !== 'undefined'
+        && (/iPad|iPhone|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+
+    const canUseWorker = !isIOS
+        && typeof Worker === 'function'
         && typeof OffscreenCanvas === 'function'
         && typeof canvas.transferControlToOffscreen === 'function';
 

@@ -13,12 +13,14 @@ html {
   scroll-padding-top: 88px;
   text-size-adjust: 100%;
   -webkit-text-size-adjust: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 @layer utilities {
   .glass {
     @apply bg-white/5 backdrop-blur-md border border-white/10 shadow-xl;
     isolation: isolate;
+    -webkit-backdrop-filter: blur(12px);
   }
 }
 
@@ -165,6 +167,12 @@ html {
     max-height: calc(100vh - 132px);
     margin-bottom: 0.25rem;
     border-radius: 1.25rem;
+  }
+
+  .glass {
+    background-color: rgba(6, 8, 14, 0.88) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
   }
 
   .ai-avatar-media img,
