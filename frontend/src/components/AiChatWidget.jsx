@@ -200,21 +200,20 @@ export default function AiChatWidget({
         throw new Error('Trình duyệt không hỗ trợ đọc phản hồi streaming.');
       }
 
-      // Vòng lặp gõ chữ mượt từng ký tự (typewriter) như ChatGPT / Gemini
+      // Vòng lặp gõ chữ mượt mà và tiết kiệm CPU/GPU
       const startTypingLoop = () => {
         if (timerId) return;
         timerId = setInterval(() => {
           if (displayedText.length < fullText.length) {
-            // Lấy từ 1 đến 3 ký tự mỗi nhịp (15ms) để tạo nhịp gõ chữ cực mượt
             const diff = fullText.length - displayedText.length;
-            const step = diff > 30 ? 6 : diff > 10 ? 3 : 1;
+            const step = diff > 40 ? 10 : diff > 15 ? 4 : 2;
             displayedText = fullText.slice(0, displayedText.length + step);
 
             setMessages((previous) => previous.map((message) =>
               message.id === replyId ? { ...message, text: displayedText } : message
             ));
           }
-        }, 15);
+        }, 35);
       };
 
       const processLine = (line) => {

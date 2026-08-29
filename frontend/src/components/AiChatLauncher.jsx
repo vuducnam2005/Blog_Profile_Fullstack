@@ -131,6 +131,12 @@ export default function AiChatLauncher() {
     };
   }, [isDirectOpen]);
 
+  // Tạm dừng Three.js canvas phía sau khi mở chat để giải phóng 100% CPU/GPU cho việc gõ phím mượt mà
+  useEffect(() => {
+    const isAnyChatOpen = isAiOpen || isDirectOpen;
+    window.dispatchEvent(new CustomEvent('chatOpenChange', { detail: { isOpen: isAnyChatOpen } }));
+  }, [isAiOpen, isDirectOpen]);
+
   const toggleAiChat = () => {
     setIsAiActivated(true);
     setIsAiOpen((current) => {

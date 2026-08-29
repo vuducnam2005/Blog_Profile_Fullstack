@@ -258,6 +258,17 @@ export function startBlackHoleBackground() {
         scheduleFlush();
     };
 
+    const handleChatOpenChange = (event) => {
+        const isChatOpen = Boolean(event.detail?.isOpen);
+        const shouldBeVisible = !document.hidden && !isChatOpen;
+        pendingInput.visible = shouldBeVisible;
+        if (worker && (mode === 'worker' || mode === 'worker-starting')) {
+            worker.postMessage({ type: 'visibility', visible: shouldBeVisible });
+        } else if (fallbackEngine) {
+            fallbackEngine.setVisibility(shouldBeVisible);
+        }
+    };
+
     if (!isMobile) {
         window.addEventListener('mousemove', handleMouseMove, { passive: true });
     }
@@ -265,6 +276,7 @@ export function startBlackHoleBackground() {
     window.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('resize', handleResize, { passive: true });
     window.addEventListener('resetGalaxy', handleResetGalaxy);
+    window.addEventListener('chatOpenChange', handleChatOpenChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const documentResizeObserver = typeof ResizeObserver === 'function'
@@ -292,6 +304,7 @@ export function startBlackHoleBackground() {
         window.removeEventListener('scroll', handleScroll);
         window.removeEventListener('resize', handleResize);
         window.removeEventListener('resetGalaxy', handleResetGalaxy);
+        window.removeEventListener('chatOpenChange', handleChatOpenChange);
         window.removeEventListener('beforeunload', cleanup);
         document.removeEventListener('visibilitychange', handleVisibilityChange);
         documentResizeObserver?.disconnect();

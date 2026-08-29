@@ -198,10 +198,15 @@ export default function DirectChatWidget({ isOpen, onClose }) {
     setIsEditingName(false);
   };
 
+  const lastTypingSentRef = useRef(0);
   const handleInputChange = (e) => {
     setInput(e.target.value);
-    if (hubConnectionRef.current && isConnected) {
-      hubConnectionRef.current.invoke('SendTyping', sessionId, userName || 'Khách', true, false).catch(() => {});
+    const now = Date.now();
+    if (now - lastTypingSentRef.current > 2000) {
+      lastTypingSentRef.current = now;
+      if (hubConnectionRef.current && isConnected) {
+        hubConnectionRef.current.invoke('SendTyping', sessionId, userName || 'Khách', true, false).catch(() => {});
+      }
     }
   };
 
