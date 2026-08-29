@@ -1,4 +1,5 @@
 using BlogBackend.Data;
+using BlogBackend.Hubs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http.Features;
 
@@ -25,6 +26,7 @@ builder.Services.Configure<FormOptions>(options =>
 // Add services to the container.
 
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient("Gemini", client =>
 {
@@ -83,6 +85,7 @@ builder.Services.AddCors(options =>
             policy.SetIsOriginAllowed(IsAllowedFrontendOrigin)
                   .AllowAnyHeader()
                   .AllowAnyMethod()
+                  .AllowCredentials()
                   .WithExposedHeaders("ETag")
                   .SetPreflightMaxAge(TimeSpan.FromHours(24));
         });
@@ -105,6 +108,7 @@ app.UseCors("AllowFrontend");
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<DirectChatHub>("/hub/chat");
 
 // Health check endpoint cho UptimeRobot (để không bị sleep trên Render)
 app.MapMethods("/", new[] { "GET", "HEAD" }, () => Results.Ok("Backend is awake!"));

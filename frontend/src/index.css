@@ -26,7 +26,8 @@ html {
   position: relative;
 }
 
-.ai-chat-panel {
+.ai-chat-panel,
+.direct-chat-panel {
   width: 350px;
   max-width: calc(100vw - 2rem);
   height: 500px;
@@ -60,7 +61,8 @@ html {
 }
 
 @supports (height: 100dvh) {
-  .ai-chat-panel {
+  .ai-chat-panel,
+  .direct-chat-panel {
     max-height: calc(100dvh - 180px);
   }
 }
@@ -88,7 +90,8 @@ html {
 }
 
 @media (min-width: 640px) {
-  .ai-chat-panel {
+  .ai-chat-panel,
+  .direct-chat-panel {
     width: 390px;
   }
 }
@@ -154,7 +157,8 @@ html {
     bottom: max(-0.2rem, env(safe-area-inset-bottom));
   }
 
-  .ai-chat-panel {
+  .ai-chat-panel,
+  .direct-chat-panel {
     width: calc(100vw - 1rem);
     max-width: none;
     height: min(610px, calc(100vh - 132px));
@@ -177,7 +181,8 @@ html {
       min-height: 100dvh;
     }
 
-    .ai-chat-panel {
+    .ai-chat-panel,
+    .direct-chat-panel {
       height: min(610px, calc(100dvh - 132px - env(safe-area-inset-bottom)));
       max-height: calc(100dvh - 132px - env(safe-area-inset-bottom));
     }
@@ -716,7 +721,8 @@ body {
   border-color: rgba(92, 243, 231, 0.22) !important;
 }
 
-.theme-nexbot .ai-chat-panel {
+.theme-nexbot .ai-chat-panel,
+.theme-nexbot .direct-chat-panel {
   background:
     radial-gradient(circle at 100% 0%, rgba(92, 243, 231, 0.16), transparent 34%),
     radial-gradient(circle at 0% 100%, rgba(255, 143, 112, 0.12), transparent 36%),

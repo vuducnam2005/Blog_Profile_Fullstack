@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@microsoft/signalr": "^10.0.11",
     "@splinetool/runtime": "^1.12.98",
     "aos": "^2.3.4",
     "axios": "^1.14.0",

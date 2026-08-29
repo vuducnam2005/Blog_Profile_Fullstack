@@ -90,7 +90,8 @@
     "authError": "Incorrect username or password!",
     "loginBtn": "LOGIN",
     "tabBlog": "News Articles",
-    "tabConfig": "Homepage Interface"
+    "tabConfig": "Homepage Interface",
+    "tabChat": "Visitor Messages"
   },
   "album": {
     "title": "Memorable Moments (Album)",

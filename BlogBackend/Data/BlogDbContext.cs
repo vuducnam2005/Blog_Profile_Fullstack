@@ -12,6 +12,7 @@ namespace BlogBackend.Data
         public DbSet<BlogPost> BlogPosts { get; set; }
         public DbSet<PortfolioConfig> PortfolioConfigs { get; set; }
         public DbSet<Comment> Comments { get; set; }
+        public DbSet<DirectChatMessage> DirectChatMessages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -19,6 +20,12 @@ namespace BlogBackend.Data
 
             modelBuilder.Entity<Comment>()
                 .HasIndex(comment => new { comment.MaBaiViet, comment.NgayBinhLuan });
+
+            modelBuilder.Entity<DirectChatMessage>()
+                .HasIndex(m => new { m.SessionId, m.CreatedAt });
+
+            modelBuilder.Entity<DirectChatMessage>()
+                .HasIndex(m => m.CreatedAt);
 
             // Seed dữ liệu mặc định cho PortfolioConfig (Id = 1, chỉ dùng 1 dòng duy nhất)
             modelBuilder.Entity<PortfolioConfig>().HasData(new PortfolioConfig
