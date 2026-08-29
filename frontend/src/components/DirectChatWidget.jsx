@@ -87,6 +87,22 @@ export default function DirectChatWidget({ isOpen, onClose }) {
       if (msg.sessionId === sessionId) {
         setMessages((prev) => {
           if (prev.some((m) => m.id === msg.id)) return prev;
+
+          // Thay thế tin nhắn tạm thời (optimistic) của người gửi bằng tin nhắn thật từ server
+          const optimisticIndex = prev.findIndex(
+            (m) =>
+              typeof m.id === 'number' &&
+              m.id > 1000000000000 &&
+              m.isFromAdmin === msg.isFromAdmin &&
+              m.content === msg.content
+          );
+
+          if (optimisticIndex !== -1) {
+            const updated = [...prev];
+            updated[optimisticIndex] = msg;
+            return updated;
+          }
+
           return [...prev, msg];
         });
 
@@ -159,7 +175,10 @@ export default function DirectChatWidget({ isOpen, onClose }) {
 
     try {
       if (hubConnectionRef.current && isConnected) {
-        await hubConnectionRef.current.invoke('SendMessage', sessionId, currentName, text, false, null);
+        const saved = await hubConnectionRef.current.invoke('SendMessage', sessionId, currentName, text, false, null);
+        if (saved) {
+          setMessages((prev) => prev.map((m) => (m.id === tempId ? saved : m)));
+        }
       } else {
         const saved = await sendChatMessage({
           sessionId,

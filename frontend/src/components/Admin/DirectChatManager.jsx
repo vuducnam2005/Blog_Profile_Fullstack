@@ -120,6 +120,22 @@ export default function DirectChatManager() {
       if (activeSessionRef.current === msg.sessionId) {
         setActiveMessages((prev) => {
           if (prev.some((m) => m.id === msg.id)) return prev;
+
+          // Thay thế tin nhắn tạm (optimistic) của Admin bằng tin nhắn thật từ server
+          const optimisticIndex = prev.findIndex(
+            (m) =>
+              typeof m.id === 'number' &&
+              m.id > 1000000000000 &&
+              m.isFromAdmin === msg.isFromAdmin &&
+              m.content === msg.content
+          );
+
+          if (optimisticIndex !== -1) {
+            const updated = [...prev];
+            updated[optimisticIndex] = msg;
+            return updated;
+          }
+
           return [...prev, msg];
         });
         markChatAsRead(msg.sessionId, true);
@@ -249,7 +265,7 @@ export default function DirectChatManager() {
 
     try {
       if (hubRef.current) {
-        await hubRef.current.invoke(
+        const saved = await hubRef.current.invoke(
           'SendMessage',
           activeSessionId,
           'Đức Nam',
@@ -257,6 +273,9 @@ export default function DirectChatManager() {
           true,
           ADMIN_API_KEY
         );
+        if (saved) {
+          setActiveMessages((prev) => prev.map((m) => (m.id === tempId ? saved : m)));
+        }
       } else {
         const saved = await sendChatMessage({
           sessionId: activeSessionId,
