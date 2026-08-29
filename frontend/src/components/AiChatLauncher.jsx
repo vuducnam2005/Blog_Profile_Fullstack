@@ -3,6 +3,7 @@ import { Sparkles, MessageSquare } from 'lucide-react';
 import ChromaKeyVideo from './ChromaKeyVideo';
 import {
   getDirectChatSessionId,
+  resetDirectChatSession,
   createChatHubConnection,
   fetchChatHistory
 } from '../services/directChatService';
@@ -119,6 +120,21 @@ export default function AiChatLauncher() {
         if (!isDirectOpen) {
           setUnreadCount((prev) => prev + 1);
         }
+      }
+    });
+
+    // Khi Admin xóa hội thoại trong lúc người dùng đang duyệt web (không mở chat)
+    hub.on('SessionDeleted', (data) => {
+      if (data.sessionId === sessionIdRef.current) {
+        setUnreadCount(0);
+        const newSessionId = resetDirectChatSession();
+        sessionIdRef.current = newSessionId;
+        hub.invoke('JoinConversation', newSessionId).catch(() => {});
+        window.dispatchEvent(
+          new CustomEvent('directChatSessionDeleted', {
+            detail: { oldSessionId: data.sessionId, newSessionId }
+          })
+        );
       }
     });
 

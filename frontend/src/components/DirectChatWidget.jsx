@@ -1,5 +1,16 @@
 import { useState, useRef, useEffect, useContext, useCallback } from 'react';
-import { X, Send, User, MessageSquare, Edit3, Check, CheckCheck, Sparkles, Smile } from 'lucide-react';
+import {
+  X,
+  Send,
+  User,
+  MessageSquare,
+  Edit3,
+  Check,
+  CheckCheck,
+  Sparkles,
+  ArrowLeft,
+  AlertCircle
+} from 'lucide-react';
 import { PortfolioContext } from '../context/PortfolioContext';
 import fallbackAvatarImg from '../assets/avatar.png';
 import fallbackAvatarAvif from '../assets/avatar.avif';
@@ -31,6 +42,7 @@ export default function DirectChatWidget({ isOpen, onClose }) {
   const [userName, setUserName] = useState(getDirectChatUserName);
   const [inputName, setInputName] = useState(userName || '');
   const [isEditingName, setIsEditingName] = useState(!userName);
+  const [isSessionDeletedNotice, setIsSessionDeletedNotice] = useState(false);
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -67,6 +79,19 @@ export default function DirectChatWidget({ isOpen, onClose }) {
 
   useEffect(() => {
     if (isOpen) {
+      const currentStoredName = getDirectChatUserName();
+      const currentStoredSession = getDirectChatSessionId();
+      if (!currentStoredName) {
+        setUserName('');
+        setInputName('');
+        setIsEditingName(true);
+        setMessages([]);
+      } else {
+        setUserName(currentStoredName);
+      }
+      if (currentStoredSession !== sessionId) {
+        setSessionId(currentStoredSession);
+      }
       loadHistory();
     }
   }, [isOpen, loadHistory]);
@@ -76,6 +101,26 @@ export default function DirectChatWidget({ isOpen, onClose }) {
       scrollToBottom(false);
     }
   }, [isOpen, messages.length, scrollToBottom]);
+
+  // Lắng nghe sự kiện xóa hội thoại phát ra từ toàn trang (khi đóng hoặc mở)
+  useEffect(() => {
+    const handleWindowSessionDeleted = (e) => {
+      if (isOpen) {
+        setIsSessionDeletedNotice(true);
+      } else {
+        setMessages([]);
+        setUserName('');
+        setInputName('');
+        setIsEditingName(true);
+        if (e.detail?.newSessionId) {
+          setSessionId(e.detail.newSessionId);
+        }
+      }
+    };
+
+    window.addEventListener('directChatSessionDeleted', handleWindowSessionDeleted);
+    return () => window.removeEventListener('directChatSessionDeleted', handleWindowSessionDeleted);
+  }, [isOpen]);
 
   // Kết nối SignalR Hub
   useEffect(() => {
@@ -132,15 +177,10 @@ export default function DirectChatWidget({ isOpen, onClose }) {
       }
     });
 
-    // Khi Admin bấm xóa cuộc hội thoại: Phía đối phương bị xóa sạch và yêu cầu nhập lại tên từ đầu
+    // Khi Admin bấm xóa cuộc hội thoại trong lúc người dùng đang mở khung chat
     hub.on('SessionDeleted', (data) => {
       if (data.sessionId === sessionId) {
-        setMessages([]);
-        setUserName('');
-        setInputName('');
-        setIsEditingName(true);
-        const nextSessionId = resetDirectChatSession();
-        setSessionId(nextSessionId);
+        setIsSessionDeletedNotice(true);
       }
     });
 
@@ -242,6 +282,17 @@ export default function DirectChatWidget({ isOpen, onClose }) {
     }
   };
 
+  // Quay lại và bắt đầu hội thoại mới khi phiên trước bị xóa
+  const handleStartNewSession = () => {
+    setIsSessionDeletedNotice(false);
+    setMessages([]);
+    setUserName('');
+    setInputName('');
+    setIsEditingName(true);
+    const nextSessionId = resetDirectChatSession();
+    setSessionId(nextSessionId);
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -283,11 +334,11 @@ export default function DirectChatWidget({ isOpen, onClose }) {
 
         {/* Nút thao tác */}
         <div className="flex items-center gap-1">
-          {userName && !isEditingName && (
+          {userName && !isEditingName && !isSessionDeletedNotice && (
             <button
               onClick={() => setIsEditingName(true)}
               title={`Đổi tên hiển thị (hiện tại: ${userName})`}
-              className="p-1.5 text-gray-400 hover:text-[#F1D89E] hover:bg-white/10 rounded-lg transition"
+              className="p-1.5 text-gray-400 hover:text-[#F1D89E] hover:bg-white/10 rounded-lg transition cursor-pointer"
             >
               <Edit3 className="w-4 h-4" />
             </button>
@@ -295,15 +346,34 @@ export default function DirectChatWidget({ isOpen, onClose }) {
           <button
             onClick={onClose}
             title="Đóng khung chat"
-            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition"
+            className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* MODAL / FORM NHẬP TÊN (KHI CHƯA ĐẶT TÊN HOẶC MUỐN ĐỔI TÊN) */}
-      {isEditingName ? (
+      {/* 1. MÀN HÌNH THÔNG BÁO HỘI THOẠI ĐÃ BỊ XÓA (KHI ĐANG MỞ KHUNG CHAT) */}
+      {isSessionDeletedNotice ? (
+        <div className="flex-1 flex flex-col justify-center items-center p-6 text-center bg-gradient-to-b from-transparent to-black/60 animate-in fade-in zoom-in-95 duration-300">
+          <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-4 text-[#F1D89E] shadow-xl shadow-amber-500/10">
+            <AlertCircle className="w-8 h-8 text-[#F1D89E]" />
+          </div>
+          <h4 className="text-white text-base font-bold mb-2">Cuộc hội thoại đã kết thúc</h4>
+          <p className="text-xs text-gray-300 mb-6 max-w-xs leading-relaxed">
+            Đức Nam đã xóa cuộc trò chuyện này. Bạn hãy bấm nút bên dưới để quay lại và nhập tên hiển thị mới nếu muốn trò chuyện tiếp nhé! ✨
+          </p>
+
+          <button
+            type="button"
+            onClick={handleStartNewSession}
+            className="w-full max-w-xs py-3 px-4 rounded-xl bg-gradient-to-r from-[#F1D89E] to-[#d8b868] text-black font-extrabold text-xs hover:shadow-[0_0_25px_rgba(241,216,158,0.5)] transition duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+          >
+            <ArrowLeft className="w-4 h-4" /> Quay lại & Nhập tên mới
+          </button>
+        </div>
+      ) : isEditingName ? (
+        /* 2. MODAL / FORM NHẬP TÊN (KHI CHƯA ĐẶT TÊN HOẶC MUỐN ĐỔI TÊN) */
         <div className="flex-1 flex flex-col justify-center items-center p-6 text-center bg-gradient-to-b from-transparent to-black/40">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#F1D89E]/20 to-amber-500/10 border border-[#F1D89E]/40 flex items-center justify-center mb-4 shadow-lg shadow-[#F1D89E]/10">
             <MessageSquare className="w-7 h-7 text-[#F1D89E]" />
@@ -329,7 +399,7 @@ export default function DirectChatWidget({ isOpen, onClose }) {
             <button
               type="submit"
               disabled={!inputName.trim()}
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#F1D89E] to-[#d8b868] text-black font-bold text-xs hover:shadow-[0_0_20px_rgba(241,216,158,0.4)] transition duration-300 disabled:opacity-40"
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#F1D89E] to-[#d8b868] text-black font-bold text-xs hover:shadow-[0_0_20px_rgba(241,216,158,0.4)] transition duration-300 disabled:opacity-40 cursor-pointer"
             >
               {userName ? 'Lưu & Tiếp tục' : 'Bắt đầu trò chuyện'}
             </button>
@@ -337,7 +407,7 @@ export default function DirectChatWidget({ isOpen, onClose }) {
               <button
                 type="button"
                 onClick={() => setIsEditingName(false)}
-                className="text-xs text-gray-400 hover:text-gray-200 transition"
+                className="text-xs text-gray-400 hover:text-gray-200 transition cursor-pointer"
               >
                 Hủy
               </button>
@@ -345,8 +415,8 @@ export default function DirectChatWidget({ isOpen, onClose }) {
           </form>
         </div>
       ) : (
+        /* 3. KHUNG HIỂN THỊ TIN NHẮN */
         <>
-          {/* DANH SÁCH TIN NHẮN */}
           <div className="flex-1 min-h-0 p-3 sm:p-4 overflow-y-auto overscroll-contain space-y-3 scrollbar-thin scrollbar-thumb-white/10">
             {/* Lời chào mặc định của Nam */}
             <div className="flex gap-2.5 justify-start">
@@ -426,7 +496,7 @@ export default function DirectChatWidget({ isOpen, onClose }) {
               );
             })}
 
-            {/* Typing Indicator */}
+            {/* Typing Indicator từ Nam */}
             {isNamTyping && (
               <div className="flex gap-2.5 items-center">
                 <div className="w-7 h-7 rounded-full border border-[#F1D89E]/40 overflow-hidden shrink-0 bg-black/40">
@@ -457,7 +527,7 @@ export default function DirectChatWidget({ isOpen, onClose }) {
                 <button
                   key={idx}
                   onClick={() => handleSendMessage(starter)}
-                  className="whitespace-nowrap text-[11px] bg-white/5 hover:bg-[#F1D89E]/20 text-gray-300 hover:text-[#F1D89E] border border-white/10 hover:border-[#F1D89E]/40 px-3 py-1.5 rounded-full transition-all shrink-0"
+                  className="whitespace-nowrap text-[11px] bg-white/5 hover:bg-[#F1D89E]/20 text-gray-300 hover:text-[#F1D89E] border border-white/10 hover:border-[#F1D89E]/40 px-3 py-1.5 rounded-full transition-all shrink-0 cursor-pointer"
                 >
                   {starter}
                 </button>
@@ -484,7 +554,7 @@ export default function DirectChatWidget({ isOpen, onClose }) {
             <button
               type="submit"
               disabled={loading || !input.trim()}
-              className="bg-gradient-to-r from-[#F1D89E] to-[#d8b868] hover:opacity-90 disabled:opacity-30 text-black p-2.5 rounded-xl transition font-bold shadow-md shadow-[#F1D89E]/20"
+              className="bg-gradient-to-r from-[#F1D89E] to-[#d8b868] hover:opacity-90 disabled:opacity-30 text-black p-2.5 rounded-xl transition font-bold shadow-md shadow-[#F1D89E]/20 cursor-pointer"
               title="Gửi tin nhắn"
             >
               <Send className="w-4 h-4" />
