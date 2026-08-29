@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useEffect, useRef } from 'react';
-import { Sparkles, MessageCircleMore } from 'lucide-react';
+import { Sparkles, MessageSquare } from 'lucide-react';
 import ChromaKeyVideo from './ChromaKeyVideo';
 import {
   getDirectChatSessionId,
@@ -41,31 +41,48 @@ function DirectChatButton({ isOpen, unreadCount, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`relative mb-1.5 px-3.5 py-2 rounded-full border text-xs font-bold transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer outline-none select-none flex items-center gap-2 shadow-2xl ${
+      className={`group relative mb-3 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl border transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer outline-none select-none flex items-center gap-2 sm:gap-2.5 shadow-2xl backdrop-blur-2xl ${
         isOpen
-          ? 'bg-[#F1D89E] text-black border-[#F1D89E] shadow-[0_0_20px_rgba(241,216,158,0.6)]'
-          : 'bg-[#0c0e17]/90 hover:bg-[#141724] text-[#F1D89E] hover:text-white border-[#F1D89E]/40 hover:border-[#F1D89E] shadow-[0_4px_20px_rgba(0,0,0,0.6)]'
+          ? 'bg-gradient-to-r from-[#F1D89E] to-[#e6c87a] text-black border-[#F1D89E] shadow-[0_0_25px_rgba(241,216,158,0.7)]'
+          : 'bg-[#0c0e18]/95 hover:bg-[#141726] text-white border-[#F1D89E]/45 hover:border-[#F1D89E] shadow-[0_8px_30px_rgba(0,0,0,0.85),0_0_18px_rgba(241,216,158,0.25)]'
       }`}
-      title="Trò chuyện trực tiếp với Vũ Đức Nam"
+      title="Nhắn tin trực tiếp với Vũ Đức Nam"
       aria-label="Chat trực tiếp với Nam"
       aria-expanded={isOpen}
     >
-      {/* Icon Chat */}
-      <div className="relative flex items-center justify-center">
-        <MessageCircleMore className={`w-4 h-4 ${isOpen ? 'text-black' : 'text-[#F1D89E]'}`} />
+      {/* Icon Tin Nhắn hình hộp phát sáng */}
+      <div
+        className={`relative w-6 h-6 sm:w-7 sm:h-7 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 ${
+          isOpen
+            ? 'bg-black/15 text-black'
+            : 'bg-gradient-to-br from-[#F1D89E]/30 to-amber-500/20 text-[#F1D89E] border border-[#F1D89E]/50 shadow-[0_0_12px_rgba(241,216,158,0.35)]'
+        }`}
+      >
+        <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
         {!isOpen && (
-          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 border border-black animate-pulse" />
+          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-[#0c0e18] animate-ping" />
+        )}
+        {!isOpen && (
+          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-[#0c0e18]" />
         )}
       </div>
 
-      {/* Label */}
-      <span className="tracking-wide text-[11px] sm:text-xs">
-        Chat với Nam
-      </span>
+      {/* Label chữ */}
+      <div className="flex flex-col text-left">
+        <span
+          className={`text-xs sm:text-[13px] font-extrabold tracking-wide ${
+            isOpen
+              ? 'text-black'
+              : 'bg-gradient-to-r from-[#F1D89E] via-amber-200 to-[#e2c686] bg-clip-text text-transparent'
+          }`}
+        >
+          Chat với Nam
+        </span>
+      </div>
 
       {/* Badge số tin nhắn chưa đọc từ Nam */}
       {unreadCount > 0 && !isOpen && (
-        <span className="px-1.5 py-0.5 rounded-full bg-red-500 text-white font-extrabold text-[9px] shadow-md animate-bounce">
+        <span className="px-1.5 py-0.5 rounded-full bg-red-500 text-white font-black text-[10px] shadow-lg animate-bounce ml-0.5">
           {unreadCount > 99 ? '99+' : unreadCount}
         </span>
       )}
@@ -158,7 +175,7 @@ export default function AiChatLauncher() {
         </Suspense>
       )}
 
-      {/* Nút "Chat với Nam" nằm phía trên đầu con AI */}
+      {/* Nút "Chat với Nam" nằm phía trên đầu con AI với khoảng cách thoáng đẹp */}
       <DirectChatButton
         isOpen={isDirectOpen}
         unreadCount={unreadCount}
