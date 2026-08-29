@@ -58,32 +58,30 @@ export default function Admin() {
   return (
     <div className="relative z-20">
       {!isEdit && (
-        <div className="pt-24 max-w-2xl mx-auto px-4 mb-[-2rem]">
-          <div className="flex bg-black/40 p-2 rounded-2xl border border-white/10 backdrop-blur-md items-center justify-between gap-2">
+        <div className="pt-20 sm:pt-24 max-w-3xl mx-auto px-3 sm:px-4 mb-4 sm:mb-6">
+          <div className="flex bg-[#0d0f18]/95 p-1.5 sm:p-2 rounded-2xl border border-white/15 backdrop-blur-xl items-center justify-between gap-1.5 sm:gap-2 shadow-2xl">
             <button
               onClick={() => setActiveTab('blog')}
-              className={`flex-1 flex justify-center items-center gap-2 py-3 rounded-xl font-bold transition-all ${
+              className={`flex-1 flex justify-center items-center gap-1.5 sm:gap-2 py-2.5 sm:py-3 px-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
                 activeTab === 'blog'
-                  ? 'bg-[#F1D89E] text-black shadow-lg'
+                  ? 'bg-gradient-to-r from-[#F1D89E] to-[#d8b868] text-black shadow-lg'
                   : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
             >
-              <FileText className="w-5 h-5" />
-              <span className="hidden sm:inline">{t('admin.tabBlog', 'Bài Viết')}</span>
-              <span className="sm:hidden">Bài Viết</span>
+              <FileText className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+              <span className="truncate">{t('admin.tabBlog', 'Bài Viết')}</span>
             </button>
 
             <button
               onClick={() => setActiveTab('config')}
-              className={`flex-1 flex justify-center items-center gap-2 py-3 rounded-xl font-bold transition-all ${
+              className={`flex-1 flex justify-center items-center gap-1.5 sm:gap-2 py-2.5 sm:py-3 px-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
                 activeTab === 'config'
-                  ? 'bg-[#F1D89E] text-black shadow-lg'
+                  ? 'bg-gradient-to-r from-[#F1D89E] to-[#d8b868] text-black shadow-lg'
                   : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
             >
-              <Settings className="w-5 h-5" />
-              <span className="hidden sm:inline">{t('admin.tabConfig', 'Giao diện')}</span>
-              <span className="sm:hidden">Giao diện</span>
+              <Settings className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+              <span className="truncate">{t('admin.tabConfig', 'Giao Diện')}</span>
             </button>
 
             <button
@@ -91,17 +89,16 @@ export default function Admin() {
                 setActiveTab('chat');
                 setUnreadCount(0);
               }}
-              className={`relative flex-1 flex justify-center items-center gap-2 py-3 rounded-xl font-bold transition-all ${
+              className={`relative flex-1 flex justify-center items-center gap-1.5 sm:gap-2 py-2.5 sm:py-3 px-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
                 activeTab === 'chat'
-                  ? 'bg-[#F1D89E] text-black shadow-lg'
+                  ? 'bg-gradient-to-r from-[#F1D89E] to-[#d8b868] text-black shadow-lg'
                   : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
             >
-              <MessageSquare className="w-5 h-5" />
-              <span className="hidden sm:inline">{t('admin.tabChat', 'Tin Nhắn')}</span>
-              <span className="sm:hidden">Tin Nhắn</span>
+              <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+              <span className="truncate">{t('admin.tabChat', 'Tin Nhắn')}</span>
               {unreadCount > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full bg-red-500 text-white font-extrabold text-[10px] animate-pulse">
+                <span className="px-1.5 py-0.5 rounded-full bg-red-500 text-white font-extrabold text-[10px] animate-pulse shrink-0">
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
               )}
@@ -110,9 +107,9 @@ export default function Admin() {
             <button
               onClick={handleLogout}
               title="Đăng xuất khỏi Quản trị"
-              className="p-3 text-red-400 hover:text-white hover:bg-red-500/20 rounded-xl transition-all border border-red-500/30 shrink-0"
+              className="p-2.5 sm:p-3 text-red-400 hover:text-white hover:bg-red-500/20 rounded-xl transition-all border border-red-500/30 shrink-0"
             >
-              <LogOut className="w-5 h-5" />
+              <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>

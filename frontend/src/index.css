@@ -99,6 +99,13 @@ html {
 }
 
 @media (max-width: 767px) {
+  /* Chống iOS Safari tự động phóng to màn hình khi bấm vào ô nhập liệu */
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
   :root {
     --mobile-page-gutter: clamp(0.875rem, 4vw, 1.125rem);
     --ai-avatar-width: clamp(82px, 22vw, 96px);

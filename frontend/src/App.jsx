@@ -78,7 +78,7 @@ function AppContent() {
           </Routes>
         </Suspense>
       </main>
-      <AiChatLauncher />
+      {isNormalRoute && <AiChatLauncher />}
       {isNormalRoute && <BackgroundPrompt />}
     </div>
   );

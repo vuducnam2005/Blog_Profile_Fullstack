@@ -207,7 +207,7 @@ export default function ConfigEditor() {
     if (!config) return <div className="text-white text-center pt-32">Data Error</div>;
 
     return (
-        <div className="pt-24 max-w-6xl mx-auto px-4 relative z-20 pb-20">
+        <div className="pt-2 max-w-6xl mx-auto px-4 relative z-20 pb-20">
             <div className="glass rounded-3xl p-8 bg-black/60 shadow-2xl border border-white/10">
                 <div className="flex justify-between items-center mb-10 border-b border-white/10 pb-6">
                     <div>

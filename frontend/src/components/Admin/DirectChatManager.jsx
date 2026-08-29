@@ -336,14 +336,14 @@ export default function DirectChatManager() {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-6 pt-24 pb-16">
-      <div className="bg-[#0b0d14]/90 backdrop-blur-2xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row h-[780px] max-h-[88vh]">
+    <div className="max-w-6xl mx-auto px-2 sm:px-4 md:px-6 pt-0 pb-10">
+      <div className="bg-[#0b0d14]/95 backdrop-blur-2xl border border-white/15 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row h-[680px] md:h-[740px] max-h-[82vh]">
         
         {/* ======================================================== */}
         {/* CỘT TRÁI: DANH SÁCH HỘI THOẠI (SESSIONS LIST) */}
         {/* ======================================================== */}
         <div
-          className={`w-full md:w-80 lg:w-96 flex flex-col border-r border-white/10 bg-black/40 ${
+          className={`w-full md:w-80 lg:w-96 shrink-0 flex flex-col border-r border-white/10 bg-[#0d0f18]/90 ${
             mobileView === 'chat' ? 'hidden md:flex' : 'flex'
           }`}
         >
@@ -471,7 +471,7 @@ export default function DirectChatManager() {
         {/* CỘT PHẢI: KHUNG CHAT CHI TIẾT VỚI KHÁCH */}
         {/* ======================================================== */}
         <div
-          className={`flex-1 flex flex-col bg-[#0f111a]/80 ${
+          className={`flex-1 min-w-0 flex flex-col bg-[#0b0c14]/95 ${
             mobileView === 'list' ? 'hidden md:flex' : 'flex'
           }`}
         >

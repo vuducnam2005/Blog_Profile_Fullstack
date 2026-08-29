@@ -85,7 +85,7 @@ export default function BlogEditor() {
   };
 
   return (
-    <div className="pt-24 max-w-5xl mx-auto px-4 relative z-20 pb-20">
+    <div className={`${isEdit ? 'pt-24' : 'pt-2'} max-w-5xl mx-auto px-4 relative z-20 pb-20`}>
       <div className="glass rounded-3xl p-8 bg-black/60 shadow-2xl border border-white/10">
         <button onClick={() => navigate('/')} className="inline-flex items-center text-gray-400 hover:text-white mb-6 bg-white/5 px-4 py-2 rounded-full border border-white/10 hover:bg-white/20 transition-all">
           <ArrowLeft className="w-5 h-5 mr-2" /> Quay lại Trang Chủ
