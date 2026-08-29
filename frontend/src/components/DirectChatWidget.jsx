@@ -9,6 +9,7 @@ import {
   getDirectChatSessionId,
   getDirectChatUserName,
   setDirectChatUserName,
+  resetDirectChatSession,
   createChatHubConnection,
   fetchChatHistory,
   sendChatMessage,
@@ -26,7 +27,7 @@ export default function DirectChatWidget({ isOpen, onClose }) {
   const { data } = useContext(PortfolioContext);
   const hero = data?.hero || {};
 
-  const [sessionId] = useState(getDirectChatSessionId);
+  const [sessionId, setSessionId] = useState(getDirectChatSessionId);
   const [userName, setUserName] = useState(getDirectChatUserName);
   const [inputName, setInputName] = useState(userName || '');
   const [isEditingName, setIsEditingName] = useState(!userName);
@@ -128,6 +129,18 @@ export default function DirectChatWidget({ isOpen, onClose }) {
         if (data.isTyping) {
           typingTimeoutRef.current = setTimeout(() => setIsNamTyping(false), 4000);
         }
+      }
+    });
+
+    // Khi Admin bấm xóa cuộc hội thoại: Phía đối phương bị xóa sạch và yêu cầu nhập lại tên từ đầu
+    hub.on('SessionDeleted', (data) => {
+      if (data.sessionId === sessionId) {
+        setMessages([]);
+        setUserName('');
+        setInputName('');
+        setIsEditingName(true);
+        const nextSessionId = resetDirectChatSession();
+        setSessionId(nextSessionId);
       }
     });
 

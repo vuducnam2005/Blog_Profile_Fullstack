@@ -171,5 +171,24 @@ namespace BlogBackend.Hubs
                 await Clients.Group(AdminsGroup).SendAsync("UserTyping", payload);
             }
         }
+
+        public async Task DeleteSession(string sessionId, string adminKey)
+        {
+            if (adminKey != AdminSecretKey || string.IsNullOrWhiteSpace(sessionId)) return;
+            sessionId = sessionId.Trim();
+
+            var messages = await _context.DirectChatMessages
+                .Where(m => m.SessionId == sessionId)
+                .ToListAsync();
+
+            if (messages.Count > 0)
+            {
+                _context.DirectChatMessages.RemoveRange(messages);
+                await _context.SaveChangesAsync();
+            }
+
+            await Clients.Group($"session_{sessionId}").SendAsync("SessionDeleted", new { sessionId });
+            await Clients.Group(AdminsGroup).SendAsync("SessionDeleted", new { sessionId });
+        }
     }
 }

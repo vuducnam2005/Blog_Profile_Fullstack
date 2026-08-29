@@ -37,6 +37,16 @@ export function setDirectChatUserName(name) {
 }
 
 /**
+ * Xóa sạch phiên cũ và tạo mới khi Admin xóa hội thoại
+ */
+export function resetDirectChatSession() {
+  const newSessionId = 'sess_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+  localStorage.setItem(SESSION_KEY, newSessionId);
+  localStorage.removeItem(USERNAME_KEY);
+  return newSessionId;
+}
+
+/**
  * Âm thanh thông báo tin nhắn mới dùng Web Audio API (không cần file bên ngoài, siêu nhẹ & mượt)
  */
 export function playNotificationSound() {

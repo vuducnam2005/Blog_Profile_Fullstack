@@ -248,6 +248,7 @@ namespace BlogBackend.Controllers
                 await _context.SaveChangesAsync(cancellationToken);
             }
 
+            await _hubContext.Clients.Group($"session_{sessionId}").SendAsync("SessionDeleted", new { sessionId }, cancellationToken);
             await _hubContext.Clients.Group(AdminsGroup).SendAsync("SessionDeleted", new { sessionId }, cancellationToken);
 
             return Ok(new { message = "Đã xóa cuộc hội thoại thành công." });
