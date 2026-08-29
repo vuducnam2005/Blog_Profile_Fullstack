@@ -26,21 +26,10 @@ import {
   sendChatMessage,
   markChatAsRead,
   deleteAdminSession,
-  playNotificationSound
+  playNotificationSound,
+  formatMessageTime as formatTime
 } from '../../services/directChatService';
 import { ADMIN_API_KEY } from '../../context/AuthContext';
-
-function formatTime(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  const now = new Date();
-  const isToday = d.toDateString() === now.toDateString();
-
-  if (isToday) {
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }
-  return `${d.toLocaleDateString([], { day: '2-digit', month: '2-digit' })} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-}
 
 export default function DirectChatManager() {
   const { data } = useContext(PortfolioContext);

@@ -47,6 +47,43 @@ export function resetDirectChatSession() {
 }
 
 /**
+ * Chuyển đổi chuỗi ngày giờ từ server (UTC) sang Date object theo múi giờ thiết bị chính xác
+ */
+export function parseServerDate(dateStr) {
+  if (!dateStr) return new Date();
+  if (dateStr instanceof Date) return dateStr;
+  const str = String(dateStr).trim();
+  // Nếu chuỗi ISO chưa có 'Z' hay múi giờ (+/-), thêm 'Z' để ép JS parse theo chuẩn UTC
+  if (!str.endsWith('Z') && !/[+-]\d{2}:?(\d{2})?$/.test(str)) {
+    return new Date(str + 'Z');
+  }
+  return new Date(str);
+}
+
+/**
+ * Format hiển thị giờ theo định dạng 24h (HH:mm) hoặc Ngày/Tháng (DD/MM HH:mm) theo giờ địa phương
+ */
+export function formatMessageTime(dateStr) {
+  if (!dateStr) return '';
+  const d = parseServerDate(dateStr);
+  if (isNaN(d.getTime())) return '';
+
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const timeFormatted = `${hours}:${minutes}`;
+
+  if (isToday) {
+    return timeFormatted;
+  }
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  return `${day}/${month} ${timeFormatted}`;
+}
+
+/**
  * Âm thanh thông báo tin nhắn mới dùng Web Audio API (không cần file bên ngoài, siêu nhẹ & mượt)
  */
 export function playNotificationSound() {

@@ -25,14 +25,9 @@ import {
   fetchChatHistory,
   sendChatMessage,
   markChatAsRead,
-  playNotificationSound
+  playNotificationSound,
+  formatMessageTime
 } from '../services/directChatService';
-
-function formatMessageTime(dateString) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
 
 export default function DirectChatWidget({ isOpen, onClose }) {
   const { data } = useContext(PortfolioContext);

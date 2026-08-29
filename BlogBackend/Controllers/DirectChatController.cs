@@ -113,7 +113,7 @@ namespace BlogBackend.Controllers
                 isFromAdmin = msg.IsFromAdmin,
                 isReadByAdmin = msg.IsReadByAdmin,
                 isReadByUser = msg.IsReadByUser,
-                createdAt = msg.CreatedAt
+                createdAt = DateTime.SpecifyKind(msg.CreatedAt, DateTimeKind.Utc)
             };
 
             // Broadcast qua SignalR
@@ -124,7 +124,7 @@ namespace BlogBackend.Controllers
                 sessionId = msg.SessionId,
                 senderName = isFromAdmin ? null : senderName,
                 lastMessage = msg.Content,
-                lastMessageTime = msg.CreatedAt,
+                lastMessageTime = DateTime.SpecifyKind(msg.CreatedAt, DateTimeKind.Utc),
                 isFromAdmin = msg.IsFromAdmin
             }, cancellationToken);
 

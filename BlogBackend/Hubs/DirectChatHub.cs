@@ -97,7 +97,7 @@ namespace BlogBackend.Hubs
                 isFromAdmin = msg.IsFromAdmin,
                 isReadByAdmin = msg.IsReadByAdmin,
                 isReadByUser = msg.IsReadByUser,
-                createdAt = msg.CreatedAt
+                createdAt = DateTime.SpecifyKind(msg.CreatedAt, DateTimeKind.Utc)
             };
 
             // Gửi tới Khách của phiên này
@@ -110,7 +110,7 @@ namespace BlogBackend.Hubs
                 sessionId = msg.SessionId,
                 senderName = isFromAdmin ? null : senderName,
                 lastMessage = msg.Content,
-                lastMessageTime = msg.CreatedAt,
+                lastMessageTime = DateTime.SpecifyKind(msg.CreatedAt, DateTimeKind.Utc),
                 isFromAdmin = msg.IsFromAdmin
             });
 
