@@ -42,6 +42,10 @@ namespace BlogBackend.Services
             {
                 password = GetConfigValue("GMAIL_APP_PASSWORD", "EmailSettings:AppPassword", "");
             }
+            if (!string.IsNullOrWhiteSpace(password))
+            {
+                password = password.Replace(" ", "").Trim();
+            }
 
             var adminEmail = GetConfigValue("ADMIN_NOTIFICATION_EMAIL", "EmailSettings:AdminEmail", "vuducnam12345678@gmail.com");
 
