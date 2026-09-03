@@ -61,26 +61,96 @@ export function parseServerDate(dateStr) {
 }
 
 /**
- * Format hiển thị giờ theo định dạng 24h (HH:mm) hoặc Ngày/Tháng (DD/MM HH:mm) theo giờ địa phương
+ * Kiểm tra xem 2 timestamp có cùng một ngày hay không
+ */
+export function isSameDay(dateStr1, dateStr2) {
+  if (!dateStr1 || !dateStr2) return false;
+  const d1 = parseServerDate(dateStr1);
+  const d2 = parseServerDate(dateStr2);
+  if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return false;
+  return d1.toDateString() === d2.toDateString();
+}
+
+/**
+ * Format nhãn ngày hiển thị divider giữa các ngày nhắn:
+ * Ví dụ: "Hôm nay, 03/09/2026", "Hôm qua, 02/09/2026", "29/08/2026"
+ */
+export function formatDateDivider(dateStr) {
+  if (!dateStr) return '';
+  const d = parseServerDate(dateStr);
+  if (isNaN(d.getTime())) return '';
+
+  const now = new Date();
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+
+  if (d.toDateString() === now.toDateString()) {
+    return `Hôm nay, ${day}/${month}/${year}`;
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) {
+    return `Hôm qua, ${day}/${month}/${year}`;
+  }
+
+  return `${day}/${month}/${year}`;
+}
+
+/**
+ * Format hiển thị giờ & ngày trên từng bong bóng tin nhắn:
+ * Ví dụ: "15:03 • 03/09/2026"
  */
 export function formatMessageTime(dateStr) {
   if (!dateStr) return '';
   const d = parseServerDate(dateStr);
   if (isNaN(d.getTime())) return '';
 
-  const now = new Date();
-  const isToday = d.toDateString() === now.toDateString();
-
   const hours = String(d.getHours()).padStart(2, '0');
   const minutes = String(d.getMinutes()).padStart(2, '0');
   const timeFormatted = `${hours}:${minutes}`;
 
-  if (isToday) {
-    return timeFormatted;
-  }
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
-  return `${day}/${month} ${timeFormatted}`;
+  const year = d.getFullYear();
+
+  return `${timeFormatted} • ${day}/${month}/${year}`;
+}
+
+/**
+ * Format hiển thị thời gian trong danh sách hội thoại (Sidebar Admin):
+ * Ví dụ: "Hôm nay 15:03" hoặc "03/09 15:03" hoặc "03/09/2025 15:03"
+ */
+export function formatSessionTime(dateStr) {
+  if (!dateStr) return '';
+  const d = parseServerDate(dateStr);
+  if (isNaN(d.getTime())) return '';
+
+  const now = new Date();
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const time = `${hours}:${minutes}`;
+
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+
+  if (d.toDateString() === now.toDateString()) {
+    return `Hôm nay ${time}`;
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) {
+    return `Hôm qua ${time}`;
+  }
+
+  if (d.getFullYear() === now.getFullYear()) {
+    return `${day}/${month} ${time}`;
+  }
+
+  return `${day}/${month}/${year} ${time}`;
 }
 
 /**

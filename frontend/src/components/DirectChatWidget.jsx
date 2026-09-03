@@ -12,10 +12,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { PortfolioContext } from '../context/PortfolioContext';
-import fallbackAvatarImg from '../assets/avatar.png';
-import fallbackAvatarAvif from '../assets/avatar.avif';
-import fallbackAvatarWebp from '../assets/avatar.webp';
-import OptimizedImage from './OptimizedImage';
+import AdminAvatar from './AdminAvatar';
 import {
   getDirectChatSessionId,
   getDirectChatUserName,
@@ -26,7 +23,9 @@ import {
   sendChatMessage,
   markChatAsRead,
   playNotificationSound,
-  formatMessageTime
+  formatMessageTime,
+  formatDateDivider,
+  isSameDay
 } from '../services/directChatService';
 
 export default function DirectChatWidget({ isOpen, onClose }) {
@@ -48,8 +47,6 @@ export default function DirectChatWidget({ isOpen, onClose }) {
   const chatEndRef = useRef(null);
   const hubConnectionRef = useRef(null);
   const typingTimeoutRef = useRef(null);
-
-  const adminAvatar = hero.avatar || fallbackAvatarImg;
 
   const quickStarters = [
     '👋 Chào Nam!',
@@ -298,16 +295,7 @@ export default function DirectChatWidget({ isOpen, onClose }) {
         <div className="flex items-center gap-3 min-w-0">
           {/* Avatar Nam */}
           <div className="relative shrink-0 w-10 h-10 rounded-full border-2 border-[#F1D89E]/50 overflow-hidden shadow-[0_0_15px_rgba(241,216,158,0.3)] bg-black/60">
-            <OptimizedImage
-              src={adminAvatar}
-              avifSrc={!hero.avatar ? fallbackAvatarAvif : undefined}
-              webpSrc={!hero.avatar ? fallbackAvatarWebp : undefined}
-              resolveSource={Boolean(hero.avatar)}
-              alt="Vũ Đức Nam"
-              widths={[40, 80]}
-              sizes="40px"
-              className="w-full h-full object-cover"
-            />
+            <AdminAvatar avatarUrl={hero.avatar} size={40} />
             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border border-black animate-pulse" />
           </div>
 
@@ -414,15 +402,10 @@ export default function DirectChatWidget({ isOpen, onClose }) {
         <>
           <div className="flex-1 min-h-0 p-3 sm:p-4 overflow-y-auto overscroll-contain space-y-3 scrollbar-thin scrollbar-thumb-white/10">
             {/* Lời chào mặc định của Nam */}
+            {/* Lời chào mặc định của Nam */}
             <div className="flex gap-2.5 justify-start">
-              <div className="w-7 h-7 rounded-full border border-[#F1D89E]/40 overflow-hidden shrink-0 mt-0.5 bg-black/40">
-                <OptimizedImage
-                  src={adminAvatar}
-                  alt="Đức Nam"
-                  widths={[28, 56]}
-                  sizes="28px"
-                  className="w-full h-full object-cover"
-                />
+              <div className="w-7 h-7 rounded-full border border-[#F1D89E]/40 overflow-hidden shrink-0 mt-0.5 bg-black/40 shadow-sm">
+                <AdminAvatar avatarUrl={hero.avatar} size={28} />
               </div>
               <div className="max-w-[82%] rounded-2xl rounded-tl-none p-3 text-xs leading-relaxed bg-[#181a26] text-gray-200 border border-white/10 shadow-md">
                 <div className="text-[11px] font-semibold text-[#F1D89E] mb-1">
@@ -432,7 +415,7 @@ export default function DirectChatWidget({ isOpen, onClose }) {
                   Xin chào <span className="font-semibold text-[#F1D89E]">{userName}</span>! 👋 Mình là Nam. Bạn có thể nhắn tin trực tiếp với mình tại đây về công việc, hợp tác hoặc câu hỏi bất kỳ, mình sẽ nhận được và phản hồi sớm nhé!
                 </p>
                 <span className="block text-[9px] mt-1.5 text-right text-gray-400">
-                  {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {formatMessageTime(new Date())}
                 </span>
               </div>
             </div>
@@ -440,51 +423,56 @@ export default function DirectChatWidget({ isOpen, onClose }) {
             {/* Các tin nhắn trong phiên */}
             {messages.map((msg, idx) => {
               const isMe = !msg.isFromAdmin;
+              const prevMsg = idx > 0 ? messages[idx - 1] : null;
+              const isNewDay = !prevMsg || !isSameDay(msg.createdAt, prevMsg.createdAt);
+
               return (
-                <div
-                  key={msg.id || idx}
-                  className={`flex gap-2.5 ${isMe ? 'justify-end' : 'justify-start'}`}
-                >
-                  {!isMe && (
-                    <div className="w-7 h-7 rounded-full border border-[#F1D89E]/40 overflow-hidden shrink-0 mt-0.5 bg-black/40">
-                      <OptimizedImage
-                        src={adminAvatar}
-                        alt="Đức Nam"
-                        widths={[28, 56]}
-                        sizes="28px"
-                        className="w-full h-full object-cover"
-                      />
+                <div key={msg.id || idx}>
+                  {/* Dải phân cách ngày nhắn */}
+                  {isNewDay && (
+                    <div className="flex justify-center my-3 select-none">
+                      <span className="px-3 py-1 rounded-full bg-black/40 border border-[#F1D89E]/20 text-[#F1D89E] text-[10px] font-semibold tracking-wider shadow-sm backdrop-blur-md">
+                        {formatDateDivider(msg.createdAt)}
+                      </span>
                     </div>
                   )}
 
-                  <div
-                    className={`max-w-[82%] rounded-2xl p-3 text-xs leading-relaxed ${
-                      isMe
-                        ? 'bg-gradient-to-r from-[#F1D89E] to-[#d4b775] text-black font-medium rounded-tr-none shadow-md'
-                        : 'bg-[#181a26] text-gray-200 border border-white/10 rounded-tl-none shadow-md'
-                    }`}
-                  >
+                  <div className={`flex gap-2.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
                     {!isMe && (
-                      <div className="text-[10px] font-semibold text-[#F1D89E] mb-0.5">
-                        Đức Nam
+                      <div className="w-7 h-7 rounded-full border border-[#F1D89E]/40 overflow-hidden shrink-0 mt-0.5 bg-black/40 shadow-sm">
+                        <AdminAvatar avatarUrl={hero.avatar} size={28} />
                       </div>
                     )}
-                    <div className="whitespace-pre-wrap break-words">{msg.content}</div>
+
                     <div
-                      className={`flex items-center justify-end gap-1 text-[9px] mt-1 ${
-                        isMe ? 'text-black/60' : 'text-gray-400'
+                      className={`max-w-[82%] rounded-2xl p-3 text-xs leading-relaxed ${
+                        isMe
+                          ? 'bg-gradient-to-r from-[#F1D89E] to-[#d4b775] text-black font-medium rounded-tr-none shadow-md'
+                          : 'bg-[#181a26] text-gray-200 border border-white/10 rounded-tl-none shadow-md'
                       }`}
                     >
-                      <span>{formatMessageTime(msg.createdAt)}</span>
-                      {isMe && (
-                        <span>
-                          {msg.isReadByAdmin ? (
-                            <CheckCheck className="w-3 h-3 text-blue-800" title="Đã xem" />
-                          ) : (
-                            <Check className="w-3 h-3 text-black/50" title="Đã gửi" />
-                          )}
-                        </span>
+                      {!isMe && (
+                        <div className="text-[10px] font-semibold text-[#F1D89E] mb-0.5">
+                          Đức Nam
+                        </div>
                       )}
+                      <div className="whitespace-pre-wrap break-words">{msg.content}</div>
+                      <div
+                        className={`flex items-center justify-end gap-1 text-[9px] mt-1 ${
+                          isMe ? 'text-black/60' : 'text-gray-400'
+                        }`}
+                      >
+                        <span>{formatMessageTime(msg.createdAt)}</span>
+                        {isMe && (
+                          <span>
+                            {msg.isReadByAdmin ? (
+                              <CheckCheck className="w-3 motion-safe:animate-pulse text-blue-800" title="Đã xem" />
+                            ) : (
+                              <Check className="w-3 text-black/50" title="Đã gửi" />
+                            )}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -494,14 +482,8 @@ export default function DirectChatWidget({ isOpen, onClose }) {
             {/* Typing Indicator từ Nam */}
             {isNamTyping && (
               <div className="flex gap-2.5 items-center">
-                <div className="w-7 h-7 rounded-full border border-[#F1D89E]/40 overflow-hidden shrink-0 bg-black/40">
-                  <OptimizedImage
-                    src={adminAvatar}
-                    alt="Đức Nam"
-                    widths={[28, 56]}
-                    sizes="28px"
-                    className="w-full h-full object-cover"
-                  />
+                <div className="w-7 h-7 rounded-full border border-[#F1D89E]/40 overflow-hidden shrink-0 bg-black/40 shadow-sm">
+                  <AdminAvatar avatarUrl={hero.avatar} size={28} />
                 </div>
                 <div className="bg-[#181a26] px-3.5 py-2 rounded-2xl border border-white/10 flex items-center gap-1.5">
                   <span className="text-[10px] text-[#F1D89E] italic mr-1">Nam đang soạn tin</span>

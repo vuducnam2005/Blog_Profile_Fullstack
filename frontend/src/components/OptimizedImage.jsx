@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   buildImageSrcSet,
   getResponsiveImageUrl,
@@ -17,21 +18,37 @@ export default function OptimizedImage({
   videoThumbnail = false,
   avifSrc,
   webpSrc,
+  fallbackSrc,
   pictureClassName = 'contents',
+  onError,
   ...imageProps
 }) {
-  const resolvedSource = resolveSource ? resolveMediaUrl(src) : (src || '');
+  const [imgError, setImgError] = useState(false);
+  const currentSrc = imgError && fallbackSrc ? fallbackSrc : src;
+  const isFallback = imgError && Boolean(fallbackSrc);
+
+  const resolvedSource = resolveSource && !isFallback
+    ? resolveMediaUrl(currentSrc)
+    : (currentSrc || '');
+
   const transformationOptions = { ...cloudinaryOptions, videoThumbnail };
   const optimizedSource = getResponsiveImageUrl(
     resolvedSource,
     widths,
     transformationOptions,
   );
-  const srcSet = buildImageSrcSet(
+  const srcSet = isFallback ? undefined : buildImageSrcSet(
     resolvedSource,
     widths,
     transformationOptions,
   );
+
+  const handleImageError = (e) => {
+    if (!imgError && fallbackSrc) {
+      setImgError(true);
+    }
+    if (onError) onError(e);
+  };
 
   const image = (
     <img
@@ -43,10 +60,11 @@ export default function OptimizedImage({
       loading={loading}
       decoding={decoding}
       fetchPriority={fetchPriority}
+      onError={handleImageError}
     />
   );
 
-  if (!avifSrc && !webpSrc) return image;
+  if (imgError || (!avifSrc && !webpSrc)) return image;
 
   return (
     <picture className={pictureClassName}>

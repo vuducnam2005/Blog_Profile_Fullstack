@@ -55,6 +55,17 @@ export function resolveMediaUrl(source, apiBaseUrl = API_BASE_URL) {
     return url;
   }
 
+  // Vite static assets, relative paths and frontend local assets
+  if (
+    url.startsWith('/assets/') ||
+    url.startsWith('assets/') ||
+    url.startsWith('/@fs/') ||
+    url.startsWith('/src/') ||
+    url.startsWith('./')
+  ) {
+    return url.startsWith('/') ? url : `/${url}`;
+  }
+
   return `${apiBaseUrl.replace(/\/+$/, '')}/${url.replace(/^\/+/, '')}`;
 }
 
