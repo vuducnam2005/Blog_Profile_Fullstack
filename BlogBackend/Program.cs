@@ -1,5 +1,6 @@
 using BlogBackend.Data;
 using BlogBackend.Hubs;
+using BlogBackend.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http.Features;
 
@@ -28,6 +29,7 @@ builder.Services.Configure<FormOptions>(options =>
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<IEmailService, EmailService>();
 builder.Services.AddHttpClient("Gemini", client =>
 {
     // Streaming requests control their own timeout so headers can arrive immediately.
@@ -121,6 +123,25 @@ using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<BlogDbContext>();
         db.Database.Migrate();
+
+        // Đảm bảo bảng DirectChatSessions tồn tại để lưu email nhận thông báo của khách
+        try
+        {
+            db.Database.ExecuteSqlRaw(@"
+                CREATE TABLE IF NOT EXISTS ""DirectChatSessions"" (
+                    ""SessionId"" VARCHAR(100) PRIMARY KEY,
+                    ""VisitorName"" VARCHAR(100),
+                    ""VisitorEmail"" VARCHAR(200),
+                    ""WantsEmailNotification"" BOOLEAN NOT NULL DEFAULT FALSE,
+                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    ""LastActivityAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+                );
+            ");
+        }
+        catch (Exception rawEx)
+        {
+            Console.WriteLine($"[Cảnh báo DB] Không thể chạy ExecuteSqlRaw DirectChatSessions: {rawEx.Message}");
+        }
     }
     catch (Exception ex)
     {

@@ -13,6 +13,7 @@ namespace BlogBackend.Data
         public DbSet<PortfolioConfig> PortfolioConfigs { get; set; }
         public DbSet<Comment> Comments { get; set; }
         public DbSet<DirectChatMessage> DirectChatMessages { get; set; }
+        public DbSet<DirectChatSession> DirectChatSessions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

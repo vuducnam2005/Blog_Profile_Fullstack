@@ -4,18 +4,21 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using BlogBackend.Data;
 using BlogBackend.Models;
+using BlogBackend.Services;
 
 namespace BlogBackend.Hubs
 {
     public class DirectChatHub : Hub
     {
         private readonly BlogDbContext _context;
+        private readonly IEmailService _emailService;
         private const string AdminSecretKey = "DucNamAdmin2005SecretKey";
         private const string AdminsGroup = "Admins";
 
-        public DirectChatHub(BlogDbContext context)
+        public DirectChatHub(BlogDbContext context, IEmailService emailService)
         {
             _context = context;
+            _emailService = emailService;
         }
 
         public async Task JoinConversation(string sessionId)
@@ -99,6 +102,46 @@ namespace BlogBackend.Hubs
                 isReadByUser = msg.IsReadByUser,
                 createdAt = DateTime.SpecifyKind(msg.CreatedAt, DateTimeKind.Utc)
             };
+
+            // Cập nhật hoặc tạo mới thông tin phiên chat (DirectChatSession)
+            try
+            {
+                var sessionInfo = await _context.DirectChatSessions.FirstOrDefaultAsync(s => s.SessionId == sessionId);
+                if (sessionInfo == null)
+                {
+                    sessionInfo = new DirectChatSession
+                    {
+                        SessionId = sessionId,
+                        VisitorName = isFromAdmin ? null : senderName,
+                        CreatedAt = DateTime.UtcNow,
+                        LastActivityAt = DateTime.UtcNow
+                    };
+                    _context.DirectChatSessions.Add(sessionInfo);
+                }
+                else
+                {
+                    if (!isFromAdmin && !string.IsNullOrWhiteSpace(senderName))
+                    {
+                        sessionInfo.VisitorName = senderName;
+                    }
+                    sessionInfo.LastActivityAt = DateTime.UtcNow;
+                }
+                await _context.SaveChangesAsync();
+
+                // Gửi thông báo Email bất đồng bộ (chạy nền)
+                if (!isFromAdmin)
+                {
+                    _ = Task.Run(() => _emailService.SendAdminNewMessageNotificationAsync(senderName, content, sessionId));
+                }
+                else if (sessionInfo != null && sessionInfo.WantsEmailNotification && !string.IsNullOrWhiteSpace(sessionInfo.VisitorEmail))
+                {
+                    _ = Task.Run(() => _emailService.SendVisitorReplyNotificationAsync(sessionInfo.VisitorEmail, sessionInfo.VisitorName ?? "Bạn", content, sessionId));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DirectChatHub] Lỗi cập nhật session hoặc gửi mail: {ex.Message}");
+            }
 
             // Gửi tới Khách của phiên này
             await Clients.Group($"session_{sessionId}").SendAsync("ReceiveMessage", payload);
@@ -184,11 +227,59 @@ namespace BlogBackend.Hubs
             if (messages.Count > 0)
             {
                 _context.DirectChatMessages.RemoveRange(messages);
-                await _context.SaveChangesAsync();
             }
+
+            var sessionInfo = await _context.DirectChatSessions
+                .FirstOrDefaultAsync(s => s.SessionId == sessionId);
+            if (sessionInfo != null)
+            {
+                _context.DirectChatSessions.Remove(sessionInfo);
+            }
+
+            await _context.SaveChangesAsync();
 
             await Clients.Group($"session_{sessionId}").SendAsync("SessionDeleted", new { sessionId });
             await Clients.Group(AdminsGroup).SendAsync("SessionDeleted", new { sessionId });
+        }
+
+        public async Task<bool> RegisterVisitorEmail(string sessionId, string email, bool wantsNotification, string? visitorName = null)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId)) return false;
+            sessionId = sessionId.Trim();
+            email = email?.Trim() ?? string.Empty;
+
+            try
+            {
+                var session = await _context.DirectChatSessions.FirstOrDefaultAsync(s => s.SessionId == sessionId);
+                if (session == null)
+                {
+                    session = new DirectChatSession
+                    {
+                        SessionId = sessionId,
+                        VisitorName = visitorName?.Trim(),
+                        VisitorEmail = email,
+                        WantsEmailNotification = wantsNotification,
+                        CreatedAt = DateTime.UtcNow,
+                        LastActivityAt = DateTime.UtcNow
+                    };
+                    _context.DirectChatSessions.Add(session);
+                }
+                else
+                {
+                    if (!string.IsNullOrWhiteSpace(email)) session.VisitorEmail = email;
+                    if (!string.IsNullOrWhiteSpace(visitorName)) session.VisitorName = visitorName.Trim();
+                    session.WantsEmailNotification = wantsNotification;
+                    session.LastActivityAt = DateTime.UtcNow;
+                }
+
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DirectChatHub] Lỗi lưu email khách: {ex.Message}");
+                return false;
+            }
         }
     }
 }

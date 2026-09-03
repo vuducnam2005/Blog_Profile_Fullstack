@@ -284,3 +284,21 @@ export async function deleteAdminSession(sessionId) {
   });
   return res.data;
 }
+
+/**
+ * API REST: Đăng ký email nhận thông báo của khách
+ */
+export async function registerSessionEmail(sessionId, email, wantsNotification = true, visitorName = '') {
+  if (!sessionId) return null;
+  try {
+    const res = await axios.post(`${API_BASE_URL}/api/directchat/session/${sessionId}/email`, {
+      email: email ? String(email).trim() : null,
+      visitorName: visitorName ? String(visitorName).trim() : null,
+      wantsEmailNotification: Boolean(wantsNotification)
+    });
+    return res.data;
+  } catch (err) {
+    console.error('Lỗi khi đăng ký email nhận thông báo:', err);
+    return null;
+  }
+}

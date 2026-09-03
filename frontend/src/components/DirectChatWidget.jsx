@@ -9,7 +9,8 @@ import {
   CheckCheck,
   Sparkles,
   ArrowLeft,
-  AlertCircle
+  AlertCircle,
+  Mail
 } from 'lucide-react';
 import { PortfolioContext } from '../context/PortfolioContext';
 import AdminAvatar from './AdminAvatar';
@@ -25,7 +26,8 @@ import {
   playNotificationSound,
   formatMessageTime,
   formatDateDivider,
-  isSameDay
+  isSameDay,
+  registerSessionEmail
 } from '../services/directChatService';
 
 export default function DirectChatWidget({ isOpen, onClose }) {
@@ -37,6 +39,13 @@ export default function DirectChatWidget({ isOpen, onClose }) {
   const [inputName, setInputName] = useState(userName || '');
   const [isEditingName, setIsEditingName] = useState(!userName);
   const [isSessionDeletedNotice, setIsSessionDeletedNotice] = useState(false);
+
+  // Trạng thái hỏi và lưu email nhận thông báo của khách
+  const [showEmailPrompt, setShowEmailPrompt] = useState(false);
+  const [emailInputMode, setEmailInputMode] = useState(false);
+  const [visitorEmailInput, setVisitorEmailInput] = useState('');
+  const [emailSavedToast, setEmailSavedToast] = useState('');
+  const [emailLoading, setEmailLoading] = useState(false);
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -250,6 +259,47 @@ export default function DirectChatWidget({ isOpen, onClose }) {
     } finally {
       setLoading(false);
       scrollToBottom(true);
+
+      // Kiểm tra và hiển thị prompt nhận email nếu chưa được hỏi trong phiên này
+      const promptKey = `direct_chat_email_prompt_${sessionId}`;
+      if (!localStorage.getItem(promptKey)) {
+        setShowEmailPrompt(true);
+      }
+    }
+  };
+
+  const handleDeclineEmail = () => {
+    setShowEmailPrompt(false);
+    localStorage.setItem(`direct_chat_email_prompt_${sessionId}`, 'declined');
+    registerSessionEmail(sessionId, '', false, userName).catch(() => {});
+    if (hubConnectionRef.current && isConnected) {
+      hubConnectionRef.current.invoke('RegisterVisitorEmail', sessionId, '', false, userName).catch(() => {});
+    }
+  };
+
+  const handleSaveEmail = async (e) => {
+    e?.preventDefault();
+    const email = visitorEmailInput.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      alert('Vui lòng nhập địa chỉ email hợp lệ!');
+      return;
+    }
+
+    setEmailLoading(true);
+    try {
+      await registerSessionEmail(sessionId, email, true, userName);
+      if (hubConnectionRef.current && isConnected) {
+        hubConnectionRef.current.invoke('RegisterVisitorEmail', sessionId, email, true, userName).catch(() => {});
+      }
+      localStorage.setItem(`direct_chat_email_prompt_${sessionId}`, 'saved');
+      localStorage.setItem(`direct_chat_email_${sessionId}`, email);
+      setShowEmailPrompt(false);
+      setEmailSavedToast(`Đã lưu email (${email})! Nam sẽ gửi thông báo đến bạn khi có phản hồi.`);
+      setTimeout(() => setEmailSavedToast(''), 6000);
+    } catch (err) {
+      console.error('Lỗi khi lưu email:', err);
+    } finally {
+      setEmailLoading(false);
     }
   };
 
@@ -277,6 +327,10 @@ export default function DirectChatWidget({ isOpen, onClose }) {
   // Quay lại và bắt đầu hội thoại mới khi phiên trước bị xóa
   const handleStartNewSession = () => {
     setIsSessionDeletedNotice(false);
+    setShowEmailPrompt(false);
+    setEmailInputMode(false);
+    setVisitorEmailInput('');
+    setEmailSavedToast('');
     setMessages([]);
     setUserName('');
     setInputName('');
@@ -509,6 +563,92 @@ export default function DirectChatWidget({ isOpen, onClose }) {
                   {starter}
                 </button>
               ))}
+            </div>
+          )}
+
+          {/* Thông Báo Lưu Email Thành Công */}
+          {emailSavedToast && (
+            <div className="mx-3 my-1.5 px-3 py-2 rounded-xl bg-emerald-950/85 border border-emerald-500/40 text-emerald-300 text-xs flex items-center justify-between gap-2 shadow-lg animate-in fade-in duration-300">
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span className="text-[11px] leading-tight">{emailSavedToast}</span>
+              </div>
+              <button
+                onClick={() => setEmailSavedToast('')}
+                className="text-emerald-400 hover:text-white text-xs p-1"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* Banner Hỏi Khách Nhận Thông Báo Qua Email Khi Gửi Tin Nhắn Đầu Tiên */}
+          {showEmailPrompt && (
+            <div className="mx-3 my-1.5 p-3 rounded-2xl bg-[#161926] border border-[#F1D89E]/40 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 duration-300">
+              {!emailInputMode ? (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <span className="text-xl shrink-0">💌</span>
+                    <div>
+                      <p className="text-xs text-white font-bold leading-tight">
+                        Bạn có muốn nhận thông báo qua email khi Nam trả lời?
+                      </p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        Giúp bạn không bỏ lỡ phản hồi nếu rời khỏi trang web.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0 mt-1 sm:mt-0">
+                    <button
+                      type="button"
+                      onClick={() => setEmailInputMode(true)}
+                      className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#F1D89E] to-[#d8b868] text-black font-bold text-xs hover:opacity-90 transition shadow-sm cursor-pointer"
+                    >
+                      Có, nhận tin
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeclineEmail}
+                      className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-gray-200 text-xs transition cursor-pointer"
+                    >
+                      Để sau
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleSaveEmail} className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-[#F1D89E] font-bold flex items-center gap-1.5">
+                      <Mail className="w-3.5 h-3.5 text-[#F1D89E]" /> Nhập địa chỉ email của bạn:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setEmailInputMode(false)}
+                      className="text-gray-400 hover:text-gray-200 text-xs cursor-pointer"
+                    >
+                      ✕ Hủy
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      required
+                      autoFocus
+                      value={visitorEmailInput}
+                      onChange={(e) => setVisitorEmailInput(e.target.value)}
+                      placeholder="ví dụ: ban@gmail.com"
+                      className="flex-1 bg-black/50 border border-white/20 focus:border-[#F1D89E] rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none"
+                    />
+                    <button
+                      type="submit"
+                      disabled={emailLoading || !visitorEmailInput.trim()}
+                      className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#F1D89E] to-[#d8b868] text-black font-bold text-xs hover:opacity-90 disabled:opacity-40 transition shrink-0 cursor-pointer shadow-sm"
+                    >
+                      {emailLoading ? 'Đang lưu...' : 'Lưu email'}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           )}
 

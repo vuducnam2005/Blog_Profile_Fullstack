@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using BlogBackend.Data;
 using BlogBackend.Hubs;
 using BlogBackend.Models;
+using BlogBackend.Services;
 
 namespace BlogBackend.Controllers
 {
@@ -18,13 +19,15 @@ namespace BlogBackend.Controllers
     {
         private readonly BlogDbContext _context;
         private readonly IHubContext<DirectChatHub> _hubContext;
+        private readonly IEmailService _emailService;
         private const string AdminSecretKey = "DucNamAdmin2005SecretKey";
         private const string AdminsGroup = "Admins";
 
-        public DirectChatController(BlogDbContext context, IHubContext<DirectChatHub> hubContext)
+        public DirectChatController(BlogDbContext context, IHubContext<DirectChatHub> hubContext, IEmailService emailService)
         {
             _context = context;
             _hubContext = hubContext;
+            _emailService = emailService;
         }
 
         private bool IsAuthorizedAdmin()
@@ -115,6 +118,46 @@ namespace BlogBackend.Controllers
                 isReadByUser = msg.IsReadByUser,
                 createdAt = DateTime.SpecifyKind(msg.CreatedAt, DateTimeKind.Utc)
             };
+
+            // Cập nhật hoặc tạo mới thông tin phiên chat (DirectChatSession)
+            try
+            {
+                var sessionInfo = await _context.DirectChatSessions.FirstOrDefaultAsync(s => s.SessionId == sessionId, cancellationToken);
+                if (sessionInfo == null)
+                {
+                    sessionInfo = new DirectChatSession
+                    {
+                        SessionId = sessionId,
+                        VisitorName = isFromAdmin ? null : senderName,
+                        CreatedAt = DateTime.UtcNow,
+                        LastActivityAt = DateTime.UtcNow
+                    };
+                    _context.DirectChatSessions.Add(sessionInfo);
+                }
+                else
+                {
+                    if (!isFromAdmin && !string.IsNullOrWhiteSpace(senderName))
+                    {
+                        sessionInfo.VisitorName = senderName;
+                    }
+                    sessionInfo.LastActivityAt = DateTime.UtcNow;
+                }
+                await _context.SaveChangesAsync(cancellationToken);
+
+                // Gửi thông báo Email bất đồng bộ (chạy nền không block HTTP response)
+                if (!isFromAdmin)
+                {
+                    _ = Task.Run(() => _emailService.SendAdminNewMessageNotificationAsync(senderName, content, sessionId));
+                }
+                else if (sessionInfo != null && sessionInfo.WantsEmailNotification && !string.IsNullOrWhiteSpace(sessionInfo.VisitorEmail))
+                {
+                    _ = Task.Run(() => _emailService.SendVisitorReplyNotificationAsync(sessionInfo.VisitorEmail, sessionInfo.VisitorName ?? "Bạn", content, sessionId));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DirectChat] Lỗi cập nhật session hoặc kích hoạt gửi mail: {ex.Message}");
+            }
 
             // Broadcast qua SignalR
             await _hubContext.Clients.Group($"session_{sessionId}").SendAsync("ReceiveMessage", payload, cancellationToken);
@@ -245,13 +288,69 @@ namespace BlogBackend.Controllers
             if (messages.Count > 0)
             {
                 _context.DirectChatMessages.RemoveRange(messages);
-                await _context.SaveChangesAsync(cancellationToken);
             }
+
+            var sessionInfo = await _context.DirectChatSessions
+                .FirstOrDefaultAsync(s => s.SessionId == sessionId, cancellationToken);
+            if (sessionInfo != null)
+            {
+                _context.DirectChatSessions.Remove(sessionInfo);
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
 
             await _hubContext.Clients.Group($"session_{sessionId}").SendAsync("SessionDeleted", new { sessionId }, cancellationToken);
             await _hubContext.Clients.Group(AdminsGroup).SendAsync("SessionDeleted", new { sessionId }, cancellationToken);
 
             return Ok(new { message = "Đã xóa cuộc hội thoại thành công." });
+        }
+
+        // POST: api/directchat/session/{sessionId}/email
+        [HttpPost("session/{sessionId}/email")]
+        public async Task<IActionResult> RegisterSessionEmail(string sessionId, [FromBody] RegisterEmailDto dto, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId)) return BadRequest(new { message = "Session ID không hợp lệ." });
+            sessionId = sessionId.Trim();
+
+            var email = dto?.Email?.Trim();
+            var wantsNotification = dto?.WantsEmailNotification ?? true;
+
+            if (wantsNotification && string.IsNullOrWhiteSpace(email))
+            {
+                return BadRequest(new { message = "Vui lòng nhập địa chỉ email hợp lệ." });
+            }
+
+            var session = await _context.DirectChatSessions.FirstOrDefaultAsync(s => s.SessionId == sessionId, cancellationToken);
+            if (session == null)
+            {
+                session = new DirectChatSession
+                {
+                    SessionId = sessionId,
+                    VisitorName = dto?.VisitorName?.Trim(),
+                    VisitorEmail = email,
+                    WantsEmailNotification = wantsNotification,
+                    CreatedAt = DateTime.UtcNow,
+                    LastActivityAt = DateTime.UtcNow
+                };
+                _context.DirectChatSessions.Add(session);
+            }
+            else
+            {
+                if (!string.IsNullOrWhiteSpace(email)) session.VisitorEmail = email;
+                if (!string.IsNullOrWhiteSpace(dto?.VisitorName)) session.VisitorName = dto.VisitorName.Trim();
+                session.WantsEmailNotification = wantsNotification;
+                session.LastActivityAt = DateTime.UtcNow;
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return Ok(new
+            {
+                success = true,
+                sessionId,
+                visitorEmail = session.VisitorEmail,
+                wantsEmailNotification = session.WantsEmailNotification
+            });
         }
     }
 
@@ -261,5 +360,12 @@ namespace BlogBackend.Controllers
         public string? SenderName { get; set; }
         public string Content { get; set; } = string.Empty;
         public bool IsFromAdmin { get; set; } = false;
+    }
+
+    public class RegisterEmailDto
+    {
+        public string? Email { get; set; }
+        public string? VisitorName { get; set; }
+        public bool WantsEmailNotification { get; set; } = true;
     }
 }
