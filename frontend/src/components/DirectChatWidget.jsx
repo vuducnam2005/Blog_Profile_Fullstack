@@ -75,6 +75,12 @@ export default function DirectChatWidget({ isOpen, onClose }) {
     setMessages(history);
     if (history.length > 0) {
       markChatAsRead(sessionId, false);
+
+      // Nếu đã có tin nhắn từ khách và chưa từng hỏi email cho phiên này
+      const promptKey = `direct_chat_email_prompt_${sessionId}`;
+      if (!localStorage.getItem(promptKey) && history.some((m) => !m.isFromAdmin)) {
+        setShowEmailPrompt(true);
+      }
     }
   }, [sessionId]);
 
@@ -553,7 +559,10 @@ export default function DirectChatWidget({ isOpen, onClose }) {
 
           {/* GỢI Ý TIN NHẮN MẪU NHANH */}
           {messages.length <= 1 && (
-            <div className="px-3 py-2 bg-black/40 border-t border-white/5 flex gap-2 overflow-x-auto scrollbar-none">
+            <div
+              className="px-3 py-2 bg-black/40 border-t border-white/5 flex gap-2 overflow-x-auto select-none [&::-webkit-scrollbar]:hidden"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
               {quickStarters.map((starter, idx) => (
                 <button
                   key={idx}
