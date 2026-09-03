@@ -273,9 +273,13 @@ namespace BlogBackend.Services
             {
                 var payload = new { to = toEmail, subject = subject, html = bodyHtml };
                 var json = JsonSerializer.Serialize(payload);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var content = new StringContent(json, Encoding.UTF8, "text/plain");
                 var res = await httpClient.PostAsync(webhookUrl, content);
-                res.EnsureSuccessStatusCode();
+                Console.WriteLine($"[EmailService] Webhook response status: {res.StatusCode}");
+                if (!res.IsSuccessStatusCode && res.StatusCode != HttpStatusCode.Redirect && res.StatusCode != HttpStatusCode.Found)
+                {
+                    res.EnsureSuccessStatusCode();
+                }
                 Console.WriteLine($"[EmailService] Gửi email qua Google Apps Script Webhook thành công tới {toEmail}!");
                 return;
             }
