@@ -125,14 +125,16 @@ export default function AiChatLauncher() {
 
     // Khi Admin xóa hội thoại trong lúc người dùng đang duyệt web (không mở chat)
     hub.on('SessionDeleted', (data) => {
-      if (data.sessionId === sessionIdRef.current) {
+      const targetId = data?.sessionId || data?.SessionId || (typeof data === 'string' ? data : '');
+      const currentStored = getDirectChatSessionId();
+      if (targetId && (targetId === sessionIdRef.current || targetId === currentStored)) {
         setUnreadCount(0);
         const newSessionId = resetDirectChatSession();
         sessionIdRef.current = newSessionId;
         hub.invoke('JoinConversation', newSessionId).catch(() => {});
         window.dispatchEvent(
           new CustomEvent('directChatSessionDeleted', {
-            detail: { oldSessionId: data.sessionId, newSessionId }
+            detail: { oldSessionId: targetId, newSessionId }
           })
         );
       }

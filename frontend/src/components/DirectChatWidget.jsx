@@ -81,8 +81,14 @@ export default function DirectChatWidget({ isOpen, onClose }) {
       if (!localStorage.getItem(promptKey) && history.some((m) => !m.isFromAdmin)) {
         setShowEmailPrompt(true);
       }
+    } else {
+      // Nếu trên server không còn tin nhắn nào nhưng local đang có tin nhắn (vừa bị Admin xóa)
+      if (messages.length > 0) {
+        setIsSessionDeletedNotice(true);
+        setMessages([]);
+      }
     }
-  }, [sessionId]);
+  }, [sessionId, messages.length]);
 
   useEffect(() => {
     if (isOpen) {
@@ -114,6 +120,7 @@ export default function DirectChatWidget({ isOpen, onClose }) {
     const handleWindowSessionDeleted = (e) => {
       if (isOpen) {
         setIsSessionDeletedNotice(true);
+        setMessages([]);
       } else {
         setMessages([]);
         setUserName('');
@@ -186,8 +193,10 @@ export default function DirectChatWidget({ isOpen, onClose }) {
 
     // Khi Admin bấm xóa cuộc hội thoại trong lúc người dùng đang mở khung chat
     hub.on('SessionDeleted', (data) => {
-      if (data.sessionId === sessionId) {
+      const targetId = data?.sessionId || data?.SessionId || (typeof data === 'string' ? data : '');
+      if (targetId && targetId === sessionId) {
         setIsSessionDeletedNotice(true);
+        setMessages([]);
       }
     });
 

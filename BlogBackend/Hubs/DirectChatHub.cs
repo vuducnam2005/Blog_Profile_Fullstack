@@ -247,8 +247,7 @@ namespace BlogBackend.Hubs
 
                 await _context.SaveChangesAsync();
 
-                await Clients.Group($"session_{sessionId}").SendAsync("SessionDeleted", new { sessionId });
-                await Clients.Group(AdminsGroup).SendAsync("SessionDeleted", new { sessionId });
+                await Clients.All.SendAsync("SessionDeleted", new { sessionId });
             }
             catch (Exception ex)
             {
