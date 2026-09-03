@@ -1,6 +1,9 @@
 using System;
 using System.Net;
+using System.Net.Http;
 using System.Net.Mail;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -11,11 +14,13 @@ namespace BlogBackend.Services
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<EmailService> _logger;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        public EmailService(IConfiguration configuration, ILogger<EmailService> logger)
+        public EmailService(IConfiguration configuration, ILogger<EmailService> logger, IHttpClientFactory httpClientFactory)
         {
             _configuration = configuration;
             _logger = logger;
+            _httpClientFactory = httpClientFactory;
         }
 
         private string GetConfigValue(string envKey, string configKey, string defaultValue = "")
@@ -52,13 +57,26 @@ namespace BlogBackend.Services
             return (host, port, user, password, adminEmail);
         }
 
+        private bool IsAnyEmailChannelConfigured()
+        {
+            var webhook = GetConfigValue("GMAIL_WEBHOOK_URL", "EmailSettings:WebhookUrl", "");
+            var resend = GetConfigValue("RESEND_API_KEY", "EmailSettings:ResendApiKey", "");
+            var brevo = GetConfigValue("BREVO_API_KEY", "EmailSettings:BrevoApiKey", "");
+            var (_, _, _, password, _) = GetSmtpSettings();
+            return !string.IsNullOrWhiteSpace(webhook) ||
+                   !string.IsNullOrWhiteSpace(resend) ||
+                   !string.IsNullOrWhiteSpace(brevo) ||
+                   !string.IsNullOrWhiteSpace(password);
+        }
+
         public async Task SendAdminNewMessageNotificationAsync(string visitorName, string content, string sessionId)
         {
             var (host, port, user, password, adminEmail) = GetSmtpSettings();
 
-            if (string.IsNullOrWhiteSpace(password))
+            if (!IsAnyEmailChannelConfigured())
             {
-                _logger.LogInformation("[EmailService] Chưa cấu hình SMTP_PASSWORD. Bỏ qua gửi email thông báo tới Admin.");
+                Console.WriteLine("[EmailService] Chưa cấu hình kênh gửi email. Bỏ qua thông báo tới Admin.");
+                _logger.LogInformation("[EmailService] Chưa cấu hình kênh gửi email. Bỏ qua thông báo tới Admin.");
                 return;
             }
 
@@ -121,10 +139,12 @@ namespace BlogBackend.Services
 </html>";
 
                 await SendEmailRawAsync(host, port, user, password, adminEmail, subject, bodyHtml);
+                Console.WriteLine($"[EmailService] Đã gửi email thông báo tin nhắn mới tới Admin: {adminEmail}");
                 _logger.LogInformation("[EmailService] Đã gửi email thông báo tin nhắn mới tới Admin: {Email}", adminEmail);
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[EmailService] Lỗi gửi email tới Admin: {ex.GetType().Name}: {ex.Message} -> {ex.InnerException?.Message}");
                 _logger.LogError(ex, "[EmailService] Lỗi khi gửi email thông báo tới Admin.");
             }
         }
@@ -135,9 +155,10 @@ namespace BlogBackend.Services
 
             var (host, port, user, password, _) = GetSmtpSettings();
 
-            if (string.IsNullOrWhiteSpace(password))
+            if (!IsAnyEmailChannelConfigured())
             {
-                _logger.LogInformation("[EmailService] Chưa cấu hình SMTP_PASSWORD. Bỏ qua gửi email thông báo tới Khách.");
+                Console.WriteLine("[EmailService] Chưa cấu hình kênh gửi email. Bỏ qua thông báo tới Khách.");
+                _logger.LogInformation("[EmailService] Chưa cấu hình kênh gửi email. Bỏ qua gửi email thông báo tới Khách.");
                 return;
             }
 
@@ -206,38 +227,30 @@ namespace BlogBackend.Services
         public async Task<(bool Success, string Message)> TestSendEmailAsync()
         {
             var (host, port, user, password, adminEmail) = GetSmtpSettings();
-            var hasPass = !string.IsNullOrWhiteSpace(password);
-            var passLen = hasPass ? password.Length : 0;
-            Console.WriteLine($"[EmailService.Test] Host={host}, Port={port}, User={user}, HasPassword={hasPass}, PassLen={passLen}, AdminEmail={adminEmail}");
-
-            if (!hasPass)
-            {
-                return (false, "Chưa tìm thấy biến môi trường SMTP_PASSWORD trên Render (Password rỗng).");
-            }
+            var webhookUrl = GetConfigValue("GMAIL_WEBHOOK_URL", "EmailSettings:WebhookUrl", "");
+            var resendApiKey = GetConfigValue("RESEND_API_KEY", "EmailSettings:ResendApiKey", "");
 
             try
             {
-                using var client = new SmtpClient(host, port)
+                if (!string.IsNullOrWhiteSpace(webhookUrl))
                 {
-                    EnableSsl = true,
-                    UseDefaultCredentials = false,
-                    Credentials = new NetworkCredential(user, password),
-                    DeliveryMethod = SmtpDeliveryMethod.Network,
-                    Timeout = 12000
-                };
+                    await SendEmailRawAsync(host, port, user, password, adminEmail, "Test Email Webhook", "<h3>Test gửi qua Google Apps Script Webhook thành công!</h3>");
+                    return (true, $"Thành công! Đã gửi email kiểm tra qua Google Apps Script Webhook tới {adminEmail}.");
+                }
 
-                using var message = new MailMessage
+                if (!string.IsNullOrWhiteSpace(resendApiKey))
                 {
-                    From = new MailAddress(user, "Vũ Đức Nam (Test Server)"),
-                    Subject = "Test Email From Render Server",
-                    Body = $"Kiem tra gui email truc tiep tu Render luc {DateTime.UtcNow.AddHours(7):HH:mm:ss dd/MM/yyyy} thanh cong!",
-                    IsBodyHtml = false
-                };
-                message.To.Add(adminEmail);
+                    await SendEmailRawAsync(host, port, user, password, adminEmail, "Test Email Resend", "<h3>Test gửi qua Resend API thành công!</h3>");
+                    return (true, $"Thành công! Đã gửi email kiểm tra qua Resend API tới {adminEmail}.");
+                }
 
-                await client.SendMailAsync(message);
-                Console.WriteLine($"[EmailService.Test] Gửi email thành công tới {adminEmail}!");
-                return (true, $"Thành công! Email đã được gửi tới {adminEmail}.");
+                if (string.IsNullOrWhiteSpace(password))
+                {
+                    return (false, "Chưa cấu hình biến môi trường nào (GMAIL_WEBHOOK_URL, RESEND_API_KEY, hoặc SMTP_PASSWORD).");
+                }
+
+                await SendEmailRawAsync(host, port, user, password, adminEmail, "Test Email SMTP", "<h3>Test gửi qua SMTP thành công!</h3>");
+                return (true, $"Thành công! Đã gửi email kiểm tra qua SMTP tới {adminEmail}.");
             }
             catch (Exception ex)
             {
@@ -249,13 +262,71 @@ namespace BlogBackend.Services
 
         private async Task SendEmailRawAsync(string host, int port, string user, string password, string toEmail, string subject, string bodyHtml)
         {
+            var webhookUrl = GetConfigValue("GMAIL_WEBHOOK_URL", "EmailSettings:WebhookUrl", "");
+            var resendApiKey = GetConfigValue("RESEND_API_KEY", "EmailSettings:ResendApiKey", "");
+            var brevoApiKey = GetConfigValue("BREVO_API_KEY", "EmailSettings:BrevoApiKey", "");
+
+            var httpClient = _httpClientFactory.CreateClient();
+
+            // 1. Google Apps Script Webhook (HTTPS 443 - Miễn phí, chạy tốt 100% trên Render, gửi từ chính Gmail)
+            if (!string.IsNullOrWhiteSpace(webhookUrl))
+            {
+                var payload = new { to = toEmail, subject = subject, html = bodyHtml };
+                var json = JsonSerializer.Serialize(payload);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var res = await httpClient.PostAsync(webhookUrl, content);
+                res.EnsureSuccessStatusCode();
+                Console.WriteLine($"[EmailService] Gửi email qua Google Apps Script Webhook thành công tới {toEmail}!");
+                return;
+            }
+
+            // 2. Resend HTTP API (HTTPS 443)
+            if (!string.IsNullOrWhiteSpace(resendApiKey))
+            {
+                var request = new HttpRequestMessage(HttpMethod.Post, "https://api.resend.com/emails");
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", resendApiKey);
+                var fromEmail = GetConfigValue("RESEND_FROM", "EmailSettings:ResendFrom", "onboarding@resend.dev");
+                var payload = new
+                {
+                    from = fromEmail,
+                    to = new[] { toEmail },
+                    subject = subject,
+                    html = bodyHtml
+                };
+                request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                var res = await httpClient.SendAsync(request);
+                res.EnsureSuccessStatusCode();
+                Console.WriteLine($"[EmailService] Gửi email qua Resend API thành công tới {toEmail}!");
+                return;
+            }
+
+            // 3. Brevo HTTP API (HTTPS 443)
+            if (!string.IsNullOrWhiteSpace(brevoApiKey))
+            {
+                var request = new HttpRequestMessage(HttpMethod.Post, "https://api.brevo.com/v3/smtp/email");
+                request.Headers.Add("api-key", brevoApiKey);
+                var payload = new
+                {
+                    sender = new { name = "Vũ Đức Nam", email = user },
+                    to = new[] { new { email = toEmail } },
+                    subject = subject,
+                    htmlContent = bodyHtml
+                };
+                request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                var res = await httpClient.SendAsync(request);
+                res.EnsureSuccessStatusCode();
+                Console.WriteLine($"[EmailService] Gửi email qua Brevo API thành công tới {toEmail}!");
+                return;
+            }
+
+            // 4. SMTP truyền thống (Dùng khi chạy Localhost hoặc máy chủ không chặn cổng 587)
             using var client = new SmtpClient(host, port)
             {
                 EnableSsl = true,
                 UseDefaultCredentials = false,
                 Credentials = new NetworkCredential(user, password),
                 DeliveryMethod = SmtpDeliveryMethod.Network,
-                Timeout = 15000
+                Timeout = 12000
             };
 
             using var message = new MailMessage
@@ -268,6 +339,7 @@ namespace BlogBackend.Services
 
             message.To.Add(toEmail);
             await client.SendMailAsync(message);
+            Console.WriteLine($"[EmailService] Gửi email qua SMTP thành công tới {toEmail}!");
         }
     }
 }

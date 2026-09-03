@@ -29,6 +29,7 @@ builder.Services.Configure<FormOptions>(options =>
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IEmailService, EmailService>();
 builder.Services.AddHttpClient("Gemini", client =>
 {
