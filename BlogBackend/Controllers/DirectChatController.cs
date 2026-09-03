@@ -278,31 +278,46 @@ namespace BlogBackend.Controllers
                 return Unauthorized(new { message = "Bạn không có quyền xóa hội thoại này." });
             }
 
-            if (string.IsNullOrWhiteSpace(sessionId)) return BadRequest();
+            if (string.IsNullOrWhiteSpace(sessionId)) return BadRequest(new { message = "Session ID không hợp lệ." });
             sessionId = sessionId.Trim();
 
-            var messages = await _context.DirectChatMessages
-                .Where(m => m.SessionId == sessionId)
-                .ToListAsync(cancellationToken);
-
-            if (messages.Count > 0)
+            try
             {
-                _context.DirectChatMessages.RemoveRange(messages);
-            }
+                var messages = await _context.DirectChatMessages
+                    .Where(m => m.SessionId == sessionId)
+                    .ToListAsync(cancellationToken);
 
-            var sessionInfo = await _context.DirectChatSessions
-                .FirstOrDefaultAsync(s => s.SessionId == sessionId, cancellationToken);
-            if (sessionInfo != null)
+                if (messages.Count > 0)
+                {
+                    _context.DirectChatMessages.RemoveRange(messages);
+                }
+
+                try
+                {
+                    var sessionInfo = await _context.DirectChatSessions
+                        .FirstOrDefaultAsync(s => s.SessionId == sessionId, cancellationToken);
+                    if (sessionInfo != null)
+                    {
+                        _context.DirectChatSessions.Remove(sessionInfo);
+                    }
+                }
+                catch (Exception sessEx)
+                {
+                    Console.WriteLine($"[DeleteSession] Bỏ qua xóa DirectChatSession: {sessEx.Message}");
+                }
+
+                await _context.SaveChangesAsync(cancellationToken);
+
+                await _hubContext.Clients.Group($"session_{sessionId}").SendAsync("SessionDeleted", new { sessionId }, cancellationToken);
+                await _hubContext.Clients.Group(AdminsGroup).SendAsync("SessionDeleted", new { sessionId }, cancellationToken);
+
+                return Ok(new { message = "Đã xóa cuộc hội thoại thành công." });
+            }
+            catch (Exception ex)
             {
-                _context.DirectChatSessions.Remove(sessionInfo);
+                Console.WriteLine($"[DeleteSession] Lỗi: {ex.Message}");
+                return StatusCode(500, new { message = "Lỗi khi xóa cuộc hội thoại.", error = ex.Message });
             }
-
-            await _context.SaveChangesAsync(cancellationToken);
-
-            await _hubContext.Clients.Group($"session_{sessionId}").SendAsync("SessionDeleted", new { sessionId }, cancellationToken);
-            await _hubContext.Clients.Group(AdminsGroup).SendAsync("SessionDeleted", new { sessionId }, cancellationToken);
-
-            return Ok(new { message = "Đã xóa cuộc hội thoại thành công." });
         }
 
         // POST: api/directchat/session/{sessionId}/email

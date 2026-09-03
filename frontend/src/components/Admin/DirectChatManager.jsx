@@ -310,7 +310,11 @@ export default function DirectChatManager() {
     }
 
     try {
-      await deleteAdminSession(sessionId);
+      if (hubRef.current) {
+        await hubRef.current.invoke('DeleteSession', sessionId, ADMIN_API_KEY);
+      } else {
+        await deleteAdminSession(sessionId);
+      }
       setSessions((prev) => prev.filter((s) => s.sessionId !== sessionId));
       if (activeSessionId === sessionId) {
         setActiveSessionId(null);
@@ -318,8 +322,19 @@ export default function DirectChatManager() {
         setMobileView('list');
       }
     } catch (err) {
-      alert('Lỗi khi xóa hội thoại!');
-      console.error(err);
+      console.warn('SignalR delete failed, fallback to REST:', err);
+      try {
+        await deleteAdminSession(sessionId);
+        setSessions((prev) => prev.filter((s) => s.sessionId !== sessionId));
+        if (activeSessionId === sessionId) {
+          setActiveSessionId(null);
+          setActiveMessages([]);
+          setMobileView('list');
+        }
+      } catch (fallbackErr) {
+        alert('Lỗi khi xóa hội thoại! Vui lòng thử lại.');
+        console.error(fallbackErr);
+      }
     }
   };
 

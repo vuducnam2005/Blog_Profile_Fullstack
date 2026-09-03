@@ -220,26 +220,40 @@ namespace BlogBackend.Hubs
             if (adminKey != AdminSecretKey || string.IsNullOrWhiteSpace(sessionId)) return;
             sessionId = sessionId.Trim();
 
-            var messages = await _context.DirectChatMessages
-                .Where(m => m.SessionId == sessionId)
-                .ToListAsync();
-
-            if (messages.Count > 0)
+            try
             {
-                _context.DirectChatMessages.RemoveRange(messages);
-            }
+                var messages = await _context.DirectChatMessages
+                    .Where(m => m.SessionId == sessionId)
+                    .ToListAsync();
 
-            var sessionInfo = await _context.DirectChatSessions
-                .FirstOrDefaultAsync(s => s.SessionId == sessionId);
-            if (sessionInfo != null)
+                if (messages.Count > 0)
+                {
+                    _context.DirectChatMessages.RemoveRange(messages);
+                }
+
+                try
+                {
+                    var sessionInfo = await _context.DirectChatSessions
+                        .FirstOrDefaultAsync(s => s.SessionId == sessionId);
+                    if (sessionInfo != null)
+                    {
+                        _context.DirectChatSessions.Remove(sessionInfo);
+                    }
+                }
+                catch (Exception sessEx)
+                {
+                    Console.WriteLine($"[DirectChatHub.DeleteSession] Bỏ qua xóa DirectChatSession: {sessEx.Message}");
+                }
+
+                await _context.SaveChangesAsync();
+
+                await Clients.Group($"session_{sessionId}").SendAsync("SessionDeleted", new { sessionId });
+                await Clients.Group(AdminsGroup).SendAsync("SessionDeleted", new { sessionId });
+            }
+            catch (Exception ex)
             {
-                _context.DirectChatSessions.Remove(sessionInfo);
+                Console.WriteLine($"[DirectChatHub.DeleteSession] Lỗi: {ex.Message}");
             }
-
-            await _context.SaveChangesAsync();
-
-            await Clients.Group($"session_{sessionId}").SendAsync("SessionDeleted", new { sessionId });
-            await Clients.Group(AdminsGroup).SendAsync("SessionDeleted", new { sessionId });
         }
 
         public async Task<bool> RegisterVisitorEmail(string sessionId, string email, bool wantsNotification, string? visitorName = null)
