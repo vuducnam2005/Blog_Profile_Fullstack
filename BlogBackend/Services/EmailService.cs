@@ -193,11 +193,57 @@ namespace BlogBackend.Services
 </html>";
 
                 await SendEmailRawAsync(host, port, user, password, visitorEmail, subject, bodyHtml);
+                Console.WriteLine($"[EmailService] Đã gửi email phản hồi tới Khách: {visitorEmail}");
                 _logger.LogInformation("[EmailService] Đã gửi email phản hồi tới Khách: {Email}", visitorEmail);
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[EmailService] Lỗi gửi email tới Khách ({visitorEmail}): {ex.GetType().Name}: {ex.Message} -> {ex.InnerException?.Message}");
                 _logger.LogError(ex, "[EmailService] Lỗi khi gửi email thông báo tới Khách: {Email}", visitorEmail);
+            }
+        }
+
+        public async Task<(bool Success, string Message)> TestSendEmailAsync()
+        {
+            var (host, port, user, password, adminEmail) = GetSmtpSettings();
+            var hasPass = !string.IsNullOrWhiteSpace(password);
+            var passLen = hasPass ? password.Length : 0;
+            Console.WriteLine($"[EmailService.Test] Host={host}, Port={port}, User={user}, HasPassword={hasPass}, PassLen={passLen}, AdminEmail={adminEmail}");
+
+            if (!hasPass)
+            {
+                return (false, "Chưa tìm thấy biến môi trường SMTP_PASSWORD trên Render (Password rỗng).");
+            }
+
+            try
+            {
+                using var client = new SmtpClient(host, port)
+                {
+                    EnableSsl = true,
+                    UseDefaultCredentials = false,
+                    Credentials = new NetworkCredential(user, password),
+                    DeliveryMethod = SmtpDeliveryMethod.Network,
+                    Timeout = 12000
+                };
+
+                using var message = new MailMessage
+                {
+                    From = new MailAddress(user, "Vũ Đức Nam (Test Server)"),
+                    Subject = "Test Email From Render Server",
+                    Body = $"Kiem tra gui email truc tiep tu Render luc {DateTime.UtcNow.AddHours(7):HH:mm:ss dd/MM/yyyy} thanh cong!",
+                    IsBodyHtml = false
+                };
+                message.To.Add(adminEmail);
+
+                await client.SendMailAsync(message);
+                Console.WriteLine($"[EmailService.Test] Gửi email thành công tới {adminEmail}!");
+                return (true, $"Thành công! Email đã được gửi tới {adminEmail}.");
+            }
+            catch (Exception ex)
+            {
+                var fullErr = $"{ex.GetType().Name}: {ex.Message} | Inner: {ex.InnerException?.Message}";
+                Console.WriteLine($"[EmailService.Test] LỖI: {fullErr}");
+                return (false, fullErr);
             }
         }
 
@@ -209,7 +255,7 @@ namespace BlogBackend.Services
                 UseDefaultCredentials = false,
                 Credentials = new NetworkCredential(user, password),
                 DeliveryMethod = SmtpDeliveryMethod.Network,
-                Timeout = 15000 // 15 seconds timeout
+                Timeout = 15000
             };
 
             using var message = new MailMessage

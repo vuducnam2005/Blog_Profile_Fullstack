@@ -6,5 +6,6 @@ namespace BlogBackend.Services
     {
         Task SendAdminNewMessageNotificationAsync(string visitorName, string content, string sessionId);
         Task SendVisitorReplyNotificationAsync(string visitorEmail, string visitorName, string replyContent, string sessionId);
+        Task<(bool Success, string Message)> TestSendEmailAsync();
     }
 }

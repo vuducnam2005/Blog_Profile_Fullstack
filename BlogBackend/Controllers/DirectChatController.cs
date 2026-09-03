@@ -36,6 +36,23 @@ namespace BlogBackend.Controllers
             return key == AdminSecretKey;
         }
 
+        // GET: api/directchat/test-email?key=DucNamAdmin2005SecretKey
+        [HttpGet("test-email")]
+        public async Task<IActionResult> TestEmail([FromQuery] string? key)
+        {
+            if (key != AdminSecretKey && !IsAuthorizedAdmin())
+            {
+                return Unauthorized(new { message = "Khóa bí mật không hợp lệ." });
+            }
+
+            var (success, msg) = await _emailService.TestSendEmailAsync();
+            return Ok(new
+            {
+                success,
+                message = msg
+            });
+        }
+
         // GET: api/directchat/history/{sessionId}
         [HttpGet("history/{sessionId}")]
         public async Task<IActionResult> GetHistory(string sessionId, CancellationToken cancellationToken)
