@@ -11,7 +11,7 @@ import {
 const AiChatWidget = lazy(() => import('./AiChatWidget'));
 const DirectChatWidget = lazy(() => import('./DirectChatWidget'));
 
-function AvatarButton({ isOpen, onClick }) {
+function AvatarButton({ isOpen, isPaused, onClick }) {
   return (
     <button
       type="button"
@@ -25,6 +25,7 @@ function AvatarButton({ isOpen, onClick }) {
         <ChromaKeyVideo
           width="100%"
           height="100%"
+          paused={isPaused}
         />
       </div>
 
@@ -100,8 +101,19 @@ export default function AiChatLauncher() {
   const [unreadCount, setUnreadCount] = useState(0);
 
   const sessionIdRef = useRef(getDirectChatSessionId());
+  const isDirectOpenRef = useRef(isDirectOpen);
+  isDirectOpenRef.current = isDirectOpen;
 
-  // Kiểm tra tin nhắn chưa đọc từ Nam
+  // Tải trước bundle chat sau 2 giây khi trang đã rảnh (Zero delay khi click)
+  useEffect(() => {
+    const prefetchTimer = window.setTimeout(() => {
+      import('./AiChatWidget');
+      import('./DirectChatWidget');
+    }, 2000);
+    return () => window.clearTimeout(prefetchTimer);
+  }, []);
+
+  // Kiểm tra tin nhắn chưa đọc từ Nam và duy trì kết nối nền ổn định
   useEffect(() => {
     const sessionId = sessionIdRef.current;
     if (!sessionId) return;
@@ -113,11 +125,11 @@ export default function AiChatLauncher() {
       }
     }).catch(() => {});
 
-    // Kết nối SignalR để nhận thông báo tin nhắn mới tức thì
+    // Kết nối SignalR duy trì một lần, không ngắt khi đổi toggle
     const hub = createChatHubConnection();
     hub.on('ReceiveMessage', (msg) => {
       if (msg.sessionId === sessionId && msg.isFromAdmin) {
-        if (!isDirectOpen) {
+        if (!isDirectOpenRef.current) {
           setUnreadCount((prev) => prev + 1);
         }
       }
@@ -147,19 +159,28 @@ export default function AiChatLauncher() {
     return () => {
       hub.stop().catch(() => {});
     };
-  }, [isDirectOpen]);
+  }, []);
+
+  const notifyChatOpen = (isOpen) => {
+    window.dispatchEvent(new CustomEvent('chatOpenChange', { detail: { isOpen } }));
+  };
 
   // Tạm dừng Three.js canvas phía sau khi mở chat để giải phóng 100% CPU/GPU cho việc gõ phím mượt mà
   useEffect(() => {
     const isAnyChatOpen = isAiOpen || isDirectOpen;
-    window.dispatchEvent(new CustomEvent('chatOpenChange', { detail: { isOpen: isAnyChatOpen } }));
+    notifyChatOpen(isAnyChatOpen);
   }, [isAiOpen, isDirectOpen]);
 
   const toggleAiChat = () => {
     setIsAiActivated(true);
     setIsAiOpen((current) => {
       const next = !current;
-      if (next) setIsDirectOpen(false);
+      if (next) {
+        setIsDirectOpen(false);
+        notifyChatOpen(true);
+      } else {
+        notifyChatOpen(false);
+      }
       return next;
     });
   };
@@ -171,10 +192,15 @@ export default function AiChatLauncher() {
       if (next) {
         setIsAiOpen(false);
         setUnreadCount(0);
+        notifyChatOpen(true);
+      } else {
+        notifyChatOpen(false);
       }
       return next;
     });
   };
+
+  const isAnyChatOpen = isAiOpen || isDirectOpen;
 
   return (
     <div className="ai-chat-launcher flex flex-col items-end">
@@ -184,7 +210,10 @@ export default function AiChatLauncher() {
           <AiChatWidget
             panelOnly
             isOpen={isAiOpen}
-            onClose={() => setIsAiOpen(false)}
+            onClose={() => {
+              setIsAiOpen(false);
+              notifyChatOpen(false);
+            }}
           />
         </Suspense>
       )}
@@ -194,7 +223,10 @@ export default function AiChatLauncher() {
         <Suspense fallback={null}>
           <DirectChatWidget
             isOpen={isDirectOpen}
-            onClose={() => setIsDirectOpen(false)}
+            onClose={() => {
+              setIsDirectOpen(false);
+              notifyChatOpen(false);
+            }}
           />
         </Suspense>
       )}
@@ -209,6 +241,7 @@ export default function AiChatLauncher() {
       {/* Nút Avatar AI */}
       <AvatarButton
         isOpen={isAiOpen}
+        isPaused={isAnyChatOpen}
         onClick={toggleAiChat}
       />
     </div>

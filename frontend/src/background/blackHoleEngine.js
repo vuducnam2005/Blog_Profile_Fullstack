@@ -134,8 +134,11 @@ renderer.toneMappingExposure = 0.82;
 const composer = new EffectComposer(renderer);
 const renderPass = new RenderPass(scene, camera);
 composer.addPass(renderPass);
+const bloomResolution = isMobile
+    ? new THREE.Vector2(Math.round(sizes.width * 0.5), Math.round(sizes.height * 0.5))
+    : new THREE.Vector2(sizes.width, sizes.height);
 const bloomPass = new UnrealBloomPass(
-    new THREE.Vector2(sizes.width, sizes.height),
+    bloomResolution,
     CONFIG.bloom.strength,
     CONFIG.bloom.radius,
     CONFIG.bloom.threshold
@@ -1052,6 +1055,7 @@ const input = {
     maxScroll: Math.max(initialInput.maxScroll || 1, 1),
     mouseX: initialInput.mouseX || 0,
     mouseY: initialInput.mouseY || 0,
+    isScrolling: Boolean(initialInput.isScrolling),
 };
 let lastScrollY = input.scrollY;
 let scrollVelocity = 0;
@@ -1061,6 +1065,7 @@ let isTabVisible = initialInput.visible !== false;
 let animationId = null;
 let running = false;
 let disposed = false;
+let lastFrameTime = 0;
 
 // Reusable vector to avoid GC
 const _lookTarget = new THREE.Vector3(0, 0, 0);
@@ -1073,6 +1078,7 @@ function updateInput(nextInput = {}) {
     if (Number.isFinite(nextInput.maxScroll)) input.maxScroll = Math.max(nextInput.maxScroll, 1);
     if (Number.isFinite(nextInput.mouseX)) input.mouseX = nextInput.mouseX;
     if (Number.isFinite(nextInput.mouseY)) input.mouseY = nextInput.mouseY;
+    if (typeof nextInput.isScrolling === 'boolean') input.isScrolling = nextInput.isScrolling;
 
     if (!prefersReducedMotion && Number.isFinite(nextInput.wheelEnergy)) {
         scrollEnergy = Math.min(1, scrollEnergy + nextInput.wheelEnergy);
@@ -1095,6 +1101,9 @@ function resize(nextWidth, nextHeight, nextDevicePixelRatio = sizes.devicePixelR
     renderer.setSize(sizes.width, sizes.height, false);
     renderer.setPixelRatio(Math.min(sizes.devicePixelRatio, isMobile ? 1.0 : (isTablet ? 1.25 : 1.5)));
     composer.setSize(sizes.width, sizes.height);
+    if (isMobile && bloomPass?.resolution) {
+        bloomPass.resolution.set(Math.round(sizes.width * 0.5), Math.round(sizes.height * 0.5));
+    }
 }
 
 function setVisibility(visible) {
@@ -1126,6 +1135,13 @@ function tick() {
     animationId = null;
     if (!running || disposed || !isTabVisible) return;
     animationId = requestFrame(tick);
+
+    // Giới hạn FPS trên mobile (tối đa ~60 FPS) chống quá nhiệt và tụt xung trên màn hình 120Hz ProMotion iPhone
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    if (isMobile && now - lastFrameTime < 16) {
+        return;
+    }
+    lastFrameTime = now;
 
     // Delta time, clamped to prevent jumps
     const dt = Math.min(clock.getDelta(), 0.1);
@@ -1211,7 +1227,13 @@ function tick() {
     bloomPass.strength = currentBloom;
 
     // --- RENDER ---
-    composer.render();
+    // Adaptive Scroll Quality: khi người dùng đang vuốt cuộn trên mobile, render trực tiếp 1 pass (siêu nhẹ, 60-120fps mượt mà)
+    // Khi dừng cuộn, khôi phục render qua EffectComposer với bloom đầy đủ
+    if (isMobile && input.isScrolling) {
+        renderer.render(scene, camera);
+    } else {
+        composer.render();
+    }
 }
 
 function start() {

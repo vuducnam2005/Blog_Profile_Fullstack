@@ -28,6 +28,7 @@ const ChromaKeyVideo = ({
   alphaSrc = DEFAULT_ALPHA_SRC,
   animatedWebpSrc = DEFAULT_ANIMATED_WEBP_SRC,
   posterSrc = DEFAULT_POSTER_SRC,
+  paused = false,
 }) => {
   const videoRef = useRef(null);
   const [renderMode, setRenderMode] = useState(() => (
@@ -40,8 +41,15 @@ const ChromaKeyVideo = ({
     const video = videoRef.current;
     if (!video) return undefined;
 
+    if (paused) {
+      video.pause();
+      return undefined;
+    } else if (!document.hidden) {
+      video.play().catch(() => {});
+    }
+
     const handleVisibilityChange = () => {
-      if (document.hidden) {
+      if (document.hidden || paused) {
         video.pause();
       } else {
         video.play().catch(() => {});
@@ -50,7 +58,7 @@ const ChromaKeyVideo = ({
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [renderMode]);
+  }, [renderMode, paused]);
 
   return (
     <div
@@ -66,7 +74,7 @@ const ChromaKeyVideo = ({
           ref={videoRef}
           src={alphaSrc}
           poster={posterSrc}
-          autoPlay
+          autoPlay={!paused}
           loop
           muted
           playsInline
@@ -74,10 +82,12 @@ const ChromaKeyVideo = ({
           crossOrigin="anonymous"
           aria-hidden="true"
           className="absolute inset-0 w-full h-full object-contain pointer-events-none drop-shadow-[0_6px_18px_rgba(0,0,0,0.6)]"
-          onCanPlay={() => videoRef.current?.play().catch(() => {})}
+          onCanPlay={() => {
+            if (!paused) videoRef.current?.play().catch(() => {});
+          }}
           onError={() => setRenderMode('animated-webp')}
         />
-      ) : renderMode === 'animated-webp' ? (
+      ) : renderMode === 'animated-webp' && !paused ? (
         <img
           src={animatedWebpSrc}
           alt=""

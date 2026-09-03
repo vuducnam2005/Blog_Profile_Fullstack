@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useContext } from 'react';
 import { X, Send, Bot, Sparkles } from 'lucide-react';
-import ChromaKeyVideo from './ChromaKeyVideo';
 import { PortfolioContext } from '../context/PortfolioContext';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
@@ -373,8 +372,16 @@ export default function AiChatWidget({
           {/* HEADER CHAT */}
           <div className="p-3 sm:p-4 bg-gradient-to-r from-[#141620] via-[#1a1d2e] to-[#141620] border-b border-[#F1D89E]/20 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 flex items-center justify-center">
-                <ChromaKeyVideo width={48} height={48} />
+              <div className="w-10 h-10 rounded-xl bg-[#F1D89E]/10 border border-[#F1D89E]/30 flex items-center justify-center overflow-hidden shrink-0 shadow-md">
+                <img
+                  src="/avatar_AI_poster_v3.png"
+                  alt="Trợ Lý AI"
+                  width="40"
+                  height="40"
+                  className="w-full h-full object-contain filter drop-shadow-[0_2px_8px_rgba(241,216,158,0.4)]"
+                  loading="eager"
+                  decoding="async"
+                />
               </div>
               <div>
                 <h3 className="text-white text-sm font-semibold flex items-center gap-1.5">

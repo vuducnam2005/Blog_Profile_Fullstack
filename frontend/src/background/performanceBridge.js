@@ -8,10 +8,18 @@ function readViewport() {
     };
 }
 
+let cachedMaxScroll = 1;
+
+function updateMaxScroll() {
+    if (typeof document !== 'undefined') {
+        cachedMaxScroll = Math.max(document.documentElement.scrollHeight - window.innerHeight, 1);
+    }
+}
+
 function readScrollState() {
     return {
-        scrollY: window.scrollY,
-        maxScroll: Math.max(document.documentElement.scrollHeight - window.innerHeight, 1),
+        scrollY: typeof window !== 'undefined' ? window.scrollY : 0,
+        maxScroll: cachedMaxScroll,
     };
 }
 
@@ -32,6 +40,7 @@ export function startBlackHoleBackground() {
     const isMobile = viewport.width < 768;
     const isTablet = viewport.width >= 768 && viewport.width < 1024;
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    updateMaxScroll();
     const initialScroll = readScrollState();
 
     let worker = null;
@@ -52,6 +61,7 @@ export function startBlackHoleBackground() {
         wheelEnergy: 0,
         resetGalaxy: false,
         visible: !document.hidden,
+        isScrolling: false,
     };
 
     const clearWorkerReadyTimer = () => {
@@ -224,13 +234,42 @@ export function startBlackHoleBackground() {
         }
     };
 
+    let scrollStopTimer = null;
     const handleScroll = () => {
+        if (!pendingInput.isScrolling) {
+            pendingInput.isScrolling = true;
+            inputDirty = true;
+        }
         refreshScrollState();
         scheduleFlush();
+
+        if (scrollStopTimer !== null) {
+            window.clearTimeout(scrollStopTimer);
+        }
+        scrollStopTimer = window.setTimeout(() => {
+            scrollStopTimer = null;
+            if (pendingInput.isScrolling) {
+                pendingInput.isScrolling = false;
+                inputDirty = true;
+                scheduleFlush();
+            }
+        }, 120);
     };
 
+    let lastKnownWidth = viewport.width;
+    let isChatOpenState = false;
+
     const handleResize = () => {
-        pendingResize = readViewport();
+        const nextViewport = readViewport();
+        // Bỏ qua resize khi bàn phím ảo mobile trượt lên (chiều rộng không đổi và chat đang mở)
+        const isVirtualKeyboard = isMobile && isChatOpenState && Math.abs(nextViewport.width - lastKnownWidth) < 2;
+        if (isVirtualKeyboard) {
+            return;
+        }
+
+        lastKnownWidth = nextViewport.width;
+        updateMaxScroll();
+        pendingResize = nextViewport;
         resizeDirty = true;
         refreshScrollState();
         scheduleFlush();
@@ -260,6 +299,7 @@ export function startBlackHoleBackground() {
 
     const handleChatOpenChange = (event) => {
         const isChatOpen = Boolean(event.detail?.isOpen);
+        isChatOpenState = isChatOpen;
         const shouldBeVisible = !document.hidden && !isChatOpen;
         pendingInput.visible = shouldBeVisible;
         if (worker && (mode === 'worker' || mode === 'worker-starting')) {
@@ -281,6 +321,7 @@ export function startBlackHoleBackground() {
 
     const documentResizeObserver = typeof ResizeObserver === 'function'
         ? new ResizeObserver(() => {
+            updateMaxScroll();
             refreshScrollState();
             scheduleFlush();
         })
@@ -291,6 +332,11 @@ export function startBlackHoleBackground() {
         if (disposed) return;
         disposed = true;
         clearWorkerReadyTimer();
+
+        if (scrollStopTimer !== null) {
+            window.clearTimeout(scrollStopTimer);
+            scrollStopTimer = null;
+        }
 
         if (flushFrameId !== null) {
             window.cancelAnimationFrame(flushFrameId);

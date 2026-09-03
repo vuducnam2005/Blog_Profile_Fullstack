@@ -33,17 +33,27 @@
 
         body,
         html {
-            width: 100vw;
+            width: 100%;
             min-height: 100vh;
             overflow-x: hidden;
-            overflow-x: clip;
             background-color: #000000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Nền gradient cố định tách riêng thành GPU layer, không dùng background-attachment: fixed để iOS Safari cuộn 60-120fps */
+        .page-gradient-bg {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
             background:
                 radial-gradient(circle at top right, rgba(160, 120, 30, 0.15) 0%, transparent 50%),
                 radial-gradient(circle at top left, #0b1a1c 0%, #000000 70%);
-            background-attachment: fixed;
             background-size: cover;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            pointer-events: none;
+            z-index: -1;
+            transform: translateZ(0);
         }
 
         /* Canvas bao phủ toàn bộ màn hình CỐ ĐỊNH PHÍA SAU */
@@ -72,10 +82,9 @@
 
 <body>
 
-    <!-- Backgrounds are managed directly by the React app. -->
-    <!-- <canvas id="webgl-canvas"></canvas> -->
+    <!-- Nền gradient cố định tăng tốc phần cứng cho Safari / Mobile -->
+    <div class="page-gradient-bg" aria-hidden="true"></div>
 
-    <!-- App React đè lên trên -->
     <!-- App React đè lên trên (Bắt buộc phải có thẻ tên root này) -->
     <div id="root"></div>
 

@@ -69,26 +69,27 @@ export default function DirectChatWidget({ isOpen, onClose }) {
   }, []);
 
   // Tải lịch sử tin nhắn ban đầu
-  const loadHistory = useCallback(async () => {
-    if (!sessionId) return;
-    const history = await fetchChatHistory(sessionId);
-    setMessages(history);
-    if (history.length > 0) {
-      markChatAsRead(sessionId, false);
+  const loadHistory = useCallback(async (targetSessionId) => {
+    const activeSessionId = targetSessionId || getDirectChatSessionId();
+    if (!activeSessionId) return;
+    try {
+      const history = await fetchChatHistory(activeSessionId);
+      if (Array.isArray(history)) {
+        setMessages(history);
+        if (history.length > 0) {
+          markChatAsRead(activeSessionId, false);
 
-      // Nếu đã có tin nhắn từ khách và chưa từng hỏi email cho phiên này
-      const promptKey = `direct_chat_email_prompt_${sessionId}`;
-      if (!localStorage.getItem(promptKey) && history.some((m) => !m.isFromAdmin)) {
-        setShowEmailPrompt(true);
+          // Nếu đã có tin nhắn từ khách và chưa từng hỏi email cho phiên này
+          const promptKey = `direct_chat_email_prompt_${activeSessionId}`;
+          if (!localStorage.getItem(promptKey) && history.some((m) => !m.isFromAdmin)) {
+            setShowEmailPrompt(true);
+          }
+        }
       }
-    } else {
-      // Nếu trên server không còn tin nhắn nào nhưng local đang có tin nhắn (vừa bị Admin xóa)
-      if (messages.length > 0) {
-        setIsSessionDeletedNotice(true);
-        setMessages([]);
-      }
+    } catch (err) {
+      console.warn('Lỗi tải lịch sử chat:', err);
     }
-  }, [sessionId, messages.length]);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -102,10 +103,8 @@ export default function DirectChatWidget({ isOpen, onClose }) {
       } else {
         setUserName(currentStoredName);
       }
-      if (currentStoredSession !== sessionId) {
-        setSessionId(currentStoredSession);
-      }
-      loadHistory();
+      setSessionId(currentStoredSession);
+      loadHistory(currentStoredSession);
     }
   }, [isOpen, loadHistory]);
 

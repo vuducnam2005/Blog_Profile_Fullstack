@@ -98,7 +98,7 @@ export default function Navbar() {
   return (
     <nav className="site-navbar fixed top-0 w-full z-50">
       {/* ===== TOP BAR ===== */}
-      <div className="navbar-surface pt-[max(0.6rem,env(safe-area-inset-top))] pb-2.5 px-3 md:px-6 xl:px-8 md:py-3.5 flex justify-between items-center bg-black/75 md:bg-black/60 backdrop-blur-xl md:backdrop-blur-md border-b border-[#F1D89E]/20 shadow-[0_8px_28px_rgba(0,0,0,0.22)] md:shadow-none">
+      <div className="navbar-surface pt-[max(0.6rem,env(safe-area-inset-top))] pb-2.5 px-3 md:px-6 xl:px-8 md:py-3.5 flex justify-between items-center bg-black/85 md:bg-black/60 backdrop-blur-sm md:backdrop-blur-md border-b border-[#F1D89E]/20 shadow-[0_8px_28px_rgba(0,0,0,0.22)] md:shadow-none">
         {/* Logo */}
         <div
           onClick={handleLogoClick}
