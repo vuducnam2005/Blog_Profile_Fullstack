@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,21 +11,16 @@ namespace BlogBackend.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
-                name: "DirectChatSessions",
-                columns: table => new
-                {
-                    SessionId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    VisitorName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    VisitorEmail = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
-                    WantsEmailNotification = table.Column<bool>(type: "boolean", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
-                    LastActivityAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_DirectChatSessions", x => x.SessionId);
-                });
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS ""DirectChatSessions"" (
+                    ""SessionId"" character varying(100) NOT NULL PRIMARY KEY,
+                    ""VisitorName"" character varying(100),
+                    ""VisitorEmail"" character varying(200),
+                    ""WantsEmailNotification"" boolean NOT NULL DEFAULT FALSE,
+                    ""CreatedAt"" timestamp without time zone NOT NULL DEFAULT NOW(),
+                    ""LastActivityAt"" timestamp without time zone NOT NULL DEFAULT NOW()
+                );
+            ");
         }
 
         /// <inheritdoc />

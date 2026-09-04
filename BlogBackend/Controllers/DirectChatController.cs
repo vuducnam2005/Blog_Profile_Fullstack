@@ -23,6 +23,9 @@ namespace BlogBackend.Controllers
         private const string AdminSecretKey = "DucNamAdmin2005SecretKey";
         private const string AdminsGroup = "Admins";
 
+        private static bool _schemaEnsured = false;
+        private static readonly SemaphoreSlim _schemaLock = new(1, 1);
+
         public DirectChatController(BlogDbContext context, IHubContext<DirectChatHub> hubContext, IEmailService emailService)
         {
             _context = context;
@@ -34,6 +37,76 @@ namespace BlogBackend.Controllers
         {
             var key = Request.Headers["X-Admin-Key"].FirstOrDefault();
             return key == AdminSecretKey;
+        }
+
+        private async Task EnsureSchemaAsync()
+        {
+            if (_schemaEnsured) return;
+            await _schemaLock.WaitAsync();
+            try
+            {
+                if (_schemaEnsured) return;
+                await _context.Database.ExecuteSqlRawAsync(@"
+                    CREATE TABLE IF NOT EXISTS ""DirectChatSessions"" (
+                        ""SessionId"" VARCHAR(100) PRIMARY KEY,
+                        ""VisitorName"" VARCHAR(100),
+                        ""VisitorEmail"" VARCHAR(200),
+                        ""WantsEmailNotification"" BOOLEAN NOT NULL DEFAULT FALSE,
+                        ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                        ""LastActivityAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+                    );
+
+                    ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToId"" INTEGER;
+                    ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToSender"" VARCHAR(100);
+                    ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToContent"" TEXT;
+                ");
+                _schemaEnsured = true;
+                Console.WriteLine("[DirectChatController] EnsureSchemaAsync: schema đồng bộ thành công.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DirectChatController] EnsureSchemaAsync warning: {ex.Message}");
+            }
+            finally
+            {
+                _schemaLock.Release();
+            }
+        }
+
+        // GET: api/directchat/sync-db?key=DucNamAdmin2005SecretKey
+        [HttpGet("sync-db")]
+        public async Task<IActionResult> SyncDatabaseSchema([FromQuery] string? key)
+        {
+            if (key != AdminSecretKey && !IsAuthorizedAdmin())
+            {
+                return Unauthorized(new { message = "Khóa bí mật không hợp lệ." });
+            }
+
+            try
+            {
+                _schemaEnsured = false;
+                await EnsureSchemaAsync();
+
+                var totalMessages = await _context.DirectChatMessages.CountAsync();
+                var totalSessions = await _context.DirectChatSessions.CountAsync();
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Đã đồng bộ schema DirectChat thành công!",
+                    totalMessages,
+                    totalSessions
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    error = ex.Message,
+                    innerError = ex.InnerException?.Message
+                });
+            }
         }
 
         // GET: api/directchat/test-email?key=DucNamAdmin2005SecretKey
@@ -63,7 +136,23 @@ namespace BlogBackend.Controllers
             }
 
             sessionId = sessionId.Trim();
-            var messages = await _context.DirectChatMessages
+            try
+            {
+                var messages = await QueryHistoryInternalAsync(sessionId, cancellationToken);
+                return Ok(messages);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[GetHistory] Thử lại sau khi tự sửa schema: {ex.Message}");
+                await EnsureSchemaAsync();
+                var messages = await QueryHistoryInternalAsync(sessionId, cancellationToken);
+                return Ok(messages);
+            }
+        }
+
+        private async Task<object> QueryHistoryInternalAsync(string sessionId, CancellationToken cancellationToken)
+        {
+            return await _context.DirectChatMessages
                 .AsNoTracking()
                 .Where(m => m.SessionId == sessionId)
                 .OrderBy(m => m.CreatedAt)
@@ -82,8 +171,6 @@ namespace BlogBackend.Controllers
                     m.ReplyToContent
                 })
                 .ToListAsync(cancellationToken);
-
-            return Ok(messages);
         }
 
         // POST: api/directchat/send
@@ -127,8 +214,16 @@ namespace BlogBackend.Controllers
                 ReplyToContent = !string.IsNullOrWhiteSpace(dto.ReplyToContent) ? dto.ReplyToContent.Trim() : null
             };
 
-            _context.DirectChatMessages.Add(msg);
-            await _context.SaveChangesAsync(cancellationToken);
+            try
+            {
+                _context.DirectChatMessages.Add(msg);
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception)
+            {
+                await EnsureSchemaAsync();
+                await _context.SaveChangesAsync(cancellationToken);
+            }
 
             var payload = new
             {
@@ -209,12 +304,28 @@ namespace BlogBackend.Controllers
                 return Unauthorized(new { message = "Bạn không có quyền xem danh sách hội thoại." });
             }
 
+            try
+            {
+                var grouped = await QuerySessionsInternalAsync(cancellationToken);
+                return Ok(grouped);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[GetSessions] Thử lại sau khi tự sửa schema: {ex.Message}");
+                await EnsureSchemaAsync();
+                var grouped = await QuerySessionsInternalAsync(cancellationToken);
+                return Ok(grouped);
+            }
+        }
+
+        private async Task<object> QuerySessionsInternalAsync(CancellationToken cancellationToken)
+        {
             var allMessages = await _context.DirectChatMessages
                 .AsNoTracking()
                 .OrderByDescending(m => m.CreatedAt)
                 .ToListAsync(cancellationToken);
 
-            var grouped = allMessages
+            return allMessages
                 .GroupBy(m => m.SessionId)
                 .Select(g =>
                 {
@@ -236,8 +347,6 @@ namespace BlogBackend.Controllers
                 })
                 .OrderByDescending(s => s.lastMessageTime)
                 .ToList();
-
-            return Ok(grouped);
         }
 
         // GET: api/directchat/unread-count (Admin Only)

@@ -117,40 +117,44 @@ app.MapHub<DirectChatHub>("/hub/chat");
 app.MapMethods("/", new[] { "GET", "HEAD" }, () => Results.Ok("Backend is awake!"));
 app.MapMethods("/api/health", new[] { "GET", "HEAD" }, () => Results.Ok("Backend is alive and kicking!"));
 
-// Tự động chạy Migration khi khởi động (nếu có kết nối CSDL PostgreSQL)
+// Tự động đồng bộ Schema và Migration khi khởi động
 using (var scope = app.Services.CreateScope())
 {
+    var db = scope.ServiceProvider.GetRequiredService<BlogDbContext>();
+
+    // 1. Luôn bảo đảm các bảng và cột mới tồn tại trước (không phụ thuộc migration)
     try
     {
-        var db = scope.ServiceProvider.GetRequiredService<BlogDbContext>();
+        db.Database.ExecuteSqlRaw(@"
+            CREATE TABLE IF NOT EXISTS ""DirectChatSessions"" (
+                ""SessionId"" VARCHAR(100) PRIMARY KEY,
+                ""VisitorName"" VARCHAR(100),
+                ""VisitorEmail"" VARCHAR(200),
+                ""WantsEmailNotification"" BOOLEAN NOT NULL DEFAULT FALSE,
+                ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                ""LastActivityAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+            );
+
+            ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToId"" INTEGER;
+            ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToSender"" VARCHAR(100);
+            ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToContent"" TEXT;
+        ");
+        Console.WriteLine("[DB Startup] Đã đồng bộ schema DirectChat thành công.");
+    }
+    catch (Exception rawEx)
+    {
+        Console.WriteLine($"[Cảnh báo DB] Không thể chạy ExecuteSqlRaw DirectChat: {rawEx.Message}");
+    }
+
+    // 2. Chạy EF Core Migration độc lập
+    try
+    {
         db.Database.Migrate();
-
-        // Đảm bảo bảng DirectChatSessions và các cột Reply tồn tại
-        try
-        {
-            db.Database.ExecuteSqlRaw(@"
-                CREATE TABLE IF NOT EXISTS ""DirectChatSessions"" (
-                    ""SessionId"" VARCHAR(100) PRIMARY KEY,
-                    ""VisitorName"" VARCHAR(100),
-                    ""VisitorEmail"" VARCHAR(200),
-                    ""WantsEmailNotification"" BOOLEAN NOT NULL DEFAULT FALSE,
-                    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-                    ""LastActivityAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-                );
-
-                ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToId"" INTEGER;
-                ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToSender"" VARCHAR(100);
-                ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToContent"" TEXT;
-            ");
-        }
-        catch (Exception rawEx)
-        {
-            Console.WriteLine($"[Cảnh báo DB] Không thể chạy ExecuteSqlRaw DirectChat: {rawEx.Message}");
-        }
+        Console.WriteLine("[DB Startup] Đã áp dụng EF Core Migrations thành công.");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"[Cảnh báo DB] Bỏ qua Migration do chưa kết nối PostgreSQL: {ex.Message}");
+        Console.WriteLine($"[Cảnh báo DB] Bỏ qua Migration do lỗi hoặc chưa kết nối PostgreSQL: {ex.Message}");
     }
 }
 
