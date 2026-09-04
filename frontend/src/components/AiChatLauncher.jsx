@@ -205,7 +205,13 @@ export default function AiChatLauncher() {
   return (
     <>
       {/* ===== KHU VỰC CHAT TRỰC TIẾP VỚI NAM (Sát cạnh bên phải, ở giữa màn hình) ===== */}
-      <div className="direct-chat-launcher fixed right-0 top-1/2 -translate-y-1/2 z-[60] pointer-events-auto select-none">
+      <div
+        className={`direct-chat-launcher fixed right-0 top-1/2 -translate-y-1/2 z-[60] select-none transition-all duration-300 ease-in-out ${
+          isAnyChatOpen
+            ? 'opacity-0 pointer-events-none translate-x-full invisible'
+            : 'opacity-100 pointer-events-auto translate-x-0 visible'
+        }`}
+      >
         <DirectChatButton
           isOpen={isDirectOpen}
           unreadCount={unreadCount}
