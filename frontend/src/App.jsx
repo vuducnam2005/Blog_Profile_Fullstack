@@ -62,10 +62,10 @@ function AppContent() {
     <div className={`app-shell min-h-screen font-sans tracking-wide relative ${
       bgMode === 'spline' ? 'theme-nexbot' : 'theme-cosmic'
     }`}>
-      {bgMode === 'spline' ? <SplineBackground /> : <BlackHoleBackground />}
+      {isNormalRoute && (bgMode === 'spline' ? <SplineBackground /> : <BlackHoleBackground />)}
       <ScrollProgressBar />
-      <AudioPlayer />
-      <main className="site-main w-full pb-20">
+      {isNormalRoute && <AudioPlayer />}
+      <main className={`w-full ${isNormalRoute ? 'site-main pb-20' : 'admin-main pb-4'}`}>
         <Suspense fallback={<div className="min-h-[50vh]" />}>
           <Routes>
             <Route path="/" element={<Home />} />

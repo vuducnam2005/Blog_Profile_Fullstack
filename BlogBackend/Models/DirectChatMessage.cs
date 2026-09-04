@@ -26,5 +26,13 @@ namespace BlogBackend.Models
         public bool IsReadByUser { get; set; } = false;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        
+        // Trả lời tin nhắn (Quote / Reply)
+        public int? ReplyToId { get; set; }
+
+        [MaxLength(100)]
+        public string? ReplyToSender { get; set; }
+
+        public string? ReplyToContent { get; set; }
     }
 }

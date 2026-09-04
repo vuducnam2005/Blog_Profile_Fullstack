@@ -78,10 +78,10 @@ const CONFIG = {
         lerp: 0.03,
     },
     particles: {
-        galaxy: isMobile ? 24000 : isTablet ? 60000 : 150000,
+        galaxy: isMobile ? 12000 : isTablet ? 60000 : 150000,
         farStars: isMobile ? 500 : isTablet ? 1200 : 2500,
         midDust: isMobile ? 250 : isTablet ? 600 : 1500,
-        nearDust: isMobile ? 60 : isTablet ? 150 : 350,
+        nearDust: isMobile ? 30 : isTablet ? 150 : 350,
         orbital: isMobile ? 30 : isTablet ? 80 : 160,
         lightRays: isMobile ? 4 : isTablet ? 7 : 10,
         lightRaySegments: isMobile ? 40 : isTablet ? 64 : 96,
@@ -1220,18 +1220,16 @@ function tick() {
         meteorSystems[index].update(dt, elapsedTime);
     }
 
-    // --- BLOOM DYNAMIC ---
-    const bloomBoost = Math.min(scrollEnergy * 0.22, CONFIG.bloom.strengthMax - CONFIG.bloom.strength);
-    const targetBloom = CONFIG.bloom.strength + bloomBoost;
-    currentBloom += (targetBloom - currentBloom) * 0.05;
-    bloomPass.strength = currentBloom;
-
-    // --- RENDER ---
-    // Adaptive Scroll Quality: khi người dùng đang vuốt cuộn trên mobile, render trực tiếp 1 pass (siêu nhẹ, 60-120fps mượt mà)
-    // Khi dừng cuộn, khôi phục render qua EffectComposer với bloom đầy đủ
-    if (isMobile && input.isScrolling) {
+    // --- BLOOM DYNAMIC & RENDER ---
+    // Trên di động, luôn render trực tiếp 1 pass (siêu nhẹ, 60-120fps mượt mà, không quá tải GPU)
+    // Trên máy tính bàn/tablet, dùng EffectComposer với bloom đầy đủ
+    if (isMobile) {
         renderer.render(scene, camera);
     } else {
+        const bloomBoost = Math.min(scrollEnergy * 0.22, CONFIG.bloom.strengthMax - CONFIG.bloom.strength);
+        const targetBloom = CONFIG.bloom.strength + bloomBoost;
+        currentBloom += (targetBloom - currentBloom) * 0.05;
+        bloomPass.strength = currentBloom;
         composer.render();
     }
 }

@@ -47,7 +47,15 @@ namespace BlogBackend.Hubs
             return false;
         }
 
-        public async Task<DirectChatMessage?> SendMessage(string sessionId, string senderName, string content, bool isFromAdmin, string? adminKey = null)
+        public async Task<DirectChatMessage?> SendMessage(
+            string sessionId,
+            string senderName,
+            string content,
+            bool isFromAdmin,
+            string? adminKey = null,
+            int? replyToId = null,
+            string? replyToSender = null,
+            string? replyToContent = null)
         {
             if (string.IsNullOrWhiteSpace(sessionId) || string.IsNullOrWhiteSpace(content))
             {
@@ -85,7 +93,10 @@ namespace BlogBackend.Hubs
                 IsFromAdmin = isFromAdmin,
                 IsReadByAdmin = isFromAdmin,
                 IsReadByUser = !isFromAdmin,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                ReplyToId = replyToId,
+                ReplyToSender = !string.IsNullOrWhiteSpace(replyToSender) ? replyToSender.Trim() : null,
+                ReplyToContent = !string.IsNullOrWhiteSpace(replyToContent) ? replyToContent.Trim() : null
             };
 
             _context.DirectChatMessages.Add(msg);
@@ -100,7 +111,10 @@ namespace BlogBackend.Hubs
                 isFromAdmin = msg.IsFromAdmin,
                 isReadByAdmin = msg.IsReadByAdmin,
                 isReadByUser = msg.IsReadByUser,
-                createdAt = DateTime.SpecifyKind(msg.CreatedAt, DateTimeKind.Utc)
+                createdAt = DateTime.SpecifyKind(msg.CreatedAt, DateTimeKind.Utc),
+                replyToId = msg.ReplyToId,
+                replyToSender = msg.ReplyToSender,
+                replyToContent = msg.ReplyToContent
             };
 
             // Cập nhật hoặc tạo mới thông tin phiên chat (DirectChatSession)

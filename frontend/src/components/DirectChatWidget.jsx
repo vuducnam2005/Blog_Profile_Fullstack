@@ -10,7 +10,10 @@ import {
   Sparkles,
   ArrowLeft,
   AlertCircle,
-  Mail
+  Mail,
+  Reply,
+  MoreHorizontal,
+  Copy
 } from 'lucide-react';
 import { PortfolioContext } from '../context/PortfolioContext';
 import AdminAvatar from './AdminAvatar';
@@ -29,6 +32,301 @@ import {
   isSameDay,
   registerSessionEmail
 } from '../services/directChatService';
+
+function VisitorChatMessageBubble({
+  msg,
+  heroAvatar,
+  onReply,
+  onScrollToMessage,
+  isHighlighted,
+  activeMenuId,
+  setActiveMenuId
+}) {
+  const isMe = !msg.isFromAdmin;
+  const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const touchStartRef = useRef({ x: 0, y: 0 });
+  const isScrollRef = useRef(false);
+  const isHorizontalRef = useRef(false);
+
+  const handleTouchStart = (e) => {
+    const t = e.touches[0];
+    touchStartRef.current = { x: t.clientX, y: t.clientY };
+    isScrollRef.current = false;
+    isHorizontalRef.current = false;
+    setIsDragging(false);
+  };
+
+  const handleTouchMove = (e) => {
+    if (isScrollRef.current) return;
+    const t = e.touches[0];
+    const dx = t.clientX - touchStartRef.current.x;
+    const dy = t.clientY - touchStartRef.current.y;
+
+    if (!isHorizontalRef.current && !isScrollRef.current) {
+      if (Math.abs(dy) > Math.abs(dx)) {
+        isScrollRef.current = true;
+        return;
+      }
+      if (Math.abs(dx) > 8) {
+        isHorizontalRef.current = true;
+        setIsDragging(true);
+      }
+    }
+
+    if (isHorizontalRef.current) {
+      // Messenger style: vuốt sang trái để kéo bong bóng ra
+      const effectivePull = -dx;
+      if (effectivePull > 0) {
+        const damped = Math.min(effectivePull * 0.45, 60);
+        setDragX(-damped);
+      } else {
+        setDragX(0);
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (isHorizontalRef.current && Math.abs(dragX) >= 32) {
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try { navigator.vibrate(15); } catch {}
+      }
+      onReply(msg);
+    }
+    setDragX(0);
+    setIsDragging(false);
+    isHorizontalRef.current = false;
+    isScrollRef.current = false;
+  };
+
+  const handleCopy = (e) => {
+    e.stopPropagation();
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(msg.content);
+      setCopied(true);
+      setTimeout(() => {
+        setCopied(false);
+        setActiveMenuId(null);
+      }, 1000);
+    }
+  };
+
+  const isMenuOpen = activeMenuId === msg.id;
+  const isTriggered = Math.abs(dragX) >= 32;
+
+  return (
+    <div
+      id={`visitor-msg-${msg.id}`}
+      className="relative group/msg my-1 select-text"
+    >
+      {/* Icon Reply tròn hiển thị khi vuốt trên điện thoại */}
+      <div
+        className={`absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none md:hidden flex items-center justify-center transition-all ${
+          Math.abs(dragX) > 8 ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
+        }`}
+      >
+        <div
+          className={`w-7 h-7 rounded-full flex items-center justify-center shadow-lg transition-all ${
+            isTriggered
+              ? 'bg-[#F1D89E] text-black scale-110 ring-2 ring-[#F1D89E]/60'
+              : 'bg-white/20 text-white'
+          }`}
+          style={{
+            transform: `rotate(${Math.min(Math.abs(dragX) * 4.5, 180)}deg)`
+          }}
+        >
+          <Reply className="w-3.5 h-3.5" />
+        </div>
+      </div>
+
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{
+          transform: `translateX(${dragX}px)`,
+          transition: isDragging ? 'none' : 'transform 0.22s cubic-bezier(0.2, 0, 0, 1)'
+        }}
+        className={`flex items-end gap-2 sm:gap-2.5 ${isMe ? 'justify-end' : 'justify-start'}`}
+      >
+        {/* Avatar Nam */}
+        {!isMe && (
+          <div className="w-7 h-7 rounded-full border border-[#F1D89E]/40 overflow-hidden shrink-0 mb-1 bg-black/40 shadow-sm">
+            <AdminAvatar avatarUrl={heroAvatar} size={28} />
+          </div>
+        )}
+
+        {/* Nút 3 chấm trên Desktop (nằm bên trái nếu là tin nhắn của mình) */}
+        {isMe && (
+          <div className="relative hidden md:flex items-center self-center opacity-0 group-hover/msg:opacity-100 transition">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveMenuId(isMenuOpen ? null : msg.id);
+              }}
+              title="Tùy chọn tin nhắn"
+              className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition cursor-pointer"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+
+            {/* Popover Menu Desktop */}
+            {isMenuOpen && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute right-full mr-1.5 bottom-0 z-30 w-32 bg-[#181b2a] border border-white/15 rounded-xl shadow-2xl py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveMenuId(null);
+                    onReply(msg);
+                  }}
+                  className="w-full px-3 py-2 text-xs text-left text-gray-200 hover:text-[#F1D89E] hover:bg-white/10 flex items-center gap-2 transition cursor-pointer"
+                >
+                  <Reply className="w-3.5 h-3.5 text-[#F1D89E]" />
+                  <span>Trả lời</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className="w-full px-3 py-2 text-xs text-left text-gray-200 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-emerald-400">Đã chép!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-gray-400" />
+                      <span>Sao chép</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Bong bóng tin nhắn */}
+        <div
+          className={`relative max-w-[82%] rounded-2xl p-3 text-xs leading-relaxed shadow-md transition-all ${
+            isMe
+              ? 'bg-gradient-to-r from-[#F1D89E] to-[#d4b775] text-black font-medium rounded-br-none'
+              : 'bg-[#181a26] text-gray-200 border border-white/10 rounded-bl-none'
+          } ${
+            isHighlighted
+              ? 'ring-4 ring-[#F1D89E] shadow-[0_0_25px_rgba(241,216,158,0.8)] scale-[1.03] duration-300'
+              : ''
+          }`}
+        >
+          {/* Khung trích dẫn tin nhắn gốc (Quoted Message) giống Messenger */}
+          {msg.replyToContent && (
+            <div
+              onClick={() => onScrollToMessage(msg.replyToId)}
+              className={`mb-2 p-2 rounded-xl text-left cursor-pointer transition select-none flex flex-col gap-0.5 ${
+                isMe
+                  ? 'bg-black/15 hover:bg-black/25 border-l-2 border-black/70 text-black/90'
+                  : 'bg-black/40 hover:bg-black/60 border-l-2 border-[#F1D89E] text-gray-300'
+              }`}
+              title="Bấm để cuộn đến tin nhắn gốc"
+            >
+              <div className="flex items-center gap-1 text-[10px] font-bold">
+                <Reply className="w-2.5 h-2.5" />
+                <span>Trả lời {msg.replyToSender || 'tin nhắn'}</span>
+              </div>
+              <p className="text-[10.5px] truncate max-w-full italic opacity-85">
+                {msg.replyToContent}
+              </p>
+            </div>
+          )}
+
+          {!isMe && (
+            <div className="text-[10px] font-semibold text-[#F1D89E] mb-0.5">
+              Đức Nam
+            </div>
+          )}
+
+          <div className="whitespace-pre-wrap break-words">{msg.content}</div>
+
+          <div
+            className={`flex items-center justify-end gap-1 text-[9px] mt-1 ${
+              isMe ? 'text-black/60' : 'text-gray-400'
+            }`}
+          >
+            <span>{formatMessageTime(msg.createdAt)}</span>
+            {isMe && (
+              <span>
+                {msg.isReadByAdmin ? (
+                  <CheckCheck className="w-3 motion-safe:animate-pulse text-blue-800" title="Đã xem" />
+                ) : (
+                  <Check className="w-3 text-black/50" title="Đã gửi" />
+                )}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Nút 3 chấm trên Desktop (nằm bên phải nếu là tin nhắn của Nam) */}
+        {!isMe && (
+          <div className="relative hidden md:flex items-center self-center opacity-0 group-hover/msg:opacity-100 transition">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveMenuId(isMenuOpen ? null : msg.id);
+              }}
+              title="Tùy chọn tin nhắn"
+              className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition cursor-pointer"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+
+            {/* Popover Menu Desktop */}
+            {isMenuOpen && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute left-full ml-1.5 bottom-0 z-30 w-32 bg-[#181b2a] border border-white/15 rounded-xl shadow-2xl py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveMenuId(null);
+                    onReply(msg);
+                  }}
+                  className="w-full px-3 py-2 text-xs text-left text-gray-200 hover:text-[#F1D89E] hover:bg-white/10 flex items-center gap-2 transition cursor-pointer"
+                >
+                  <Reply className="w-3.5 h-3.5 text-[#F1D89E]" />
+                  <span>Trả lời</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className="w-full px-3 py-2 text-xs text-left text-gray-200 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-emerald-400">Đã chép!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-gray-400" />
+                      <span>Sao chép</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function DirectChatWidget({ isOpen, onClose }) {
   const { data } = useContext(PortfolioContext);
@@ -53,6 +351,12 @@ export default function DirectChatWidget({ isOpen, onClose }) {
   const [isNamTyping, setIsNamTyping] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
 
+  // Messenger-style Reply State
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [activeMenuMsgId, setActiveMenuMsgId] = useState(null);
+  const [highlightedMsgId, setHighlightedMsgId] = useState(null);
+  const inputRef = useRef(null);
+
   const chatEndRef = useRef(null);
   const hubConnectionRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -66,6 +370,47 @@ export default function DirectChatWidget({ isOpen, onClose }) {
 
   const scrollToBottom = useCallback((smooth = true) => {
     chatEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' });
+  }, []);
+
+  // Bắt đầu trả lời một tin nhắn (Quote)
+  const handleInitiateReply = useCallback((message) => {
+    setReplyingTo(message);
+    setActiveMenuMsgId(null);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+  }, []);
+
+  // Cuộn đến tin nhắn gốc được trích dẫn và nháy sáng
+  const scrollToOriginalMessage = useCallback((targetId) => {
+    if (!targetId) return;
+    const el = document.getElementById(`visitor-msg-${targetId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedMsgId(targetId);
+      setTimeout(() => setHighlightedMsgId(null), 1500);
+    }
+  }, []);
+
+  // Tự động đóng menu 3 chấm khi bấm ra ngoài
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      setActiveMenuMsgId(null);
+    };
+    window.addEventListener('click', handleGlobalClick);
+    return () => window.removeEventListener('click', handleGlobalClick);
+  }, []);
+
+  // Hủy trả lời bằng phím Escape
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setReplyingTo(null);
+        setActiveMenuMsgId(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   // Tải lịch sử tin nhắn ban đầu
@@ -223,7 +568,10 @@ export default function DirectChatWidget({ isOpen, onClose }) {
     if (!text || loading) return;
 
     const currentName = userName.trim() || 'Khách truy cập';
+    const targetReply = replyingTo;
     setInput('');
+    setReplyingTo(null);
+    setActiveMenuMsgId(null);
     setLoading(true);
 
     const tempId = Date.now();
@@ -235,7 +583,10 @@ export default function DirectChatWidget({ isOpen, onClose }) {
       isFromAdmin: false,
       isReadByAdmin: false,
       isReadByUser: true,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      replyToId: targetReply?.id || null,
+      replyToSender: targetReply?.isFromAdmin ? 'Đức Nam' : (targetReply?.senderName || 'Bạn'),
+      replyToContent: targetReply?.content ? targetReply.content.substring(0, 150) : null
     };
 
     setMessages((prev) => [...prev, optimisticMsg]);
@@ -243,7 +594,17 @@ export default function DirectChatWidget({ isOpen, onClose }) {
 
     try {
       if (hubConnectionRef.current && isConnected) {
-        const saved = await hubConnectionRef.current.invoke('SendMessage', sessionId, currentName, text, false, null);
+        const saved = await hubConnectionRef.current.invoke(
+          'SendMessage',
+          sessionId,
+          currentName,
+          text,
+          false,
+          null,
+          optimisticMsg.replyToId,
+          optimisticMsg.replyToSender,
+          optimisticMsg.replyToContent
+        );
         if (saved) {
           setMessages((prev) => prev.map((m) => (m.id === tempId ? saved : m)));
         }
@@ -252,7 +613,10 @@ export default function DirectChatWidget({ isOpen, onClose }) {
           sessionId,
           senderName: currentName,
           content: text,
-          isFromAdmin: false
+          isFromAdmin: false,
+          replyToId: optimisticMsg.replyToId,
+          replyToSender: optimisticMsg.replyToSender,
+          replyToContent: optimisticMsg.replyToContent
         });
         setMessages((prev) => prev.map((m) => (m.id === tempId ? saved : m)));
       }
@@ -264,7 +628,10 @@ export default function DirectChatWidget({ isOpen, onClose }) {
           sessionId,
           senderName: currentName,
           content: text,
-          isFromAdmin: false
+          isFromAdmin: false,
+          replyToId: optimisticMsg.replyToId,
+          replyToSender: optimisticMsg.replyToSender,
+          replyToContent: optimisticMsg.replyToContent
         });
         setMessages((prev) => prev.map((m) => (m.id === tempId ? saved : m)));
       } catch (fallbackErr) {
@@ -346,6 +713,8 @@ export default function DirectChatWidget({ isOpen, onClose }) {
     setVisitorEmailInput('');
     setEmailSavedToast('');
     setMessages([]);
+    setReplyingTo(null);
+    setActiveMenuMsgId(null);
     setUserName('');
     setInputName('');
     setIsEditingName(true);
@@ -470,27 +839,25 @@ export default function DirectChatWidget({ isOpen, onClose }) {
         <>
           <div className="flex-1 min-h-0 p-3 sm:p-4 overflow-y-auto overscroll-contain space-y-3 scrollbar-thin scrollbar-thumb-white/10">
             {/* Lời chào mặc định của Nam */}
-            {/* Lời chào mặc định của Nam */}
-            <div className="flex gap-2.5 justify-start">
-              <div className="w-7 h-7 rounded-full border border-[#F1D89E]/40 overflow-hidden shrink-0 mt-0.5 bg-black/40 shadow-sm">
-                <AdminAvatar avatarUrl={hero.avatar} size={28} />
-              </div>
-              <div className="max-w-[82%] rounded-2xl rounded-tl-none p-3 text-xs leading-relaxed bg-[#181a26] text-gray-200 border border-white/10 shadow-md">
-                <div className="text-[11px] font-semibold text-[#F1D89E] mb-1">
-                  Vũ Đức Nam
-                </div>
-                <p>
-                  Xin chào <span className="font-semibold text-[#F1D89E]">{userName}</span>! 👋 Mình là Nam. Bạn có thể nhắn tin trực tiếp với mình tại đây về công việc, hợp tác hoặc câu hỏi bất kỳ, mình sẽ nhận được và phản hồi sớm nhé!
-                </p>
-                <span className="block text-[9px] mt-1.5 text-right text-gray-400">
-                  {formatMessageTime(new Date())}
-                </span>
-              </div>
-            </div>
+            <VisitorChatMessageBubble
+              msg={{
+                id: 'welcome_greeting',
+                sessionId,
+                senderName: 'Vũ Đức Nam',
+                content: `Xin chào ${userName}! 👋 Mình là Nam. Bạn có thể nhắn tin trực tiếp với mình tại đây về công việc, hợp tác hoặc câu hỏi bất kỳ, mình sẽ nhận được và phản hồi sớm nhé!`,
+                isFromAdmin: true,
+                createdAt: messages[0]?.createdAt || new Date().toISOString()
+              }}
+              heroAvatar={hero.avatar}
+              onReply={handleInitiateReply}
+              onScrollToMessage={scrollToOriginalMessage}
+              isHighlighted={highlightedMsgId === 'welcome_greeting'}
+              activeMenuId={activeMenuMsgId}
+              setActiveMenuId={setActiveMenuMsgId}
+            />
 
             {/* Các tin nhắn trong phiên */}
             {messages.map((msg, idx) => {
-              const isMe = !msg.isFromAdmin;
               const prevMsg = idx > 0 ? messages[idx - 1] : null;
               const isNewDay = !prevMsg || !isSameDay(msg.createdAt, prevMsg.createdAt);
 
@@ -505,44 +872,15 @@ export default function DirectChatWidget({ isOpen, onClose }) {
                     </div>
                   )}
 
-                  <div className={`flex gap-2.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                    {!isMe && (
-                      <div className="w-7 h-7 rounded-full border border-[#F1D89E]/40 overflow-hidden shrink-0 mt-0.5 bg-black/40 shadow-sm">
-                        <AdminAvatar avatarUrl={hero.avatar} size={28} />
-                      </div>
-                    )}
-
-                    <div
-                      className={`max-w-[82%] rounded-2xl p-3 text-xs leading-relaxed ${
-                        isMe
-                          ? 'bg-gradient-to-r from-[#F1D89E] to-[#d4b775] text-black font-medium rounded-tr-none shadow-md'
-                          : 'bg-[#181a26] text-gray-200 border border-white/10 rounded-tl-none shadow-md'
-                      }`}
-                    >
-                      {!isMe && (
-                        <div className="text-[10px] font-semibold text-[#F1D89E] mb-0.5">
-                          Đức Nam
-                        </div>
-                      )}
-                      <div className="whitespace-pre-wrap break-words">{msg.content}</div>
-                      <div
-                        className={`flex items-center justify-end gap-1 text-[9px] mt-1 ${
-                          isMe ? 'text-black/60' : 'text-gray-400'
-                        }`}
-                      >
-                        <span>{formatMessageTime(msg.createdAt)}</span>
-                        {isMe && (
-                          <span>
-                            {msg.isReadByAdmin ? (
-                              <CheckCheck className="w-3 motion-safe:animate-pulse text-blue-800" title="Đã xem" />
-                            ) : (
-                              <Check className="w-3 text-black/50" title="Đã gửi" />
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  <VisitorChatMessageBubble
+                    msg={msg}
+                    heroAvatar={hero.avatar}
+                    onReply={handleInitiateReply}
+                    onScrollToMessage={scrollToOriginalMessage}
+                    isHighlighted={highlightedMsgId === msg.id}
+                    activeMenuId={activeMenuMsgId}
+                    setActiveMenuId={setActiveMenuMsgId}
+                  />
                 </div>
               );
             })}
@@ -669,19 +1007,47 @@ export default function DirectChatWidget({ isOpen, onClose }) {
             </div>
           )}
 
+          {/* Khung Xem Trước Tin Nhắn Đang Trả Lời (Reply Banner kiểu Messenger) */}
+          {replyingTo && (
+            <div className="mx-2.5 sm:mx-3 my-1 p-2 bg-[#161926] border border-[#F1D89E]/40 rounded-xl flex items-center justify-between gap-2 shadow-xl animate-in slide-in-from-bottom-2 duration-200 shrink-0">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <div className="w-6 h-6 rounded-lg bg-[#F1D89E]/20 text-[#F1D89E] flex items-center justify-center shrink-0">
+                  <Reply className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0 flex-1 text-left">
+                  <div className="text-[10.5px] font-bold text-[#F1D89E]">
+                    Đang trả lời {replyingTo.isFromAdmin ? 'Đức Nam' : (replyingTo.senderName || 'chính bạn')}
+                  </div>
+                  <p className="text-[10px] text-gray-300 truncate italic">
+                    {replyingTo.content}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReplyingTo(null)}
+                title="Hủy trả lời (Esc)"
+                className="p-1 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition shrink-0 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           {/* Ô NHẬP TIN NHẮN */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
               handleSendMessage();
             }}
-            className="p-3 bg-[#11131c] border-t border-white/10 flex gap-2 items-center"
+            className="p-3 bg-[#11131c] border-t border-white/10 flex gap-2 items-center shrink-0"
           >
             <input
+              ref={inputRef}
               type="text"
               value={input}
               onChange={handleInputChange}
-              placeholder={`Nhắn tin với tư cách "${userName}"...`}
+              placeholder={replyingTo ? 'Nhập câu trả lời...' : `Nhắn tin với tư cách "${userName}"...`}
               maxLength={1000}
               className="flex-1 bg-black/50 border border-white/10 focus:border-[#F1D89E] rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-400 focus:outline-none transition"
             />

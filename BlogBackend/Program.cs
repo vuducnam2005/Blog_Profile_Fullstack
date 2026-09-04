@@ -125,7 +125,7 @@ using (var scope = app.Services.CreateScope())
         var db = scope.ServiceProvider.GetRequiredService<BlogDbContext>();
         db.Database.Migrate();
 
-        // Đảm bảo bảng DirectChatSessions tồn tại để lưu email nhận thông báo của khách
+        // Đảm bảo bảng DirectChatSessions và các cột Reply tồn tại
         try
         {
             db.Database.ExecuteSqlRaw(@"
@@ -137,11 +137,15 @@ using (var scope = app.Services.CreateScope())
                     ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
                     ""LastActivityAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
                 );
+
+                ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToId"" INTEGER;
+                ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToSender"" VARCHAR(100);
+                ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToContent"" TEXT;
             ");
         }
         catch (Exception rawEx)
         {
-            Console.WriteLine($"[Cảnh báo DB] Không thể chạy ExecuteSqlRaw DirectChatSessions: {rawEx.Message}");
+            Console.WriteLine($"[Cảnh báo DB] Không thể chạy ExecuteSqlRaw DirectChat: {rawEx.Message}");
         }
     }
     catch (Exception ex)

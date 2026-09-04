@@ -222,13 +222,24 @@ export async function fetchChatHistory(sessionId) {
 /**
  * API REST: Gửi tin nhắn
  */
-export async function sendChatMessage({ sessionId, senderName, content, isFromAdmin = false }) {
+export async function sendChatMessage({
+  sessionId,
+  senderName,
+  content,
+  isFromAdmin = false,
+  replyToId = null,
+  replyToSender = null,
+  replyToContent = null
+}) {
   const headers = isFromAdmin ? { 'X-Admin-Key': ADMIN_API_KEY } : {};
   const res = await axios.post(`${API_BASE_URL}/api/directchat/send`, {
     sessionId,
     senderName,
     content,
-    isFromAdmin
+    isFromAdmin,
+    replyToId,
+    replyToSender,
+    replyToContent
   }, { headers });
   return res.data;
 }

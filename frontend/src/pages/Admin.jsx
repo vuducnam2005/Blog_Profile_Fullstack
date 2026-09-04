@@ -58,8 +58,10 @@ export default function Admin() {
   return (
     <div className="relative z-20">
       {!isEdit && (
-        <div className="pt-20 sm:pt-24 max-w-3xl mx-auto px-3 sm:px-4 mb-4 sm:mb-6">
-          <div className="flex bg-[#0d0f18]/95 p-1.5 sm:p-2 rounded-2xl border border-white/15 backdrop-blur-xl items-center justify-between gap-1.5 sm:gap-2 shadow-2xl">
+        <div className={`max-w-3xl mx-auto px-2 sm:px-4 ${
+          activeTab === 'chat' ? 'pt-12 sm:pt-20 mb-2 sm:mb-4' : 'pt-16 sm:pt-24 mb-4 sm:mb-6'
+        }`}>
+          <div className="flex bg-[#0d0f18] p-1.5 sm:p-2 rounded-2xl border border-white/15 items-center justify-between gap-1 sm:gap-2 shadow-2xl">
             <button
               onClick={() => setActiveTab('blog')}
               className={`flex-1 flex justify-center items-center gap-1.5 sm:gap-2 py-2.5 sm:py-3 px-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${

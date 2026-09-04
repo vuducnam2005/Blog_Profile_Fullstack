@@ -76,7 +76,10 @@ namespace BlogBackend.Controllers
                     m.IsFromAdmin,
                     m.IsReadByAdmin,
                     m.IsReadByUser,
-                    m.CreatedAt
+                    m.CreatedAt,
+                    m.ReplyToId,
+                    m.ReplyToSender,
+                    m.ReplyToContent
                 })
                 .ToListAsync(cancellationToken);
 
@@ -118,7 +121,10 @@ namespace BlogBackend.Controllers
                 IsFromAdmin = isFromAdmin,
                 IsReadByAdmin = isFromAdmin,
                 IsReadByUser = !isFromAdmin,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                ReplyToId = dto.ReplyToId,
+                ReplyToSender = !string.IsNullOrWhiteSpace(dto.ReplyToSender) ? dto.ReplyToSender.Trim() : null,
+                ReplyToContent = !string.IsNullOrWhiteSpace(dto.ReplyToContent) ? dto.ReplyToContent.Trim() : null
             };
 
             _context.DirectChatMessages.Add(msg);
@@ -133,7 +139,10 @@ namespace BlogBackend.Controllers
                 isFromAdmin = msg.IsFromAdmin,
                 isReadByAdmin = msg.IsReadByAdmin,
                 isReadByUser = msg.IsReadByUser,
-                createdAt = DateTime.SpecifyKind(msg.CreatedAt, DateTimeKind.Utc)
+                createdAt = DateTime.SpecifyKind(msg.CreatedAt, DateTimeKind.Utc),
+                replyToId = msg.ReplyToId,
+                replyToSender = msg.ReplyToSender,
+                replyToContent = msg.ReplyToContent
             };
 
             // Cập nhật hoặc tạo mới thông tin phiên chat (DirectChatSession)
@@ -391,6 +400,9 @@ namespace BlogBackend.Controllers
         public string? SenderName { get; set; }
         public string Content { get; set; } = string.Empty;
         public bool IsFromAdmin { get; set; } = false;
+        public int? ReplyToId { get; set; }
+        public string? ReplyToSender { get; set; }
+        public string? ReplyToContent { get; set; }
     }
 
     public class RegisterEmailDto
