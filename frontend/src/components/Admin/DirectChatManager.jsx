@@ -215,52 +215,45 @@ function ChatMessageBubble({
 
         {/* Bong bóng tin nhắn */}
         <div
-          className={`relative max-w-[82%] sm:max-w-[68%] rounded-2xl p-3 sm:p-3.5 text-xs leading-relaxed shadow-lg transition-all ${
+          className={`relative max-w-[86%] sm:max-w-[72%] rounded-2xl px-3.5 py-2 sm:px-4 sm:py-2.5 text-xs leading-relaxed shadow-md transition-all ${
             isNam
-              ? 'bg-gradient-to-r from-[#F1D89E] to-[#d4b775] text-black font-medium rounded-br-none'
-              : 'bg-[#1a1d2e] text-gray-100 border border-white/10 rounded-bl-none'
+              ? 'bg-gradient-to-r from-[#F1D89E] to-[#d8ba70] text-black font-medium rounded-tr-xs'
+              : 'bg-[#181b2a] text-gray-100 border border-white/10 rounded-tl-xs'
           } ${
             isHighlighted
-              ? 'ring-4 ring-[#F1D89E] shadow-[0_0_30px_rgba(241,216,158,0.8)] scale-[1.03] duration-300'
+              ? 'ring-4 ring-[#F1D89E] shadow-[0_0_25px_rgba(241,216,158,0.8)] scale-[1.02] duration-300'
               : ''
           }`}
         >
-          {/* Khung trích dẫn tin nhắn gốc (Quoted Message) giống Messenger */}
+          {/* Khung trích dẫn tin nhắn gốc (Quoted Message) phong cách Messenger */}
           {msg.replyToContent && (
             <div
               onClick={() => onScrollToMessage(msg.replyToId)}
-              className={`mb-2 p-2 rounded-xl text-left cursor-pointer transition select-none flex flex-col gap-0.5 ${
+              className={`mb-1.5 rounded-xl px-2.5 py-1.5 text-left cursor-pointer transition-all select-none ${
                 isNam
-                  ? 'bg-black/15 hover:bg-black/25 border-l-2 border-black/70 text-black/90'
-                  : 'bg-black/40 hover:bg-black/60 border-l-2 border-[#F1D89E] text-gray-300'
+                  ? 'bg-white/50 hover:bg-white/65 border-l-[3px] border-amber-900/80 shadow-xs'
+                  : 'bg-white/[0.08] hover:bg-white/[0.13] border-l-[3px] border-[#F1D89E] shadow-xs'
               }`}
               title="Bấm để cuộn đến tin nhắn gốc"
             >
-              <div className="flex items-center gap-1 text-[10px] font-bold">
-                <Reply className="w-2.5 h-2.5" />
-                <span>Trả lời {msg.replyToSender || 'tin nhắn'}</span>
+              <div className="flex items-center gap-1.5 text-[10.5px] font-bold">
+                <Reply className={`w-3 h-3 shrink-0 ${isNam ? 'text-amber-950' : 'text-[#F1D89E]'}`} />
+                <span className={`truncate ${isNam ? 'text-amber-950' : 'text-[#F1D89E]'}`}>
+                  {msg.replyToSender ? `Trả lời ${msg.replyToSender}` : 'Trả lời tin nhắn'}
+                </span>
               </div>
-              <p className="text-[10.5px] truncate max-w-full italic opacity-85">
+              <p className={`text-[11px] truncate max-w-full leading-tight mt-0.5 font-normal ${isNam ? 'text-stone-900' : 'text-gray-300'}`}>
                 {msg.replyToContent}
               </p>
             </div>
           )}
 
-          {/* Tên người gửi */}
-          <div
-            className={`text-[10px] font-bold mb-1 flex items-center justify-between gap-2 ${
-              isNam ? 'text-black/70' : 'text-[#F1D89E]'
-            }`}
-          >
-            <span>{isNam ? 'Đức Nam (Bạn)' : msg.senderName || 'Khách'}</span>
-          </div>
-
           {/* Nội dung chính */}
-          <div className="whitespace-pre-wrap break-words">{msg.content}</div>
+          <div className="whitespace-pre-wrap break-words text-[13px] sm:text-xs leading-relaxed">{msg.content}</div>
 
           {/* Thời gian & Trạng thái đã xem */}
           <div
-            className={`flex items-center justify-end gap-1 text-[9px] mt-1.5 ${
+            className={`flex items-center justify-end gap-1 text-[9.5px] mt-1 ${
               isNam ? 'text-black/60' : 'text-gray-400'
             }`}
           >
@@ -328,13 +321,6 @@ function ChatMessageBubble({
                 </button>
               </div>
             )}
-          </div>
-        )}
-
-        {/* Avatar Nam */}
-        {isNam && (
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-[#F1D89E]/60 overflow-hidden shrink-0 mb-1 shadow-md bg-black/40">
-            <AdminAvatar avatarUrl={heroAvatar} size={32} />
           </div>
         )}
       </div>
@@ -609,7 +595,7 @@ export default function DirectChatManager() {
       isReadByUser: false,
       createdAt: new Date().toISOString(),
       replyToId: targetReply?.id || null,
-      replyToSender: targetReply?.isFromAdmin ? 'Đức Nam (Bạn)' : targetReply?.senderName || null,
+      replyToSender: targetReply?.isFromAdmin ? 'chính bạn' : (targetReply?.senderName || 'Khách'),
       replyToContent: targetReply?.content ? targetReply.content.substring(0, 150) : null
     };
 
@@ -1013,16 +999,16 @@ export default function DirectChatManager() {
 
               {/* Khung Xem Trước Tin Nhắn Đang Trả Lời (Reply Banner kiểu Messenger) */}
               {replyingTo && (
-                <div className="mx-2.5 sm:mx-3.5 mt-2 p-2.5 bg-[#141724] border border-[#F1D89E]/35 rounded-xl flex items-center justify-between gap-2 shadow-xl animate-in slide-in-from-bottom-2 duration-200 shrink-0">
+                <div className="mx-2.5 sm:mx-3.5 mt-2 p-2 sm:p-2.5 bg-[#141724] border border-[#F1D89E]/40 rounded-xl flex items-center justify-between gap-2 shadow-xl animate-in slide-in-from-bottom-2 duration-200 shrink-0">
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     <div className="w-7 h-7 rounded-lg bg-[#F1D89E]/20 text-[#F1D89E] flex items-center justify-center shrink-0">
                       <Reply className="w-3.5 h-3.5" />
                     </div>
                     <div className="min-w-0 flex-1 text-left">
                       <div className="text-[11px] font-bold text-[#F1D89E] flex items-center gap-1">
-                        <span>Đang trả lời {replyingTo.isFromAdmin ? 'chính bạn (Đức Nam)' : replyingTo.senderName || 'khách'}</span>
+                        <span>Đang trả lời {replyingTo.isFromAdmin ? 'chính bạn' : (replyingTo.senderName || 'khách')}</span>
                       </div>
-                      <p className="text-[10.5px] text-gray-300 truncate italic">
+                      <p className="text-[10.5px] text-gray-300 truncate font-normal leading-tight mt-0.5">
                         {replyingTo.content}
                       </p>
                     </div>
@@ -1031,7 +1017,7 @@ export default function DirectChatManager() {
                     type="button"
                     onClick={() => setReplyingTo(null)}
                     title="Hủy trả lời (Esc)"
-                    className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition shrink-0"
+                    className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition shrink-0 cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>

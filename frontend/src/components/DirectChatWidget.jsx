@@ -213,47 +213,45 @@ function VisitorChatMessageBubble({
 
         {/* Bong bóng tin nhắn */}
         <div
-          className={`relative max-w-[82%] rounded-2xl p-3 text-xs leading-relaxed shadow-md transition-all ${
+          className={`relative max-w-[86%] sm:max-w-[72%] rounded-2xl px-3.5 py-2 sm:px-4 sm:py-2.5 text-xs leading-relaxed shadow-md transition-all ${
             isMe
-              ? 'bg-gradient-to-r from-[#F1D89E] to-[#d4b775] text-black font-medium rounded-br-none'
-              : 'bg-[#181a26] text-gray-200 border border-white/10 rounded-bl-none'
+              ? 'bg-gradient-to-r from-[#F1D89E] to-[#d8ba70] text-black font-medium rounded-tr-xs'
+              : 'bg-[#181a26] text-gray-100 border border-white/10 rounded-tl-xs'
           } ${
             isHighlighted
-              ? 'ring-4 ring-[#F1D89E] shadow-[0_0_25px_rgba(241,216,158,0.8)] scale-[1.03] duration-300'
+              ? 'ring-4 ring-[#F1D89E] shadow-[0_0_25px_rgba(241,216,158,0.8)] scale-[1.02] duration-300'
               : ''
           }`}
         >
-          {/* Khung trích dẫn tin nhắn gốc (Quoted Message) giống Messenger */}
+          {/* Khung trích dẫn tin nhắn gốc (Quoted Message) phong cách Messenger */}
           {msg.replyToContent && (
             <div
               onClick={() => onScrollToMessage(msg.replyToId)}
-              className={`mb-2 p-2 rounded-xl text-left cursor-pointer transition select-none flex flex-col gap-0.5 ${
+              className={`mb-1.5 rounded-xl px-2.5 py-1.5 text-left cursor-pointer transition-all select-none ${
                 isMe
-                  ? 'bg-black/15 hover:bg-black/25 border-l-2 border-black/70 text-black/90'
-                  : 'bg-black/40 hover:bg-black/60 border-l-2 border-[#F1D89E] text-gray-300'
+                  ? 'bg-white/50 hover:bg-white/65 border-l-[3px] border-amber-900/80 shadow-xs'
+                  : 'bg-white/[0.08] hover:bg-white/[0.13] border-l-[3px] border-[#F1D89E] shadow-xs'
               }`}
               title="Bấm để cuộn đến tin nhắn gốc"
             >
-              <div className="flex items-center gap-1 text-[10px] font-bold">
-                <Reply className="w-2.5 h-2.5" />
-                <span>Trả lời {msg.replyToSender || 'tin nhắn'}</span>
+              <div className="flex items-center gap-1.5 text-[10.5px] font-bold">
+                <Reply className={`w-3 h-3 shrink-0 ${isMe ? 'text-amber-950' : 'text-[#F1D89E]'}`} />
+                <span className={`truncate ${isMe ? 'text-amber-950' : 'text-[#F1D89E]'}`}>
+                  {msg.replyToSender ? `Trả lời ${msg.replyToSender}` : 'Trả lời tin nhắn'}
+                </span>
               </div>
-              <p className="text-[10.5px] truncate max-w-full italic opacity-85">
+              <p className={`text-[11px] truncate max-w-full leading-tight mt-0.5 font-normal ${isMe ? 'text-stone-900' : 'text-gray-300'}`}>
                 {msg.replyToContent}
               </p>
             </div>
           )}
 
-          {!isMe && (
-            <div className="text-[10px] font-semibold text-[#F1D89E] mb-0.5">
-              Đức Nam
-            </div>
-          )}
+          {/* Nội dung chính */}
+          <div className="whitespace-pre-wrap break-words text-[13px] sm:text-xs leading-relaxed">{msg.content}</div>
 
-          <div className="whitespace-pre-wrap break-words">{msg.content}</div>
-
+          {/* Thời gian & Trạng thái đã xem */}
           <div
-            className={`flex items-center justify-end gap-1 text-[9px] mt-1 ${
+            className={`flex items-center justify-end gap-1 text-[9.5px] mt-1 ${
               isMe ? 'text-black/60' : 'text-gray-400'
             }`}
           >
@@ -585,7 +583,7 @@ export default function DirectChatWidget({ isOpen, onClose }) {
       isReadByUser: true,
       createdAt: new Date().toISOString(),
       replyToId: targetReply?.id || null,
-      replyToSender: targetReply?.isFromAdmin ? 'Đức Nam' : (targetReply?.senderName || 'Bạn'),
+      replyToSender: targetReply?.isFromAdmin ? 'Đức Nam' : 'chính bạn',
       replyToContent: targetReply?.content ? targetReply.content.substring(0, 150) : null
     };
 
@@ -1015,10 +1013,10 @@ export default function DirectChatWidget({ isOpen, onClose }) {
                   <Reply className="w-3.5 h-3.5" />
                 </div>
                 <div className="min-w-0 flex-1 text-left">
-                  <div className="text-[10.5px] font-bold text-[#F1D89E]">
-                    Đang trả lời {replyingTo.isFromAdmin ? 'Đức Nam' : (replyingTo.senderName || 'chính bạn')}
+                  <div className="text-[11px] font-bold text-[#F1D89E] flex items-center gap-1">
+                    <span>Đang trả lời {replyingTo.isFromAdmin ? 'Đức Nam' : 'chính bạn'}</span>
                   </div>
-                  <p className="text-[10px] text-gray-300 truncate italic">
+                  <p className="text-[10.5px] text-gray-300 truncate font-normal leading-tight mt-0.5">
                     {replyingTo.content}
                   </p>
                 </div>
