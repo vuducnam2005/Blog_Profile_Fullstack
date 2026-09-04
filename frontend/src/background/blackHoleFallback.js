@@ -9,6 +9,7 @@ export function startBlackHoleFallback({
     isTablet,
     prefersReducedMotion,
     input,
+    onScreenImpact = null,
 }) {
     const engine = createBlackHoleEngine({
         canvas,
@@ -19,6 +20,7 @@ export function startBlackHoleFallback({
         isTablet,
         prefersReducedMotion,
         initialInput: input,
+        onScreenImpact,
     });
     engine.start();
     return engine;

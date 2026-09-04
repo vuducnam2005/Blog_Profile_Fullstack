@@ -126,6 +126,24 @@ export function startBlackHoleBackground() {
         inputDirty = true;
     };
 
+    const dispatchScreenImpact = (detail) => {
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('cosmic:screen-impact', { detail }));
+        }
+    };
+
+    const triggerScreenMeteor = () => {
+        if (mode === 'worker' && worker) {
+            worker.postMessage({ type: 'trigger_screen_meteor' });
+        } else if (mode === 'fallback' && fallbackEngine) {
+            fallbackEngine.triggerScreenMeteor?.();
+        }
+    };
+
+    if (typeof window !== 'undefined') {
+        window.__triggerScreenImpact = triggerScreenMeteor;
+    }
+
     const startFallback = async (reason) => {
         if (fallbackPromise || disposed) return fallbackPromise;
 
@@ -153,6 +171,7 @@ export function startBlackHoleBackground() {
                     isTablet,
                     prefersReducedMotion,
                     input: { ...pendingInput },
+                    onScreenImpact: (data) => dispatchScreenImpact(data),
                 });
                 mode = 'fallback';
                 scheduleFlush();
@@ -187,6 +206,8 @@ export function startBlackHoleBackground() {
                     clearWorkerReadyTimer();
                     mode = 'worker';
                     scheduleFlush();
+                } else if (event.data.type === 'screen_impact') {
+                    dispatchScreenImpact(event.data);
                 } else if (event.data.type === 'fatal') {
                     startFallback(event.data.message);
                 }
@@ -354,6 +375,9 @@ export function startBlackHoleBackground() {
         window.removeEventListener('beforeunload', cleanup);
         document.removeEventListener('visibilitychange', handleVisibilityChange);
         documentResizeObserver?.disconnect();
+        if (typeof window !== 'undefined') {
+            delete window.__triggerScreenImpact;
+        }
 
         fallbackEngine?.dispose();
         fallbackEngine = null;

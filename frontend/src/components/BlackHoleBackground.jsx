@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { startBlackHoleBackground } from '../background/performanceBridge';
+import GlassShatterOverlay from './GlassShatterOverlay';
 
 export default function BlackHoleBackground() {
   const canvasRef = useRef(null);
@@ -19,10 +20,13 @@ export default function BlackHoleBackground() {
   }, []);
 
   return (
-    <canvas
-      id="webgl-canvas"
-      ref={canvasRef}
-      className="fixed top-0 left-0 w-full h-full z-0 pointer-events-none block"
-    />
+    <>
+      <canvas
+        id="webgl-canvas"
+        ref={canvasRef}
+        className="fixed top-0 left-0 w-full h-full z-0 pointer-events-none block"
+      />
+      <GlassShatterOverlay />
+    </>
   );
 }

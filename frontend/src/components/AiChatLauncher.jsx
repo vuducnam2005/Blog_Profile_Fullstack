@@ -43,10 +43,10 @@ function DirectChatButton({ isOpen, unreadCount, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`group relative mb-3 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl border transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer outline-none select-none flex items-center gap-2 sm:gap-2.5 shadow-2xl backdrop-blur-2xl ${
+      className={`group relative py-2.5 sm:py-3 pl-3 sm:pl-3.5 pr-2.5 sm:pr-3 rounded-l-2xl border-y border-l border-r-0 transition-all duration-300 hover:-translate-x-1.5 active:scale-95 cursor-pointer outline-none select-none flex items-center gap-2 sm:gap-2.5 shadow-[-8px_0_25px_rgba(0,0,0,0.7),0_0_18px_rgba(241,216,158,0.2)] backdrop-blur-2xl pointer-events-auto ${
         isOpen
-          ? 'bg-gradient-to-r from-[#F1D89E] to-[#e6c87a] text-black border-[#F1D89E] shadow-[0_0_25px_rgba(241,216,158,0.7)]'
-          : 'bg-[#0c0e18]/95 hover:bg-[#141726] text-white border-[#F1D89E]/45 hover:border-[#F1D89E] shadow-[0_8px_30px_rgba(0,0,0,0.85),0_0_18px_rgba(241,216,158,0.25)]'
+          ? 'bg-gradient-to-r from-[#F1D89E] to-[#e6c87a] text-black border-[#F1D89E] shadow-[-8px_0_25px_rgba(241,216,158,0.6)]'
+          : 'bg-[#0c0e18]/95 hover:bg-[#141726] text-white border-[#F1D89E]/45 hover:border-[#F1D89E]'
       }`}
       title="Nhắn tin trực tiếp với Vũ Đức Nam"
       aria-label="Chat trực tiếp với Nam"
@@ -72,7 +72,7 @@ function DirectChatButton({ isOpen, unreadCount, onClick }) {
       {/* Label chữ */}
       <div className="flex flex-col text-left">
         <span
-          className={`text-xs sm:text-[13px] font-extrabold tracking-wide ${
+          className={`text-xs sm:text-[13px] font-extrabold tracking-wide whitespace-nowrap ${
             isOpen
               ? 'text-black'
               : 'bg-gradient-to-r from-[#F1D89E] via-amber-200 to-[#e2c686] bg-clip-text text-transparent'
@@ -203,47 +203,54 @@ export default function AiChatLauncher() {
   const isAnyChatOpen = isAiOpen || isDirectOpen;
 
   return (
-    <div className="ai-chat-launcher flex flex-col items-end">
-      {/* Khung Chat AI */}
-      {isAiActivated && (
-        <Suspense fallback={null}>
-          <AiChatWidget
-            panelOnly
-            isOpen={isAiOpen}
-            onClose={() => {
-              setIsAiOpen(false);
-              notifyChatOpen(false);
-            }}
-          />
-        </Suspense>
+    <>
+      {/* ===== KHU VỰC CHAT TRỰC TIẾP VỚI NAM (Sát cạnh bên phải, ở giữa màn hình) ===== */}
+      <div className="direct-chat-launcher fixed right-0 top-1/2 -translate-y-1/2 z-[60] pointer-events-auto select-none">
+        <DirectChatButton
+          isOpen={isDirectOpen}
+          unreadCount={unreadCount}
+          onClick={toggleDirectChat}
+        />
+      </div>
+
+      {/* Khung Chat trực tiếp với Nam mở tại vị trí giữa bên phải màn hình */}
+      {isDirectActivated && isDirectOpen && (
+        <div className="fixed right-2 sm:right-5 top-1/2 -translate-y-1/2 z-[70] pointer-events-auto select-none">
+          <Suspense fallback={null}>
+            <DirectChatWidget
+              isOpen={isDirectOpen}
+              onClose={() => {
+                setIsDirectOpen(false);
+                notifyChatOpen(false);
+              }}
+            />
+          </Suspense>
+        </div>
       )}
 
-      {/* Khung Chat trực tiếp với Nam */}
-      {isDirectActivated && (
-        <Suspense fallback={null}>
-          <DirectChatWidget
-            isOpen={isDirectOpen}
-            onClose={() => {
-              setIsDirectOpen(false);
-              notifyChatOpen(false);
-            }}
-          />
-        </Suspense>
-      )}
+      {/* ===== KHU VỰC TRỢ LÝ AI (Góc dưới bên phải màn hình) ===== */}
+      <div className="ai-chat-launcher flex flex-col items-end">
+        {/* Khung Chat AI */}
+        {isAiActivated && (
+          <Suspense fallback={null}>
+            <AiChatWidget
+              panelOnly
+              isOpen={isAiOpen}
+              onClose={() => {
+                setIsAiOpen(false);
+                notifyChatOpen(false);
+              }}
+            />
+          </Suspense>
+        )}
 
-      {/* Nút "Chat với Nam" nằm phía trên đầu con AI với khoảng cách thoáng đẹp */}
-      <DirectChatButton
-        isOpen={isDirectOpen}
-        unreadCount={unreadCount}
-        onClick={toggleDirectChat}
-      />
-
-      {/* Nút Avatar AI */}
-      <AvatarButton
-        isOpen={isAiOpen}
-        isPaused={isAnyChatOpen}
-        onClick={toggleAiChat}
-      />
-    </div>
+        {/* Nút Avatar AI */}
+        <AvatarButton
+          isOpen={isAiOpen}
+          isPaused={isAnyChatOpen}
+          onClick={toggleAiChat}
+        />
+      </div>
+    </>
   );
 }

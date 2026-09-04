@@ -4,6 +4,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { createMeteorSystem } from './meteorSystem.js';
+import { createScreenMeteorSystem } from './screenMeteorSystem.js';
 
 const defaultRequestFrame = (callback) => {
     if (typeof globalThis.requestAnimationFrame === 'function') {
@@ -31,6 +32,7 @@ export function createBlackHoleEngine({
     initialInput = {},
     requestFrame = defaultRequestFrame,
     cancelFrame = defaultCancelFrame,
+    onScreenImpact = null,
 }) {
 if (!canvas) throw new Error('Black hole canvas is required.');
 
@@ -1042,6 +1044,15 @@ const meteorSystems = Array.from({ length: meteorSystemCount }, (_, index) => cr
     allowImpact: true,
 }));
 
+const screenMeteor = createScreenMeteorSystem({
+    scene,
+    camera,
+    starTexture,
+    isMobile,
+    prefersReducedMotion,
+    onScreenImpact,
+});
+
 /* =====================================================================
  * STATE VARIABLES
  * ===================================================================== */
@@ -1220,6 +1231,9 @@ function tick() {
         meteorSystems[index].update(dt, elapsedTime);
     }
 
+    // --- SCREEN IMPACT METEOR ---
+    screenMeteor.update(dt, elapsedTime);
+
     // --- BLOOM DYNAMIC & RENDER ---
     // Trên di động, luôn render trực tiếp 1 pass (siêu nhẹ, 60-120fps mượt mà, không quá tải GPU)
     // Trên máy tính bàn/tablet, dùng EffectComposer với bloom đầy đủ
@@ -1275,6 +1289,7 @@ function dispose() {
     for (let index = 0; index < meteorSystems.length; index++) {
         meteorSystems[index].dispose();
     }
+    screenMeteor.dispose();
 
     // Dispose texture, composer, renderer
     starTexture.dispose();
@@ -1291,6 +1306,7 @@ return {
     resize,
     updateInput,
     setVisibility,
+    triggerScreenMeteor: () => screenMeteor.trigger(),
     dispose,
     config: CONFIG,
 };
