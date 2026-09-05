@@ -39,14 +39,14 @@ html {
   width: 350px;
   max-width: calc(100vw - 2rem);
   height: 500px;
-  max-height: calc(100vh - 80px);
+  max-height: calc(100vh - 180px);
 }
 
 .ai-chat-launcher {
   position: fixed;
   right: max(1rem, env(safe-area-inset-right));
   bottom: max(0px, env(safe-area-inset-bottom));
-  z-index: 50;
+  z-index: 60;
 }
 
 .ai-avatar-media {
@@ -188,9 +188,9 @@ html {
   .direct-chat-panel {
     width: calc(100vw - 1rem);
     max-width: none;
-    height: min(580px, calc(100vh - 80px));
-    max-height: calc(100vh - 80px);
-    margin-top: 0;
+    height: min(610px, calc(100vh - 132px - env(safe-area-inset-bottom)));
+    max-height: calc(100vh - 132px - env(safe-area-inset-bottom));
+    margin-bottom: 0.25rem;
     border-radius: 1.25rem;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
@@ -224,8 +224,8 @@ html {
     }
 
     .direct-chat-panel {
-      height: min(580px, calc(100dvh - 80px - env(safe-area-inset-bottom)));
-      max-height: calc(100dvh - 80px - env(safe-area-inset-bottom));
+      height: min(610px, calc(100dvh - 132px - env(safe-area-inset-bottom)));
+      max-height: calc(100dvh - 132px - env(safe-area-inset-bottom));
     }
   }
 }
@@ -763,7 +763,8 @@ body {
 }
 
 .theme-nexbot .ai-chat-panel,
-.theme-nexbot .direct-chat-panel {
+.theme-nexbot .direct-chat-panel,
+.theme-nexbot .chat-choice-popover {
   background:
     radial-gradient(circle at 100% 0%, rgba(92, 243, 231, 0.16), transparent 34%),
     radial-gradient(circle at 0% 100%, rgba(255, 143, 112, 0.12), transparent 36%),

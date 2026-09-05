@@ -723,7 +723,7 @@ export default function DirectChatWidget({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
-    <div className="direct-chat-panel bg-[#0d0f17]/95 backdrop-blur-2xl border border-[#F1D89E]/35 rounded-2xl shadow-[0_16px_50px_rgba(0,0,0,0.85)] flex flex-col overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300">
+    <div className="direct-chat-panel mb-2 bg-[#0d0f17]/95 backdrop-blur-2xl border border-[#F1D89E]/35 rounded-2xl shadow-[0_16px_50px_rgba(0,0,0,0.85)] flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-300">
       
       {/* HEADER */}
       <div className="p-3.5 bg-gradient-to-r from-[#131622] via-[#1a1d2e] to-[#131622] border-b border-[#F1D89E]/25 flex items-center justify-between">
