@@ -97,6 +97,16 @@ function VisitorChatMessageBubble({
   setActiveMenuId
 }) {
   const isMe = !msg.isFromAdmin;
+  const rawImageUrl = msg.imageUrl || msg.ImageUrl;
+  const isContentImageUrl =
+    !rawImageUrl &&
+    typeof msg.content === 'string' &&
+    (msg.content.startsWith('http://') || msg.content.startsWith('https://') || msg.content.startsWith('/uploads/')) &&
+    (msg.content.includes('res.cloudinary.com') ||
+      msg.content.includes('/uploads/') ||
+      /\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i.test(msg.content));
+  const effectiveImageUrl = rawImageUrl || (isContentImageUrl ? msg.content : null);
+
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -301,20 +311,23 @@ function VisitorChatMessageBubble({
           )}
 
           {/* Hình ảnh đính kèm */}
-          {msg.imageUrl && (
-            <div className="mb-1 rounded-xl overflow-hidden cursor-pointer group/img relative">
+          {effectiveImageUrl && (
+            <div
+              className="mb-1 rounded-xl overflow-hidden cursor-pointer group/img relative shadow-sm border border-black/10 hover:opacity-95 transition-all"
+              onClick={() => onPreviewImage && onPreviewImage(getFullMediaUrl(effectiveImageUrl))}
+              title="Bấm để phóng to xem chi tiết ảnh"
+            >
               <img
-                src={getFullMediaUrl(msg.imageUrl)}
+                src={getFullMediaUrl(effectiveImageUrl)}
                 alt="Ảnh đính kèm"
-                className="max-w-full max-h-60 sm:max-h-72 rounded-xl object-cover hover:opacity-90 transition shadow-sm block"
+                className="max-w-full max-h-60 sm:max-h-80 rounded-xl object-cover block"
                 loading="lazy"
-                onClick={() => onPreviewImage && onPreviewImage(getFullMediaUrl(msg.imageUrl))}
               />
             </div>
           )}
 
           {/* Nội dung chính (chỉ hiển thị nếu có text khác [Hình ảnh] hoặc không có ảnh) */}
-          {(!msg.imageUrl || msg.content !== '[Hình ảnh]') && (
+          {(!effectiveImageUrl || (msg.content && msg.content !== '[Hình ảnh]')) && msg.content && (
             <div className="whitespace-pre-wrap break-words text-[13px] sm:text-xs leading-relaxed">{msg.content}</div>
           )}
 

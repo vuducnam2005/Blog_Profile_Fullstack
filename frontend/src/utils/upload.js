@@ -9,45 +9,56 @@ import { API_BASE_URL } from '../config';
  */
 export const uploadFile = async (file) => {
     try {
-        // 1. Fetch upload signature from backend
-        const sigRes = await axios.get(`${API_BASE_URL}/api/uploads/signature`);
-        
-        if (sigRes.data.useLocal) {
-            // Fallback: If no Cloudinary config on server, upload standard way
-            const formData = new FormData();
-            formData.append('file', file);
-            const res = await axios.post(`${API_BASE_URL}/api/uploads`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-            return res.data.url;
+        // 1. Lấy thông tin chữ ký từ backend
+        let sigData = null;
+        try {
+            const sigRes = await axios.get(`${API_BASE_URL}/api/uploads/signature`);
+            sigData = sigRes.data;
+        } catch (sigErr) {
+            console.warn('[uploadFile] Không thể lấy chữ ký Cloudinary, chuyển sang upload qua server:', sigErr);
         }
 
-        // 2. We have a signature, let's do Direct Upload to Cloudinary
-        const { signature, timestamp, cloudName, apiKey } = sigRes.data;
-        
-        // Determine Cloudinary resource type
-        const fileType = file.type || '';
-        let resourceType = 'image';
-        if (fileType.startsWith('video/') || fileType.startsWith('audio/')) {
-            resourceType = 'video';
-        } else if (fileType === 'application/pdf') {
-            resourceType = 'raw';
+        // 2. Thử upload trực tiếp lên Cloudinary nếu có cấu hình
+        if (sigData && !sigData.useLocal && sigData.signature && sigData.cloudName) {
+            try {
+                const { signature, timestamp, cloudName, apiKey } = sigData;
+                const fileType = file.type || '';
+                let resourceType = 'image';
+                if (fileType.startsWith('video/') || fileType.startsWith('audio/')) {
+                    resourceType = 'video';
+                } else if (fileType === 'application/pdf') {
+                    resourceType = 'raw';
+                }
+
+                const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('api_key', apiKey);
+                formData.append('timestamp', timestamp);
+                formData.append('signature', signature);
+
+                const uploadRes = await axios.post(cloudinaryUrl, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+
+                if (uploadRes.data?.secure_url) {
+                    console.log('[uploadFile] Upload Cloudinary thành công:', uploadRes.data.secure_url);
+                    return uploadRes.data.secure_url;
+                }
+            } catch (cloudErr) {
+                console.warn('[uploadFile] Upload Cloudinary trực tiếp thất bại, fallback sang server:', cloudErr);
+            }
         }
 
-        const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
-        
+        // 3. Fallback: Upload qua endpoint /api/uploads của backend server
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('api_key', apiKey);
-        formData.append('timestamp', timestamp);
-        formData.append('signature', signature);
-        
-        const uploadRes = await axios.post(cloudinaryUrl, formData, {
+        const res = await axios.post(`${API_BASE_URL}/api/uploads`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
-        
-        return uploadRes.data.secure_url;
-        
+
+        console.log('[uploadFile] Upload server thành công:', res.data.url);
+        return res.data.url;
     } catch (error) {
         console.error('File Upload Error:', error);
         throw error;

@@ -135,9 +135,16 @@ using (var scope = app.Services.CreateScope())
                 ""LastActivityAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
             );
 
+            CREATE TABLE IF NOT EXISTS ""DirectChatSettings"" (
+                ""Key"" VARCHAR(100) PRIMARY KEY,
+                ""Value"" TEXT NOT NULL,
+                ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+            );
+
             ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToId"" INTEGER;
             ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToSender"" VARCHAR(100);
             ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToContent"" TEXT;
+            ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ImageUrl"" TEXT;
         ");
         Console.WriteLine("[DB Startup] Đã đồng bộ schema DirectChat thành công.");
     }
