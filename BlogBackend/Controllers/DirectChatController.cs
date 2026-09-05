@@ -95,6 +95,7 @@ namespace BlogBackend.Controllers
                     ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToSender"" VARCHAR(100);
                     ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToContent"" TEXT;
                     ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ImageUrl"" TEXT;
+                    ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""IsRecalled"" BOOLEAN NOT NULL DEFAULT FALSE;
                 ");
 
                 try
@@ -310,6 +311,7 @@ namespace BlogBackend.Controllers
                     m.SenderName,
                     m.Content,
                     m.ImageUrl,
+                    m.IsRecalled,
                     m.IsFromAdmin,
                     m.IsReadByAdmin,
                     m.IsReadByUser,
@@ -382,6 +384,7 @@ namespace BlogBackend.Controllers
                 senderName = msg.SenderName,
                 content = msg.Content,
                 imageUrl = msg.ImageUrl,
+                isRecalled = msg.IsRecalled,
                 isFromAdmin = msg.IsFromAdmin,
                 isReadByAdmin = msg.IsReadByAdmin,
                 isReadByUser = msg.IsReadByUser,
@@ -659,6 +662,68 @@ namespace BlogBackend.Controllers
                 wantsEmailNotification = session.WantsEmailNotification
             });
         }
+
+        // POST: api/directchat/recall/{messageId}
+        [HttpPost("recall/{messageId}")]
+        public async Task<IActionResult> RecallMessage(int messageId, [FromBody] RecallMessageDto dto, CancellationToken cancellationToken)
+        {
+            var msg = await _context.DirectChatMessages.FirstOrDefaultAsync(m => m.Id == messageId, cancellationToken);
+            if (msg == null)
+            {
+                return NotFound(new { message = "Không tìm thấy tin nhắn cần thu hồi." });
+            }
+
+            if (msg.IsRecalled)
+            {
+                return Ok(new { success = true, message = "Tin nhắn đã được thu hồi trước đó." });
+            }
+
+            var isAdmin = IsAuthorizedAdmin();
+            if (!isAdmin)
+            {
+                // Visitor can only recall their own message in their own session
+                if (string.IsNullOrWhiteSpace(dto?.SessionId) || msg.SessionId != dto.SessionId.Trim() || msg.IsFromAdmin)
+                {
+                    return Unauthorized(new { message = "Bạn không có quyền thu hồi tin nhắn này." });
+                }
+            }
+
+            msg.IsRecalled = true;
+            msg.ImageUrl = null;
+            msg.Content = "[Tin nhắn đã được thu hồi]";
+            await _context.SaveChangesAsync(cancellationToken);
+
+            var recallPayload = new
+            {
+                id = msg.Id,
+                sessionId = msg.SessionId,
+                isRecalled = true,
+                content = msg.Content,
+                imageUrl = (string?)null
+            };
+
+            await _hubContext.Clients.Group($"session_{msg.SessionId}").SendAsync("MessageRecalled", recallPayload, cancellationToken);
+            await _hubContext.Clients.Group(AdminsGroup).SendAsync("MessageRecalled", recallPayload, cancellationToken);
+
+            // Kiểm tra xem tin nhắn này có phải là tin nhắn mới nhất trong session không để cập nhật danh sách
+            var latestMsg = await _context.DirectChatMessages
+                .Where(m => m.SessionId == msg.SessionId)
+                .OrderByDescending(m => m.CreatedAt)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (latestMsg != null && latestMsg.Id == msg.Id)
+            {
+                await _hubContext.Clients.Group(AdminsGroup).SendAsync("ConversationUpdated", new
+                {
+                    sessionId = msg.SessionId,
+                    lastMessage = msg.Content,
+                    lastMessageTime = DateTime.SpecifyKind(msg.CreatedAt, DateTimeKind.Utc),
+                    isFromAdmin = msg.IsFromAdmin
+                }, cancellationToken);
+            }
+
+            return Ok(new { success = true, message = "Thu hồi tin nhắn thành công.", data = recallPayload });
+        }
     }
 
     public class SendDirectMessageDto
@@ -678,5 +743,10 @@ namespace BlogBackend.Controllers
         public string? Email { get; set; }
         public string? VisitorName { get; set; }
         public bool WantsEmailNotification { get; set; } = true;
+    }
+
+    public class RecallMessageDto
+    {
+        public string? SessionId { get; set; }
     }
 }

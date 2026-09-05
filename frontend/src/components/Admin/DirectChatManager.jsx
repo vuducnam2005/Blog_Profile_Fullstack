@@ -19,7 +19,8 @@ import {
   X,
   Mail,
   Image as ImageIcon,
-  Loader2
+  Loader2,
+  RotateCcw
 } from 'lucide-react';
 import { PortfolioContext } from '../../context/PortfolioContext';
 import AdminAvatar from '../AdminAvatar';
@@ -38,7 +39,8 @@ import {
   isSameDay,
   fetchAdminNotificationSetting,
   updateAdminNotificationSetting,
-  getFullMediaUrl
+  getFullMediaUrl,
+  recallChatMessage
 } from '../../services/directChatService';
 import { ADMIN_API_KEY } from '../../context/AuthContext';
 
@@ -96,21 +98,24 @@ function ChatMessageBubble({
   isNam,
   heroAvatar,
   onReply,
+  onRecall,
   onScrollToMessage,
   onPreviewImage,
   isHighlighted,
   activeMenuId,
   setActiveMenuId
 }) {
+  const isRecalled = Boolean(msg.isRecalled || msg.IsRecalled);
   const rawImageUrl = msg.imageUrl || msg.ImageUrl;
   const isContentImageUrl =
+    !isRecalled &&
     !rawImageUrl &&
     typeof msg.content === 'string' &&
     (msg.content.startsWith('http://') || msg.content.startsWith('https://') || msg.content.startsWith('/uploads/')) &&
     (msg.content.includes('res.cloudinary.com') ||
       msg.content.includes('/uploads/') ||
       /\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i.test(msg.content));
-  const effectiveImageUrl = rawImageUrl || (isContentImageUrl ? msg.content : null);
+  const effectiveImageUrl = isRecalled ? null : (rawImageUrl || (isContentImageUrl ? msg.content : null));
 
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -118,6 +123,34 @@ function ChatMessageBubble({
   const touchStartRef = useRef({ x: 0, y: 0 });
   const isScrollRef = useRef(false);
   const isHorizontalRef = useRef(false);
+
+  // Nếu tin nhắn đã thu hồi, hiển thị giao diện thu hồi đơn giản, không cho tương tác vuốt/reply
+  if (isRecalled) {
+    return (
+      <div id={`msg-${msg.id}`} className="relative my-1 select-text">
+        <div className={`flex items-end gap-2 sm:gap-2.5 ${isNam ? 'justify-end' : 'justify-start'}`}>
+          {!isNam && (
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-500 font-bold text-xs shrink-0 mb-1 opacity-60">
+              {msg.senderName?.charAt(0)?.toUpperCase() || 'K'}
+            </div>
+          )}
+          <div
+            className={`max-w-[86%] sm:max-w-[72%] rounded-2xl px-3.5 py-2 text-xs border border-white/10 bg-white/[0.04] text-gray-400 italic shadow-sm flex flex-col gap-0.5 ${
+              isNam ? 'rounded-tr-xs' : 'rounded-tl-xs'
+            } ${isHighlighted ? 'ring-2 ring-[#F1D89E] scale-[1.02] duration-300' : ''}`}
+          >
+            <div className="flex items-center gap-1.5 text-xs text-gray-400 select-none">
+              <RotateCcw className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+              <span>{isNam ? 'Bạn đã thu hồi một tin nhắn' : `${msg.senderName || 'Khách truy cập'} đã thu hồi một tin nhắn`}</span>
+            </div>
+            <div className="text-[9.5px] text-gray-500 self-end">
+              {formatMessageTime(msg.createdAt)}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleTouchStart = (e) => {
     const t = e.touches[0];
@@ -226,9 +259,9 @@ function ChatMessageBubble({
           </div>
         )}
 
-        {/* Nút 3 chấm trên Desktop (nằm bên trái nếu là tin nhắn của Nam) */}
+        {/* Nút 3 chấm (nằm bên trái nếu là tin nhắn của Nam) */}
         {isNam && (
-          <div className="relative hidden md:flex items-center self-center opacity-0 group-hover/msg:opacity-100 transition">
+          <div className="relative flex items-center self-center opacity-70 md:opacity-0 group-hover/msg:opacity-100 transition">
             <button
               type="button"
               onClick={(e) => {
@@ -236,16 +269,16 @@ function ChatMessageBubble({
                 setActiveMenuId(isMenuOpen ? null : msg.id);
               }}
               title="Tùy chọn tin nhắn"
-              className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition"
+              className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition cursor-pointer"
             >
               <MoreHorizontal className="w-4 h-4" />
             </button>
 
-            {/* Popover Menu Desktop */}
+            {/* Popover Menu */}
             {isMenuOpen && (
               <div
                 onClick={(e) => e.stopPropagation()}
-                className="absolute right-full mr-1.5 bottom-0 z-30 w-32 bg-[#181b2a] border border-white/15 rounded-xl shadow-2xl py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+                className="absolute right-0 sm:right-full sm:mr-1.5 bottom-full mb-1.5 sm:bottom-0 z-30 w-32 bg-[#181b2a] border border-white/15 rounded-xl shadow-2xl py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
               >
                 <button
                   type="button"
@@ -253,7 +286,7 @@ function ChatMessageBubble({
                     setActiveMenuId(null);
                     onReply(msg);
                   }}
-                  className="w-full px-3 py-2 text-xs text-left text-gray-200 hover:text-[#F1D89E] hover:bg-white/10 flex items-center gap-2 transition"
+                  className="w-full px-3 py-2 text-xs text-left text-gray-200 hover:text-[#F1D89E] hover:bg-white/10 flex items-center gap-2 transition cursor-pointer"
                 >
                   <Reply className="w-3.5 h-3.5 text-[#F1D89E]" />
                   <span>Trả lời</span>
@@ -261,7 +294,7 @@ function ChatMessageBubble({
                 <button
                   type="button"
                   onClick={handleCopy}
-                  className="w-full px-3 py-2 text-xs text-left text-gray-200 hover:text-white hover:bg-white/10 flex items-center gap-2 transition"
+                  className="w-full px-3 py-2 text-xs text-left text-gray-200 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer"
                 >
                   {copied ? (
                     <>
@@ -274,6 +307,17 @@ function ChatMessageBubble({
                       <span>Sao chép</span>
                     </>
                   )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveMenuId(null);
+                    onRecall && onRecall(msg);
+                  }}
+                  className="w-full px-3 py-2 text-xs text-left text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 flex items-center gap-2 transition cursor-pointer border-t border-white/10"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Thu hồi</span>
                 </button>
               </div>
             )}
@@ -355,9 +399,9 @@ function ChatMessageBubble({
           </div>
         </div>
 
-        {/* Nút 3 chấm trên Desktop (nằm bên phải nếu là tin nhắn của Khách) */}
+        {/* Nút 3 chấm (nằm bên phải nếu là tin nhắn của Khách) */}
         {!isNam && (
-          <div className="relative hidden md:flex items-center self-center opacity-0 group-hover/msg:opacity-100 transition">
+          <div className="relative flex items-center self-center opacity-70 md:opacity-0 group-hover/msg:opacity-100 transition">
             <button
               type="button"
               onClick={(e) => {
@@ -365,16 +409,16 @@ function ChatMessageBubble({
                 setActiveMenuId(isMenuOpen ? null : msg.id);
               }}
               title="Tùy chọn tin nhắn"
-              className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition"
+              className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition cursor-pointer"
             >
               <MoreHorizontal className="w-4 h-4" />
             </button>
 
-            {/* Popover Menu Desktop */}
+            {/* Popover Menu */}
             {isMenuOpen && (
               <div
                 onClick={(e) => e.stopPropagation()}
-                className="absolute left-full ml-1.5 bottom-0 z-30 w-32 bg-[#181b2a] border border-white/15 rounded-xl shadow-2xl py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+                className="absolute left-0 sm:left-full sm:ml-1.5 bottom-full mb-1.5 sm:bottom-0 z-30 w-32 bg-[#181b2a] border border-white/15 rounded-xl shadow-2xl py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
               >
                 <button
                   type="button"
@@ -382,7 +426,7 @@ function ChatMessageBubble({
                     setActiveMenuId(null);
                     onReply(msg);
                   }}
-                  className="w-full px-3 py-2 text-xs text-left text-gray-200 hover:text-[#F1D89E] hover:bg-white/10 flex items-center gap-2 transition"
+                  className="w-full px-3 py-2 text-xs text-left text-gray-200 hover:text-[#F1D89E] hover:bg-white/10 flex items-center gap-2 transition cursor-pointer"
                 >
                   <Reply className="w-3.5 h-3.5 text-[#F1D89E]" />
                   <span>Trả lời</span>
@@ -390,7 +434,7 @@ function ChatMessageBubble({
                 <button
                   type="button"
                   onClick={handleCopy}
-                  className="w-full px-3 py-2 text-xs text-left text-gray-200 hover:text-white hover:bg-white/10 flex items-center gap-2 transition"
+                  className="w-full px-3 py-2 text-xs text-left text-gray-200 hover:text-white hover:bg-white/10 flex items-center gap-2 transition cursor-pointer"
                 >
                   {copied ? (
                     <>
@@ -659,6 +703,24 @@ export default function DirectChatManager() {
       }
     });
 
+    hub.on('MessageRecalled', (data) => {
+      if (data) {
+        setActiveMessages((prev) =>
+          prev.map((m) =>
+            m.id === data.id
+              ? {
+                  ...m,
+                  isRecalled: true,
+                  content: data.content || '[Tin nhắn đã được thu hồi]',
+                  imageUrl: null
+                }
+              : m
+          )
+        );
+        loadSessions(true);
+      }
+    });
+
     hub
       .start()
       .then(async () => {
@@ -760,6 +822,64 @@ export default function DirectChatManager() {
     setImagePreviewUrl(null);
     setMobileView('chat');
   };
+
+  // Xử lý Admin thu hồi tin nhắn
+  const handleRecallMessage = useCallback(
+    async (msg) => {
+      if (!msg || !msg.id || !activeSessionId) return;
+      const confirmRecall = window.confirm(
+        'Bạn có chắc chắn muốn thu hồi tin nhắn này không? Tin nhắn sẽ bị gỡ đối với cả bạn và khách truy cập.'
+      );
+      if (!confirmRecall) return;
+
+      setActiveMenuMsgId(null);
+
+      // Cập nhật Optimistic UI
+      setActiveMessages((prev) =>
+        prev.map((m) =>
+          m.id === msg.id
+            ? {
+                ...m,
+                isRecalled: true,
+                content: '[Tin nhắn đã được thu hồi]',
+                imageUrl: null
+              }
+            : m
+        )
+      );
+
+      setSessions((prev) =>
+        prev.map((s) => {
+          if (s.sessionId === activeSessionId) {
+            return { ...s, lastMessage: '[Tin nhắn đã được thu hồi]' };
+          }
+          return s;
+        })
+      );
+
+      try {
+        if (hubConnectionRef.current && hubConnectionRef.current.state === 'Connected') {
+          await hubConnectionRef.current.invoke(
+            'RecallMessage',
+            msg.id,
+            activeSessionId,
+            true,
+            ADMIN_API_KEY
+          );
+        } else {
+          await recallChatMessage(msg.id, activeSessionId, true);
+        }
+      } catch (err) {
+        console.warn('SignalR recall failed, using REST:', err);
+        try {
+          await recallChatMessage(msg.id, activeSessionId, true);
+        } catch (restErr) {
+          console.error('Lỗi khi thu hồi tin nhắn Admin:', restErr);
+        }
+      }
+    },
+    [activeSessionId]
+  );
 
   // Xử lý gửi tin nhắn từ Admin (Đức Nam)
   const handleSendReply = async (e) => {
@@ -1148,6 +1268,10 @@ export default function DirectChatManager() {
                           <span className="inline-flex items-center gap-1 text-[#F1D89E]">
                             <ImageIcon className="w-3 h-3" /> [Hình ảnh]
                           </span>
+                        ) : session.lastMessage === '[Tin nhắn đã được thu hồi]' ? (
+                          <span className="inline-flex items-center gap-1 text-gray-500 italic">
+                            <RotateCcw className="w-3 h-3" /> Tin nhắn đã thu hồi
+                          </span>
                         ) : (
                           session.lastMessage || '...'
                         )}
@@ -1266,6 +1390,7 @@ export default function DirectChatManager() {
                           isNam={isNam}
                           heroAvatar={hero.avatar}
                           onReply={handleInitiateReply}
+                          onRecall={handleRecallMessage}
                           onScrollToMessage={scrollToOriginalMessage}
                           onPreviewImage={setLightboxImage}
                           isHighlighted={highlightedMsgId === msg.id}

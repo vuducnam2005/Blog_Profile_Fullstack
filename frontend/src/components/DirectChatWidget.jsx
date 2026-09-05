@@ -15,7 +15,8 @@ import {
   MoreHorizontal,
   Copy,
   Image as ImageIcon,
-  Loader2
+  Loader2,
+  RotateCcw
 } from 'lucide-react';
 import { PortfolioContext } from '../context/PortfolioContext';
 import AdminAvatar from './AdminAvatar';
@@ -34,7 +35,8 @@ import {
   formatDateDivider,
   isSameDay,
   registerSessionEmail,
-  getFullMediaUrl
+  getFullMediaUrl,
+  recallChatMessage
 } from '../services/directChatService';
 
 function ImageLightboxModal({ imageUrl, onClose }) {
@@ -90,6 +92,7 @@ function VisitorChatMessageBubble({
   msg,
   heroAvatar,
   onReply,
+  onRecall,
   onScrollToMessage,
   onPreviewImage,
   isHighlighted,
@@ -97,15 +100,17 @@ function VisitorChatMessageBubble({
   setActiveMenuId
 }) {
   const isMe = !msg.isFromAdmin;
+  const isRecalled = Boolean(msg.isRecalled || msg.IsRecalled);
   const rawImageUrl = msg.imageUrl || msg.ImageUrl;
   const isContentImageUrl =
+    !isRecalled &&
     !rawImageUrl &&
     typeof msg.content === 'string' &&
     (msg.content.startsWith('http://') || msg.content.startsWith('https://') || msg.content.startsWith('/uploads/')) &&
     (msg.content.includes('res.cloudinary.com') ||
       msg.content.includes('/uploads/') ||
       /\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i.test(msg.content));
-  const effectiveImageUrl = rawImageUrl || (isContentImageUrl ? msg.content : null);
+  const effectiveImageUrl = isRecalled ? null : (rawImageUrl || (isContentImageUrl ? msg.content : null));
 
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -113,6 +118,34 @@ function VisitorChatMessageBubble({
   const touchStartRef = useRef({ x: 0, y: 0 });
   const isScrollRef = useRef(false);
   const isHorizontalRef = useRef(false);
+
+  // Nếu tin nhắn đã thu hồi, hiển thị giao diện thu hồi đơn giản, không cho tương tác vuốt/reply
+  if (isRecalled) {
+    return (
+      <div id={`visitor-msg-${msg.id}`} className="relative my-1 select-text">
+        <div className={`flex items-end gap-2 sm:gap-2.5 ${isMe ? 'justify-end' : 'justify-start'}`}>
+          {!isMe && (
+            <div className="w-7 h-7 rounded-full border border-white/10 overflow-hidden shrink-0 mb-1 bg-black/40 opacity-60 shadow-sm">
+              <AdminAvatar avatarUrl={heroAvatar} size={28} />
+            </div>
+          )}
+          <div
+            className={`max-w-[86%] sm:max-w-[72%] rounded-2xl px-3.5 py-2 text-xs border border-white/10 bg-white/[0.04] text-gray-400 italic shadow-sm flex flex-col gap-0.5 ${
+              isMe ? 'rounded-tr-xs' : 'rounded-tl-xs'
+            } ${isHighlighted ? 'ring-2 ring-[#F1D89E] scale-[1.02] duration-300' : ''}`}
+          >
+            <div className="flex items-center gap-1.5 text-xs text-gray-400 select-none">
+              <RotateCcw className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+              <span>{isMe ? 'Bạn đã thu hồi một tin nhắn' : `${msg.senderName || 'Đức Nam'} đã thu hồi một tin nhắn`}</span>
+            </div>
+            <div className="text-[9.5px] text-gray-500 self-end">
+              {formatMessageTime(msg.createdAt)}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleTouchStart = (e) => {
     const t = e.touches[0];
@@ -221,9 +254,9 @@ function VisitorChatMessageBubble({
           </div>
         )}
 
-        {/* Nút 3 chấm trên Desktop (nằm bên trái nếu là tin nhắn của mình) */}
+        {/* Nút 3 chấm (nằm bên trái nếu là tin nhắn của mình) */}
         {isMe && (
-          <div className="relative hidden md:flex items-center self-center opacity-0 group-hover/msg:opacity-100 transition">
+          <div className="relative flex items-center self-center opacity-70 md:opacity-0 group-hover/msg:opacity-100 transition">
             <button
               type="button"
               onClick={(e) => {
@@ -236,11 +269,11 @@ function VisitorChatMessageBubble({
               <MoreHorizontal className="w-4 h-4" />
             </button>
 
-            {/* Popover Menu Desktop */}
+            {/* Popover Menu */}
             {isMenuOpen && (
               <div
                 onClick={(e) => e.stopPropagation()}
-                className="absolute right-full mr-1.5 bottom-0 z-30 w-32 bg-[#181b2a] border border-white/15 rounded-xl shadow-2xl py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+                className="absolute right-0 sm:right-full sm:mr-1.5 bottom-full mb-1.5 sm:bottom-0 z-30 w-32 bg-[#181b2a] border border-white/15 rounded-xl shadow-2xl py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
               >
                 <button
                   type="button"
@@ -269,6 +302,17 @@ function VisitorChatMessageBubble({
                       <span>Sao chép</span>
                     </>
                   )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveMenuId(null);
+                    onRecall && onRecall(msg);
+                  }}
+                  className="w-full px-3 py-2 text-xs text-left text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 flex items-center gap-2 transition cursor-pointer border-t border-white/10"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Thu hồi</span>
                 </button>
               </div>
             )}
@@ -350,9 +394,9 @@ function VisitorChatMessageBubble({
           </div>
         </div>
 
-        {/* Nút 3 chấm trên Desktop (nằm bên phải nếu là tin nhắn của Nam) */}
+        {/* Nút 3 chấm (nằm bên phải nếu là tin nhắn của Nam) */}
         {!isMe && (
-          <div className="relative hidden md:flex items-center self-center opacity-0 group-hover/msg:opacity-100 transition">
+          <div className="relative flex items-center self-center opacity-70 md:opacity-0 group-hover/msg:opacity-100 transition">
             <button
               type="button"
               onClick={(e) => {
@@ -365,11 +409,11 @@ function VisitorChatMessageBubble({
               <MoreHorizontal className="w-4 h-4" />
             </button>
 
-            {/* Popover Menu Desktop */}
+            {/* Popover Menu */}
             {isMenuOpen && (
               <div
                 onClick={(e) => e.stopPropagation()}
-                className="absolute left-full ml-1.5 bottom-0 z-30 w-32 bg-[#181b2a] border border-white/15 rounded-xl shadow-2xl py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+                className="absolute left-0 sm:left-full sm:ml-1.5 bottom-full mb-1.5 sm:bottom-0 z-30 w-32 bg-[#181b2a] border border-white/15 rounded-xl shadow-2xl py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
               >
                 <button
                   type="button"
@@ -677,6 +721,24 @@ export default function DirectChatWidget({ isOpen, onClose }) {
       }
     });
 
+    // Lắng nghe sự kiện thu hồi tin nhắn thời gian thực
+    hub.on('MessageRecalled', (data) => {
+      if (data && (data.sessionId === sessionId || !data.sessionId)) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === data.id
+              ? {
+                  ...m,
+                  isRecalled: true,
+                  content: data.content || '[Tin nhắn đã được thu hồi]',
+                  imageUrl: null
+                }
+              : m
+          )
+        );
+      }
+    });
+
     hub
       .start()
       .then(() => {
@@ -694,6 +756,47 @@ export default function DirectChatWidget({ isOpen, onClose }) {
       hubConnectionRef.current = null;
     };
   }, [isOpen, sessionId]);
+
+  // Xử lý thu hồi tin nhắn
+  const handleRecallMessage = useCallback(
+    async (msg) => {
+      if (!msg || !msg.id) return;
+      const confirmRecall = window.confirm('Bạn có chắc chắn muốn thu hồi tin nhắn này không?');
+      if (!confirmRecall) return;
+
+      setActiveMenuMsgId(null);
+
+      // Cập nhật giao diện tức thì (Optimistic UI)
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === msg.id
+            ? {
+                ...m,
+                isRecalled: true,
+                content: '[Tin nhắn đã được thu hồi]',
+                imageUrl: null
+              }
+            : m
+        )
+      );
+
+      try {
+        if (hubConnectionRef.current && hubConnectionRef.current.state === 'Connected') {
+          await hubConnectionRef.current.invoke('RecallMessage', msg.id, sessionId, false);
+        } else {
+          await recallChatMessage(msg.id, sessionId, false);
+        }
+      } catch (err) {
+        console.warn('SignalR recall failed, using REST fallback:', err);
+        try {
+          await recallChatMessage(msg.id, sessionId, false);
+        } catch (restErr) {
+          console.error('Lỗi khi thu hồi tin nhắn:', restErr);
+        }
+      }
+    },
+    [sessionId]
+  );
 
   // Xử lý gửi tin nhắn (kèm ảnh hoặc chỉ ảnh/chỉ text)
   const handleSendMessage = async (textToSend) => {
@@ -1038,6 +1141,7 @@ export default function DirectChatWidget({ isOpen, onClose }) {
                     msg={msg}
                     heroAvatar={hero.avatar}
                     onReply={handleInitiateReply}
+                    onRecall={handleRecallMessage}
                     onScrollToMessage={scrollToOriginalMessage}
                     onPreviewImage={setLightboxImage}
                     isHighlighted={highlightedMsgId === msg.id}

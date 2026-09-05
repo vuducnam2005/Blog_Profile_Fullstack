@@ -354,3 +354,17 @@ export async function updateAdminNotificationSetting(enabled) {
   return res.data;
 }
 
+/**
+ * API REST: Thu hồi tin nhắn (unsend message)
+ */
+export async function recallChatMessage(messageId, sessionId, isFromAdmin = false) {
+  const headers = isFromAdmin ? { 'X-Admin-Key': ADMIN_API_KEY } : {};
+  const res = await axios.post(
+    `${API_BASE_URL}/api/directchat/recall/${messageId}`,
+    { sessionId },
+    { headers }
+  );
+  return res.data;
+}
+
+

@@ -37,5 +37,8 @@ namespace BlogBackend.Models
 
         // Ảnh đính kèm (URL ảnh Cloudinary hoặc local)
         public string? ImageUrl { get; set; }
+
+        // Trạng thái thu hồi tin nhắn
+        public bool IsRecalled { get; set; } = false;
     }
 }

@@ -145,6 +145,7 @@ using (var scope = app.Services.CreateScope())
             ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToSender"" VARCHAR(100);
             ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToContent"" TEXT;
             ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ImageUrl"" TEXT;
+            ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""IsRecalled"" BOOLEAN NOT NULL DEFAULT FALSE;
         ");
         Console.WriteLine("[DB Startup] Đã đồng bộ schema DirectChat thành công.");
     }

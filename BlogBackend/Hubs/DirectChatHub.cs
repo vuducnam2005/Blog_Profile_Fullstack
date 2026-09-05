@@ -118,6 +118,7 @@ namespace BlogBackend.Hubs
                 senderName = msg.SenderName,
                 content = msg.Content,
                 imageUrl = msg.ImageUrl,
+                isRecalled = msg.IsRecalled,
                 isFromAdmin = msg.IsFromAdmin,
                 isReadByAdmin = msg.IsReadByAdmin,
                 isReadByUser = msg.IsReadByUser,
@@ -363,6 +364,61 @@ namespace BlogBackend.Hubs
                 Console.WriteLine($"[DirectChatHub] Lỗi UpdateAdminNotificationSetting: {ex.Message}");
                 return false;
             }
+        }
+
+        public async Task<bool> RecallMessage(int messageId, string sessionId, bool isFromAdmin, string? adminKey = null)
+        {
+            if (messageId <= 0 || string.IsNullOrWhiteSpace(sessionId)) return false;
+            sessionId = sessionId.Trim();
+
+            if (isFromAdmin && adminKey != AdminSecretKey) return false;
+
+            var msg = await _context.DirectChatMessages.FirstOrDefaultAsync(m => m.Id == messageId && m.SessionId == sessionId);
+            if (msg == null) return false;
+
+            if (msg.IsRecalled) return true;
+
+            // Kiểm tra quyền thu hồi
+            if (!isFromAdmin)
+            {
+                // Khách chỉ được thu hồi tin nhắn của mình
+                if (msg.IsFromAdmin) return false;
+            }
+
+            msg.IsRecalled = true;
+            msg.ImageUrl = null;
+            msg.Content = "[Tin nhắn đã được thu hồi]";
+            await _context.SaveChangesAsync();
+
+            var recallPayload = new
+            {
+                id = msg.Id,
+                sessionId = msg.SessionId,
+                isRecalled = true,
+                content = msg.Content,
+                imageUrl = (string?)null
+            };
+
+            await Clients.Group($"session_{sessionId}").SendAsync("MessageRecalled", recallPayload);
+            await Clients.Group(AdminsGroup).SendAsync("MessageRecalled", recallPayload);
+
+            var latestMsg = await _context.DirectChatMessages
+                .Where(m => m.SessionId == sessionId)
+                .OrderByDescending(m => m.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (latestMsg != null && latestMsg.Id == msg.Id)
+            {
+                await Clients.Group(AdminsGroup).SendAsync("ConversationUpdated", new
+                {
+                    sessionId = msg.SessionId,
+                    lastMessage = msg.Content,
+                    lastMessageTime = DateTime.SpecifyKind(msg.CreatedAt, DateTimeKind.Utc),
+                    isFromAdmin = msg.IsFromAdmin
+                });
+            }
+
+            return true;
         }
     }
 }
