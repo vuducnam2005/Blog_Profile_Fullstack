@@ -566,7 +566,7 @@ export function createScreenMeteorSystem({
         }
     }
 
-    let nextEventTime = 6.0;
+    let nextEventTime = 18.0 + Math.random() * 2.0;
 
     function trigger(isManual = true) {
         spawnMeteor(isManual);
@@ -577,7 +577,7 @@ export function createScreenMeteorSystem({
         nextEventTime -= dt;
         if (nextEventTime <= 0) {
             spawnMeteor(false);
-            nextEventTime = 16.0 + Math.random() * 6.0;
+            nextEventTime = 18.0 + Math.random() * 2.0;
         }
 
         // 2. Update active impact effects
