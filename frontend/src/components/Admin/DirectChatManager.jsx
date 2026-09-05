@@ -20,7 +20,8 @@ import {
   Mail,
   Image as ImageIcon,
   Loader2,
-  RotateCcw
+  RotateCcw,
+  ChevronDown
 } from 'lucide-react';
 import { PortfolioContext } from '../../context/PortfolioContext';
 import AdminAvatar from '../AdminAvatar';
@@ -101,6 +102,7 @@ function ChatMessageBubble({
   onRecall,
   onScrollToMessage,
   onPreviewImage,
+  onImageLoad,
   isHighlighted,
   activeMenuId,
   setActiveMenuId
@@ -371,6 +373,7 @@ function ChatMessageBubble({
                 alt="Ảnh đính kèm"
                 className="max-w-full max-h-60 sm:max-h-80 rounded-xl object-cover block"
                 loading="lazy"
+                onLoad={onImageLoad}
               />
             </div>
           )}
@@ -550,6 +553,10 @@ export default function DirectChatManager() {
 
   const activeSessionRef = useRef(activeSessionId);
   const chatEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const isAtBottomRef = useRef(true);
+  const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
+  const [hasNewUnreadWhileScrolled, setHasNewUnreadWhileScrolled] = useState(false);
   const hubRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const inputRef = useRef(null);
@@ -558,8 +565,61 @@ export default function DirectChatManager() {
     activeSessionRef.current = activeSessionId;
   }, [activeSessionId]);
 
-  const scrollToBottom = useCallback((smooth = true) => {
-    chatEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' });
+  const scrollToBottom = useCallback((smooth = true, force = false) => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    if (!force && !isAtBottomRef.current) return;
+
+    const targetTop = container.scrollHeight - container.clientHeight;
+    if (targetTop <= 0) return;
+
+    if (smooth) {
+      container.scrollTo({ top: targetTop, behavior: 'smooth' });
+    } else {
+      container.scrollTop = targetTop;
+    }
+  }, []);
+
+  const scrollImmediatelyToBottom = useCallback(() => {
+    isAtBottomRef.current = true;
+    setShowScrollBottomBtn(false);
+    setHasNewUnreadWhileScrolled(false);
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const doScroll = () => {
+      if (!container) return;
+      container.scrollTop = container.scrollHeight - container.clientHeight;
+    };
+
+    doScroll();
+    requestAnimationFrame(() => {
+      doScroll();
+      setTimeout(doScroll, 40);
+      setTimeout(doScroll, 120);
+      setTimeout(doScroll, 300);
+    });
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    const isNearBottom = distanceToBottom < 90;
+    isAtBottomRef.current = isNearBottom;
+    setShowScrollBottomBtn(!isNearBottom);
+    if (isNearBottom) {
+      setHasNewUnreadWhileScrolled(false);
+    }
+  }, []);
+
+  const handleImageLoad = useCallback(() => {
+    if (isAtBottomRef.current) {
+      const container = messagesContainerRef.current;
+      if (container) {
+        container.scrollTop = container.scrollHeight - container.clientHeight;
+      }
+    }
   }, []);
 
   // Tải danh sách hội thoại
@@ -582,6 +642,7 @@ export default function DirectChatManager() {
     try {
       const msgs = await fetchChatHistory(sessionId);
       setActiveMessages(msgs);
+      scrollImmediatelyToBottom();
       await markChatAsRead(sessionId, true);
       // Cập nhật lại số chưa đọc trong state sessions
       setSessions((prev) =>
@@ -591,8 +652,9 @@ export default function DirectChatManager() {
       console.error('Lỗi khi tải tin nhắn của phiên:', err);
     } finally {
       setLoadingMessages(false);
+      scrollImmediatelyToBottom();
     }
-  }, []);
+  }, [scrollImmediatelyToBottom]);
 
   // Kết nối SignalR Hub cho Admin
   useEffect(() => {
@@ -630,6 +692,12 @@ export default function DirectChatManager() {
           return [...prev, msg];
         });
         markChatAsRead(msg.sessionId, true);
+        if (isAtBottomRef.current) {
+          setTimeout(() => scrollToBottom(true, true), 40);
+        } else {
+          setHasNewUnreadWhileScrolled(true);
+          setShowScrollBottomBtn(true);
+        }
       }
 
       // Cập nhật danh sách sessions
@@ -677,6 +745,9 @@ export default function DirectChatManager() {
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
         if (data.isTyping) {
           typingTimeoutRef.current = setTimeout(() => setVisitorTyping(false), 4000);
+          if (isAtBottomRef.current) {
+            setTimeout(() => scrollToBottom(true, true), 40);
+          }
         }
       }
     });
@@ -743,10 +814,36 @@ export default function DirectChatManager() {
   }, [activeSessionId, loadSessionMessages]);
 
   useEffect(() => {
-    if (activeMessages.length > 0) {
-      scrollToBottom(false);
+    if (mobileView === 'chat') {
+      scrollImmediatelyToBottom();
+    }
+  }, [mobileView, scrollImmediatelyToBottom]);
+
+  useEffect(() => {
+    if (activeMessages.length > 0 && isAtBottomRef.current) {
+      scrollToBottom(false, true);
     }
   }, [activeMessages.length, scrollToBottom]);
+
+  // Giữ khung chat luôn bám sát tin mới nhất khi nội dung thay đổi kích thước
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container || typeof ResizeObserver === 'undefined') return;
+
+    let prevHeight = container.scrollHeight;
+    const observer = new ResizeObserver(() => {
+      const currentHeight = container.scrollHeight;
+      if (currentHeight !== prevHeight) {
+        prevHeight = currentHeight;
+        if (isAtBottomRef.current) {
+          container.scrollTop = container.scrollHeight - container.clientHeight;
+        }
+      }
+    });
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
   // Bắt đầu trả lời một tin nhắn (Quote)
   const handleInitiateReply = useCallback((message) => {
@@ -821,6 +918,10 @@ export default function DirectChatManager() {
     setSelectedImageFile(null);
     setImagePreviewUrl(null);
     setMobileView('chat');
+    isAtBottomRef.current = true;
+    setShowScrollBottomBtn(false);
+    setHasNewUnreadWhileScrolled(false);
+    scrollImmediatelyToBottom();
   };
 
   // Xử lý Admin thu hồi tin nhắn
@@ -932,8 +1033,12 @@ export default function DirectChatManager() {
       replyToContent: targetReply?.content ? targetReply.content.substring(0, 150) : null
     };
 
+    isAtBottomRef.current = true;
+    setShowScrollBottomBtn(false);
+    setHasNewUnreadWhileScrolled(false);
     setActiveMessages((prev) => [...prev, optimisticMsg]);
-    scrollToBottom(true);
+    scrollToBottom(true, true);
+    setTimeout(() => scrollToBottom(true, true), 50);
 
     try {
       if (hubRef.current) {
@@ -985,7 +1090,7 @@ export default function DirectChatManager() {
       }
     } finally {
       setSending(false);
-      scrollToBottom(true);
+      scrollToBottom(true, true);
     }
   };
 
@@ -1357,69 +1462,97 @@ export default function DirectChatManager() {
               </div>
 
               {/* Danh Sách Tin Nhắn Của Phiên */}
-              <div className="flex-1 min-h-0 p-3 sm:p-6 overflow-y-auto space-y-3.5 sm:space-y-4 scrollbar-thin scrollbar-thumb-white/10 touch-pan-y">
-                {loadingMessages ? (
-                  <div className="h-full flex items-center justify-center text-gray-500 text-xs gap-2">
-                    <RefreshCw className="w-4 h-4 animate-spin text-[#F1D89E]" />
-                    Đang tải lịch sử tin nhắn...
-                  </div>
-                ) : activeMessages.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-gray-500 text-xs">
-                    <MessageSquare className="w-10 h-10 text-gray-600 mb-2 opacity-50" />
-                    Chưa có tin nhắn nào trong phiên này.
-                  </div>
-                ) : (
-                  activeMessages.map((msg, idx) => {
-                    const isNam = msg.isFromAdmin;
-                    const prevMsg = idx > 0 ? activeMessages[idx - 1] : null;
-                    const isNewDay = !prevMsg || !isSameDay(msg.createdAt, prevMsg.createdAt);
+              <div className="relative flex-1 min-h-0 flex flex-col">
+                <div
+                  ref={messagesContainerRef}
+                  onScroll={handleScroll}
+                  className="flex-1 min-h-0 p-3 sm:p-6 overflow-y-auto space-y-3.5 sm:space-y-4 scrollbar-thin scrollbar-thumb-white/10 touch-pan-y"
+                >
+                  {loadingMessages ? (
+                    <div className="h-full flex items-center justify-center text-gray-500 text-xs gap-2">
+                      <RefreshCw className="w-4 h-4 animate-spin text-[#F1D89E]" />
+                      Đang tải lịch sử tin nhắn...
+                    </div>
+                  ) : activeMessages.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-gray-500 text-xs">
+                      <MessageSquare className="w-10 h-10 text-gray-600 mb-2 opacity-50" />
+                      Chưa có tin nhắn nào trong phiên này.
+                    </div>
+                  ) : (
+                    activeMessages.map((msg, idx) => {
+                      const isNam = msg.isFromAdmin;
+                      const prevMsg = idx > 0 ? activeMessages[idx - 1] : null;
+                      const isNewDay = !prevMsg || !isSameDay(msg.createdAt, prevMsg.createdAt);
 
-                    return (
-                      <div key={msg.id || idx}>
-                        {/* Dải phân cách ngày nhắn */}
-                        {isNewDay && (
-                          <div className="flex justify-center my-3 select-none">
-                            <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[#F1D89E] text-[10px] font-semibold tracking-wider shadow-sm">
-                              {formatDateDivider(msg.createdAt)}
-                            </span>
-                          </div>
-                        )}
+                      return (
+                        <div key={msg.id || idx}>
+                          {/* Dải phân cách ngày nhắn */}
+                          {isNewDay && (
+                            <div className="flex justify-center my-3 select-none">
+                              <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[#F1D89E] text-[10px] font-semibold tracking-wider shadow-sm">
+                                {formatDateDivider(msg.createdAt)}
+                              </span>
+                            </div>
+                          )}
 
-                        <ChatMessageBubble
-                          msg={msg}
-                          isNam={isNam}
-                          heroAvatar={hero.avatar}
-                          onReply={handleInitiateReply}
-                          onRecall={handleRecallMessage}
-                          onScrollToMessage={scrollToOriginalMessage}
-                          onPreviewImage={setLightboxImage}
-                          isHighlighted={highlightedMsgId === msg.id}
-                          activeMenuId={activeMenuMsgId}
-                          setActiveMenuId={setActiveMenuMsgId}
-                        />
+                          <ChatMessageBubble
+                            msg={msg}
+                            isNam={isNam}
+                            heroAvatar={hero.avatar}
+                            onReply={handleInitiateReply}
+                            onRecall={handleRecallMessage}
+                            onScrollToMessage={scrollToOriginalMessage}
+                            onPreviewImage={setLightboxImage}
+                            onImageLoad={handleImageLoad}
+                            isHighlighted={highlightedMsgId === msg.id}
+                            activeMenuId={activeMenuMsgId}
+                            setActiveMenuId={setActiveMenuMsgId}
+                          />
+                        </div>
+                      );
+                    })
+                  )}
+
+                  {/* Typing Indicator từ khách */}
+                  {visitorTyping && (
+                    <div className="flex gap-2.5 items-center">
+                      <div className="w-7 h-7 rounded-full bg-purple-500/20 border border-white/10 flex items-center justify-center text-xs text-white">
+                        {activeSessionData?.senderName?.charAt(0)?.toUpperCase() || 'K'}
                       </div>
-                    );
-                  })
-                )}
-
-                {/* Typing Indicator từ khách */}
-                {visitorTyping && (
-                  <div className="flex gap-2.5 items-center">
-                    <div className="w-7 h-7 rounded-full bg-purple-500/20 border border-white/10 flex items-center justify-center text-xs text-white">
-                      {activeSessionData?.senderName?.charAt(0)?.toUpperCase() || 'K'}
+                      <div className="bg-[#1a1d2e] px-3.5 py-2 rounded-2xl border border-white/10 flex items-center gap-1.5">
+                        <span className="text-[10px] text-gray-300 italic mr-1">
+                          {activeSessionData?.senderName || 'Khách'} đang soạn tin
+                        </span>
+                        <div className="w-1.5 h-1.5 bg-[#F1D89E] rounded-full animate-ping" />
+                        <div className="w-1.5 h-1.5 bg-[#F1D89E] rounded-full animate-ping delay-100" />
+                        <div className="w-1.5 h-1.5 bg-[#F1D89E] rounded-full animate-ping delay-200" />
+                      </div>
                     </div>
-                    <div className="bg-[#1a1d2e] px-3.5 py-2 rounded-2xl border border-white/10 flex items-center gap-1.5">
-                      <span className="text-[10px] text-gray-300 italic mr-1">
-                        {activeSessionData?.senderName || 'Khách'} đang soạn tin
-                      </span>
-                      <div className="w-1.5 h-1.5 bg-[#F1D89E] rounded-full animate-ping" />
-                      <div className="w-1.5 h-1.5 bg-[#F1D89E] rounded-full animate-ping delay-100" />
-                      <div className="w-1.5 h-1.5 bg-[#F1D89E] rounded-full animate-ping delay-200" />
-                    </div>
-                  </div>
-                )}
+                  )}
 
-                <div ref={chatEndRef} />
+                  <div ref={chatEndRef} />
+                </div>
+
+                {/* Nút cuộn nhanh xuống tin nhắn mới nhất */}
+                {showScrollBottomBtn && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      isAtBottomRef.current = true;
+                      setShowScrollBottomBtn(false);
+                      setHasNewUnreadWhileScrolled(false);
+                      scrollToBottom(true, true);
+                    }}
+                    className="absolute right-4 sm:right-6 bottom-3 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#181a26]/95 hover:bg-[#23273a] text-[#F1D89E] text-xs font-medium border border-[#F1D89E]/35 shadow-[0_6px_20px_rgba(0,0,0,0.7)] backdrop-blur-md transition-all duration-200 animate-in fade-in zoom-in-90 cursor-pointer select-none"
+                    title="Cuộn xuống tin nhắn mới nhất"
+                  >
+                    <ChevronDown className="w-4 h-4 animate-bounce" />
+                    <span>{hasNewUnreadWhileScrolled ? 'Tin nhắn mới' : 'Mới nhất'}</span>
+                    {hasNewUnreadWhileScrolled && (
+                      <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                    )}
+                  </button>
+                )}
               </div>
 
               {/* Gợi Ý Phản Hồi Nhanh Cho Nam */}

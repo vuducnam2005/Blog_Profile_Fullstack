@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useContext } from 'react';
+import { useState, useRef, useEffect, useContext, useCallback } from 'react';
 import { X, Send, Bot, Sparkles } from 'lucide-react';
 import { PortfolioContext } from '../context/PortfolioContext';
 
@@ -99,6 +99,8 @@ export default function AiChatWidget({
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const chatEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const isAtBottomRef = useRef(true);
 
   const heroName = data?.hero?.name || 'Vũ Đức Nam';
 
@@ -109,15 +111,75 @@ export default function AiChatWidget({
     '📬 Cách liên hệ với Nam?'
   ];
 
-  const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ block: 'end' });
-  };
+  const scrollToBottom = useCallback((smooth = false, force = false) => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    if (!force && !isAtBottomRef.current) return;
+    const targetTop = container.scrollHeight - container.clientHeight;
+    if (targetTop <= 0) return;
+    if (smooth) {
+      container.scrollTo({ top: targetTop, behavior: 'smooth' });
+    } else {
+      container.scrollTop = targetTop;
+    }
+  }, []);
+
+  const scrollImmediatelyToBottom = useCallback(() => {
+    isAtBottomRef.current = true;
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const doScroll = () => {
+      if (!container) return;
+      container.scrollTop = container.scrollHeight - container.clientHeight;
+    };
+
+    doScroll();
+    requestAnimationFrame(() => {
+      doScroll();
+      setTimeout(doScroll, 40);
+      setTimeout(doScroll, 120);
+      setTimeout(doScroll, 320);
+    });
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    isAtBottomRef.current = distanceToBottom < 90;
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
-      scrollToBottom();
+      scrollImmediatelyToBottom();
     }
-  }, [messages, isOpen]);
+  }, [isOpen, scrollImmediatelyToBottom]);
+
+  useEffect(() => {
+    if (isOpen && isAtBottomRef.current) {
+      scrollToBottom(false, true);
+    }
+  }, [messages, isOpen, scrollToBottom]);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container || typeof ResizeObserver === 'undefined') return;
+
+    let prevHeight = container.scrollHeight;
+    const observer = new ResizeObserver(() => {
+      const currentHeight = container.scrollHeight;
+      if (currentHeight !== prevHeight) {
+        prevHeight = currentHeight;
+        if (isAtBottomRef.current) {
+          container.scrollTop = container.scrollHeight - container.clientHeight;
+        }
+      }
+    });
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
   // Không cần health check backend — gọi Gemini trực tiếp từ frontend
 
@@ -211,6 +273,13 @@ export default function AiChatWidget({
             setMessages((previous) => previous.map((message) =>
               message.id === replyId ? { ...message, text: displayedText } : message
             ));
+
+            if (isAtBottomRef.current) {
+              const container = messagesContainerRef.current;
+              if (container) {
+                container.scrollTop = container.scrollHeight - container.clientHeight;
+              }
+            }
           }
         }, 35);
       };
@@ -311,9 +380,12 @@ export default function AiChatWidget({
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
+    isAtBottomRef.current = true;
     setMessages(prev => [...prev, userMsg]);
     if (!textToSend) setInput('');
     setLoading(true);
+    scrollToBottom(true, true);
+    setTimeout(() => scrollToBottom(true, true), 50);
 
     try {
       try {
@@ -401,7 +473,11 @@ export default function AiChatWidget({
           </div>
 
           {/* DANH SÁCH TIN NHẮN */}
-          <div className="flex-1 min-h-0 p-3 sm:p-4 overflow-y-auto overscroll-contain space-y-3.5 scrollbar-thin scrollbar-thumb-white/10">
+          <div
+            ref={messagesContainerRef}
+            onScroll={handleScroll}
+            className="flex-1 min-h-0 p-3 sm:p-4 overflow-y-auto overscroll-contain space-y-3.5 scrollbar-thin scrollbar-thumb-white/10"
+          >
             {messages.map((msg, idx) => (
               <div
                 key={idx}
