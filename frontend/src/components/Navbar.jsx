@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { AudioContext } from '../context/AudioContext';
 import { BackgroundContext } from '../context/BackgroundContext';
 import { useAuth } from '../context/AuthContext';
+import MeteorNoticeBanner from './MeteorNoticeBanner';
 
 export default function Navbar() {
   const { t, i18n } = useTranslation();
@@ -106,6 +107,9 @@ export default function Navbar() {
         >
           Vũ Đức Nam
         </div>
+
+        {/* ===== THÔNG BÁO CHẠY GIỮA "VŨ ĐỨC NAM" VÀ "TRANG CHỦ" ===== */}
+        <MeteorNoticeBanner />
 
         {/* ===== DESKTOP NAV ===== */}
         <div className="hidden md:flex items-center gap-3 lg:gap-5 xl:gap-6 text-xs lg:text-sm font-semibold text-gray-300">

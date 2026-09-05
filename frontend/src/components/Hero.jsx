@@ -7,7 +7,6 @@ import { PortfolioContext } from '../context/PortfolioContext';
 import { API_BASE_URL } from '../config';
 import { useTranslation } from 'react-i18next';
 import OptimizedImage from './OptimizedImage';
-import MeteorNoticeBanner from './MeteorNoticeBanner';
 
 export default function Hero() {
   const { t } = useTranslation();
@@ -20,7 +19,7 @@ export default function Hero() {
   };
 
   return (
-    <section id="hero" className="hero-section min-h-screen flex flex-col justify-center items-center pt-20 md:pt-24 pb-8 md:pb-12 px-3 md:px-8 lg:px-12">
+    <section id="hero" className="hero-section min-h-screen flex justify-center items-center pt-20 md:pt-24 px-3 md:px-8 lg:px-12">
        <div className="hero-card glass w-full max-w-6xl rounded-2xl md:rounded-3xl p-5 sm:p-7 md:p-12 flex flex-col lg:flex-row gap-8 md:gap-12 items-center lg:items-center bg-black/40 border-white/10 relative overflow-hidden shadow-2xl hover:shadow-[0_0_40px_rgba(241,216,158,0.15)] transition-shadow duration-500">
             
             {/* Glow effect đằng sau thẻ */}
@@ -129,9 +128,6 @@ export default function Hero() {
             </div>
             
        </div>
-
-       {/* Dải thông báo chạy ở khoảng giữa Hero và các phần tiếp theo */}
-       <MeteorNoticeBanner />
     </section>
   );
 }
