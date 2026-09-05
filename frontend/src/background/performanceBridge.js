@@ -132,11 +132,12 @@ export function startBlackHoleBackground() {
         }
     };
 
-    const triggerScreenMeteor = () => {
+    const triggerScreenMeteor = (options) => {
+        const payload = { isManual: true, ...(typeof options === 'object' ? options : {}) };
         if (mode === 'worker' && worker) {
-            worker.postMessage({ type: 'trigger_screen_meteor' });
+            worker.postMessage({ type: 'trigger_screen_meteor', ...payload });
         } else if (mode === 'fallback' && fallbackEngine) {
-            fallbackEngine.triggerScreenMeteor?.();
+            fallbackEngine.triggerScreenMeteor?.(payload);
         }
     };
 

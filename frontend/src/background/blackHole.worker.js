@@ -45,7 +45,7 @@ self.onmessage = (event) => {
                 self.postMessage({ type: 'ready' });
                 break;
             case 'trigger_screen_meteor':
-                engine?.triggerScreenMeteor?.();
+                engine?.triggerScreenMeteor?.(message);
                 break;
             case 'input':
                 engine?.updateInput(message.input);

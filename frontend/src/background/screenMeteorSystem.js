@@ -217,19 +217,14 @@ export function createScreenMeteorSystem({
 }) {
     const random = createSeededRandom(0x3B9F14);
     const bodyRadius = isMobile ? 0.48 : 0.68;
-    const root = new THREE.Group();
-    root.visible = false;
-    scene.add(root);
+    const impactDistance = 0.72;
+    const trailSegments = isMobile ? 20 : 28;
 
-    // 1. Core rock
+    // Shared Geometries & Base Materials
     const rockGeo = createRockGeometry(bodyRadius, isMobile ? 1 : 2, random);
-    const rockMat = createScreenRockMaterial();
-    const rockMesh = new THREE.Mesh(rockGeo, rockMat);
-    rockMesh.frustumCulled = false;
-    root.add(rockMesh);
+    const baseRockMat = createScreenRockMaterial();
 
-    // 2. Glow sprites
-    const glowMat = new THREE.SpriteMaterial({
+    const baseGlowMat = new THREE.SpriteMaterial({
         map: starTexture,
         color: 0xff5a10,
         transparent: true,
@@ -238,11 +233,8 @@ export function createScreenMeteorSystem({
         depthTest: true,
         depthWrite: false,
     });
-    const glowSprite = new THREE.Sprite(glowMat);
-    glowSprite.scale.setScalar(bodyRadius * 5.5);
-    root.add(glowSprite);
 
-    const hotGlowMat = new THREE.SpriteMaterial({
+    const baseHotGlowMat = new THREE.SpriteMaterial({
         map: starTexture,
         color: 0xffe2a0,
         transparent: true,
@@ -251,216 +243,320 @@ export function createScreenMeteorSystem({
         depthTest: true,
         depthWrite: false,
     });
-    const hotGlowSprite = new THREE.Sprite(hotGlowMat);
-    hotGlowSprite.scale.setScalar(bodyRadius * 2.9);
-    root.add(hotGlowSprite);
 
-    // 3. Trail
-    const trailSegments = isMobile ? 22 : 32;
-    const trailGeo = createScreenTrailGeometry(trailSegments);
-    const trailMat = createScreenTrailMaterial();
-    const trailMesh = new THREE.Mesh(trailGeo, trailMat);
-    trailMesh.frustumCulled = false;
-    trailMesh.visible = false;
-    scene.add(trailMesh);
+    const baseTrailMat = createScreenTrailMaterial();
 
-    // 4. Shards bouncing off glass on impact
-    const shardCount = isMobile ? 24 : 36;
-    const shardGeo = createRockGeometry(bodyRadius * 0.32, 0, random);
-    const shardMat = createScreenRockMaterial();
-    const shardMesh = new THREE.InstancedMesh(shardGeo, shardMat, shardCount);
-    shardMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    shardMesh.frustumCulled = false;
-    shardMesh.visible = false;
-    scene.add(shardMesh);
+    // -------------------------------------------------------------
+    // METEOR POOL: Allows spamming 'B' to launch many concurrent meteors!
+    // -------------------------------------------------------------
+    const MAX_METEORS = 30;
+    const meteorPool = [];
 
-    const shardPositions = Array.from({ length: shardCount }, () => new THREE.Vector3());
-    const shardVelocities = Array.from({ length: shardCount }, () => new THREE.Vector3());
-    const shardRotations = Array.from({ length: shardCount }, () => new THREE.Euler());
-    const shardSpins = Array.from({ length: shardCount }, () => new THREE.Vector3());
-    const shardScales = new Float32Array(shardCount);
-    const shardLives = new Float32Array(shardCount);
+    function createMeteorInstance() {
+        const root = new THREE.Group();
+        root.visible = false;
+        scene.add(root);
 
-    // 5. Impact flash sprite
-    const flashMat = new THREE.SpriteMaterial({
-        map: starTexture,
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0,
-        blending: THREE.AdditiveBlending,
-        depthTest: false,
-        depthWrite: false,
-    });
-    const flashSprite = new THREE.Sprite(flashMat);
-    flashSprite.visible = false;
-    scene.add(flashSprite);
+        const rockMat = baseRockMat.clone();
+        const rockMesh = new THREE.Mesh(rockGeo, rockMat);
+        rockMesh.frustumCulled = false;
+        root.add(rockMesh);
 
-    // 6. Kinetic Shockwave Ring on Screen
-    const shockRingGeo = new THREE.RingGeometry(0.08, 0.28, 36);
-    const shockRingMat = new THREE.MeshBasicMaterial({
-        color: 0xffc466,
-        transparent: true,
-        opacity: 0,
-        side: THREE.DoubleSide,
-        blending: THREE.AdditiveBlending,
-        depthTest: false,
-    });
-    const shockRing = new THREE.Mesh(shockRingGeo, shockRingMat);
-    shockRing.visible = false;
-    scene.add(shockRing);
+        const glowMat = baseGlowMat.clone();
+        const glowSprite = new THREE.Sprite(glowMat);
+        glowSprite.scale.setScalar(bodyRadius * 5.5);
+        root.add(glowSprite);
 
-    // 7. Kinetic 3D Spark Points Burst
-    const sparkBurstCount = isMobile ? 35 : 60;
-    const sparkBurstPositions = new Float32Array(sparkBurstCount * 3);
-    const sparkBurstVelocities = Array.from({ length: sparkBurstCount }, () => new THREE.Vector3());
-    const sparkBurstGeo = new THREE.BufferGeometry();
-    const sparkBurstPosAttr = new THREE.BufferAttribute(sparkBurstPositions, 3);
-    sparkBurstPosAttr.setUsage(THREE.DynamicDrawUsage);
-    sparkBurstGeo.setAttribute('position', sparkBurstPosAttr);
+        const hotGlowMat = baseHotGlowMat.clone();
+        const hotGlowSprite = new THREE.Sprite(hotGlowMat);
+        hotGlowSprite.scale.setScalar(bodyRadius * 2.9);
+        root.add(hotGlowSprite);
 
-    const sparkBurstMat = new THREE.PointsMaterial({
-        map: starTexture,
-        color: 0xffb833,
-        size: isMobile ? 0.35 : 0.52,
-        transparent: true,
-        opacity: 0,
-        blending: THREE.AdditiveBlending,
-        depthTest: false,
-    });
-    const sparkBurstPoints = new THREE.Points(sparkBurstGeo, sparkBurstMat);
-    sparkBurstPoints.visible = false;
-    scene.add(sparkBurstPoints);
+        const trailGeo = createScreenTrailGeometry(trailSegments);
+        const trailMat = baseTrailMat.clone();
+        const trailMesh = new THREE.Mesh(trailGeo, trailMat);
+        trailMesh.frustumCulled = false;
+        trailMesh.visible = false;
+        scene.add(trailMesh);
 
-    // Trail buffer vectors
-    const trailCenters = Array.from({ length: trailSegments }, () => new THREE.Vector3());
-    const dummy = new THREE.Object3D();
-    const pStart = new THREE.Vector3();
-    const pMid = new THREE.Vector3();
-    const pEnd = new THREE.Vector3();
-    const currentPos = new THREE.Vector3();
-    const prevPos = new THREE.Vector3();
-    const tangent = new THREE.Vector3();
-    const viewDir = new THREE.Vector3();
-    const sideVec = new THREE.Vector3();
-
-    let active = false;
-    let eventAge = 0;
-    let eventDuration = 4.6; // Slower cinematic flight duration in seconds
-    let nextEventTime = 6.0; // First meteor strikes after 6s for quick preview
-    let ndcX = 0;
-    let ndcY = 0;
-    let shardsActive = false;
-    let shardAge = 0;
-    let flashAge = 0;
-    let shockRingAge = 0;
-    let sparksBurstActive = false;
-    let sparkBurstAge = 0;
-
-    function hideShards() {
-        dummy.position.set(0, 0, 0);
-        dummy.scale.setScalar(0);
-        dummy.updateMatrix();
-        for (let i = 0; i < shardCount; i++) {
-            shardMesh.setMatrixAt(i, dummy.matrix);
-        }
-        shardMesh.instanceMatrix.needsUpdate = true;
+        return {
+            root,
+            rockMesh,
+            rockMat,
+            glowSprite,
+            glowMat,
+            hotGlowSprite,
+            hotGlowMat,
+            trailGeo,
+            trailMat,
+            trailMesh,
+            trailCenters: Array.from({ length: trailSegments }, () => new THREE.Vector3()),
+            pStart: new THREE.Vector3(),
+            pMid: new THREE.Vector3(),
+            pEnd: new THREE.Vector3(),
+            currentPos: new THREE.Vector3(),
+            prevPos: new THREE.Vector3(),
+            tangent: new THREE.Vector3(),
+            viewDir: new THREE.Vector3(),
+            sideVec: new THREE.Vector3(),
+            rotSpeed: new THREE.Vector3(
+                3.0 + Math.random() * 2.0,
+                4.5 + Math.random() * 2.5,
+                1.8 + Math.random() * 1.5
+            ),
+            ndcX: 0,
+            ndcY: 0,
+            eventAge: 0,
+            eventDuration: 4.6,
+            active: false,
+        };
     }
-    hideShards();
+
+    // Pre-populate pool with 6 meteors
+    for (let i = 0; i < 6; i++) {
+        meteorPool.push(createMeteorInstance());
+    }
+
+    // -------------------------------------------------------------
+    // IMPACT EFFECTS POOL (Flash, Shockwave Ring, 3D Sparks)
+    // -------------------------------------------------------------
+    const MAX_IMPACTS = 12;
+    const impactPool = [];
+    const shockRingGeo = new THREE.RingGeometry(0.08, 0.28, 32);
+
+    function createImpactEffect() {
+        const flashMat = new THREE.SpriteMaterial({
+            map: starTexture,
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0,
+            blending: THREE.AdditiveBlending,
+            depthTest: false,
+            depthWrite: false,
+        });
+        const flashSprite = new THREE.Sprite(flashMat);
+        flashSprite.visible = false;
+        scene.add(flashSprite);
+
+        const shockRingMat = new THREE.MeshBasicMaterial({
+            color: 0xffc466,
+            transparent: true,
+            opacity: 0,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending,
+            depthTest: false,
+        });
+        const shockRing = new THREE.Mesh(shockRingGeo, shockRingMat);
+        shockRing.visible = false;
+        scene.add(shockRing);
+
+        const sparkBurstCount = isMobile ? 24 : 45;
+        const sparkBurstPositions = new Float32Array(sparkBurstCount * 3);
+        const sparkBurstVelocities = Array.from({ length: sparkBurstCount }, () => new THREE.Vector3());
+        const sparkBurstGeo = new THREE.BufferGeometry();
+        const sparkBurstPosAttr = new THREE.BufferAttribute(sparkBurstPositions, 3);
+        sparkBurstPosAttr.setUsage(THREE.DynamicDrawUsage);
+        sparkBurstGeo.setAttribute('position', sparkBurstPosAttr);
+
+        const sparkBurstMat = new THREE.PointsMaterial({
+            map: starTexture,
+            color: 0xffb833,
+            size: isMobile ? 0.32 : 0.48,
+            transparent: true,
+            opacity: 0,
+            blending: THREE.AdditiveBlending,
+            depthTest: false,
+        });
+        const sparkBurstPoints = new THREE.Points(sparkBurstGeo, sparkBurstMat);
+        sparkBurstPoints.visible = false;
+        scene.add(sparkBurstPoints);
+
+        return {
+            flashSprite,
+            flashMat,
+            shockRing,
+            shockRingMat,
+            sparkBurstPoints,
+            sparkBurstPositions,
+            sparkBurstVelocities,
+            sparkBurstPosAttr,
+            sparkBurstMat,
+            sparkBurstGeo,
+            sparkBurstCount,
+            active: false,
+            age: 0,
+            pEnd: new THREE.Vector3(),
+        };
+    }
+
+    for (let i = 0; i < 6; i++) {
+        impactPool.push(createImpactEffect());
+    }
+
+    function triggerImpactEffect(position) {
+        let impact = impactPool.find(imp => !imp.active);
+        if (!impact) {
+            if (impactPool.length < MAX_IMPACTS) {
+                impact = createImpactEffect();
+                impactPool.push(impact);
+            } else {
+                impact = impactPool.reduce((oldest, cur) => cur.age > oldest.age ? cur : oldest, impactPool[0]);
+            }
+        }
+
+        impact.active = true;
+        impact.age = 0;
+        impact.pEnd.copy(position);
+
+        // Flash
+        impact.flashSprite.position.copy(position);
+        impact.flashSprite.scale.setScalar(bodyRadius * 11.0);
+        impact.flashMat.opacity = 1.0;
+        impact.flashSprite.visible = true;
+
+        // Shockwave Ring
+        impact.shockRing.position.copy(position);
+        impact.shockRing.quaternion.copy(camera.quaternion);
+        impact.shockRing.scale.setScalar(1.0);
+        impact.shockRingMat.opacity = 0.95;
+        impact.shockRing.visible = true;
+
+        // Sparks
+        const camRight = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+        const camUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+        const camForward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+
+        for (let i = 0; i < impact.sparkBurstCount; i++) {
+            const i3 = i * 3;
+            impact.sparkBurstPositions[i3] = position.x;
+            impact.sparkBurstPositions[i3 + 1] = position.y;
+            impact.sparkBurstPositions[i3 + 2] = position.z;
+            const spAngle = (i / impact.sparkBurstCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+            const spSpeed = 3.2 + Math.random() * 6.5;
+            impact.sparkBurstVelocities[i].set(0, 0, 0)
+                .addScaledVector(camRight, Math.cos(spAngle) * spSpeed)
+                .addScaledVector(camUp, Math.sin(spAngle) * spSpeed)
+                .addScaledVector(camForward, 0.5 + Math.random() * 1.5);
+        }
+        impact.sparkBurstPosAttr.needsUpdate = true;
+        impact.sparkBurstMat.opacity = 1.0;
+        impact.sparkBurstPoints.visible = true;
+    }
 
     const _targetCamOffset = new THREE.Vector3();
-    const impactDistance = 0.72;
 
-    function updateImpactPoint() {
-        // Compute frustum dimensions at impact distance in front of camera
+    function updateMeteorImpactPoint(meteor) {
         const halfFovRad = THREE.MathUtils.degToRad(camera.fov * 0.5);
         const halfH = impactDistance * Math.tan(halfFovRad);
-        const halfW = halfH * (camera.aspect || (window.innerWidth / window.innerHeight));
+        const halfW = halfH * (camera.aspect || 1.6);
 
-        const xCam = ndcX * halfW;
-        const yCam = ndcY * halfH;
+        const xCam = meteor.ndcX * halfW;
+        const yCam = meteor.ndcY * halfH;
 
-        // In camera coordinates: (xCam, yCam, -impactDistance)
-        // Transform to scene space using camera.quaternion and camera.position
         _targetCamOffset.set(xCam, yCam, -impactDistance).applyQuaternion(camera.quaternion);
-        pEnd.copy(camera.position).add(_targetCamOffset);
+        meteor.pEnd.copy(camera.position).add(_targetCamOffset);
     }
 
-    function computeImpactTarget() {
-        // User requirement: meteor flies predominantly into center of screen with subtle natural variation
-        if (random() < 0.75) {
-            ndcX = (random() - 0.5) * 0.08; // -0.04 to +0.04 (tight center)
-            ndcY = (random() - 0.5) * 0.06; // -0.03 to +0.03 (tight center)
-        } else {
-            ndcX = (random() - 0.5) * 0.16; // -0.08 to +0.08
-            ndcY = (random() - 0.5) * 0.12; // -0.06 to +0.06
-        }
-
-        updateImpactPoint();
-
-        // Start point: deep in cosmos, slightly to one side of the black hole
-        const sideSign = random() < 0.5 ? -1 : 1;
-        pStart.set(
-            sideSign * (6 + random() * 10),
-            1.5 + random() * 5,
-            -18 - random() * 14
-        );
-
-        // Mid point: sweeping arc slingshot
-        pMid.set(
-            sideSign * (2 + random() * 4),
-            0.5 + random() * 3,
-            -4 - random() * 5
-        );
-    }
-
-    function evaluateBezier(t, out) {
+    function evaluateBezier(t, p0, p1, p2, out) {
         const u = 1 - t;
         const tt = t * t;
         const uu = u * u;
         out.set(0, 0, 0);
-        out.addScaledVector(pStart, uu);
-        out.addScaledVector(pMid, 2 * u * t);
-        out.addScaledVector(pEnd, tt);
+        out.addScaledVector(p0, uu);
+        out.addScaledVector(p1, 2 * u * t);
+        out.addScaledVector(p2, tt);
         return out;
     }
 
-    function trigger() {
-        if (active) return;
-        computeImpactTarget();
-        eventAge = 0;
-        eventDuration = isMobile ? 5.2 : 4.6;
-        evaluateBezier(0, prevPos);
-        active = true;
-        root.visible = true;
-        trailMesh.visible = !prefersReducedMotion;
-        rockMat.uniforms.uOpacity.value = 1;
+    function spawnMeteor(isManual = false) {
+        let meteor = meteorPool.find(m => !m.active);
+        if (!meteor) {
+            if (meteorPool.length < MAX_METEORS) {
+                meteor = createMeteorInstance();
+                meteorPool.push(meteor);
+            } else {
+                meteor = meteorPool.reduce((oldest, m) => (m.eventAge / m.eventDuration) > (oldest.eventAge / oldest.eventDuration) ? m : oldest, meteorPool[0]);
+            }
+        }
+
+        if (isManual) {
+            // SPAM / B KEY:
+            // Random target across screen (-0.82 to +0.82)
+            meteor.ndcX = (Math.random() - 0.5) * 1.64;
+            meteor.ndcY = (Math.random() - 0.5) * 1.64;
+
+            // Random flight duration for rapid, punchy barrage
+            meteor.eventDuration = isMobile ? (2.0 + Math.random() * 1.0) : (1.7 + Math.random() * 1.2);
+
+            // Random origin from any 360-degree direction in cosmic space
+            const theta = Math.random() * Math.PI * 2;
+            const radDist = 14 + Math.random() * 18;
+            const zDist = -24 - Math.random() * 24;
+            const yOff = (Math.random() - 0.5) * 14;
+
+            meteor.pStart.set(
+                Math.cos(theta) * radDist,
+                Math.sin(theta) * radDist * 0.75 + yOff,
+                zDist
+            );
+
+            updateMeteorImpactPoint(meteor);
+
+            // Random curved mid-point with gravitational sling
+            const midT = 0.42 + Math.random() * 0.16;
+            meteor.pMid.lerpVectors(meteor.pStart, meteor.pEnd, midT);
+            const curveAngle = Math.random() * Math.PI * 2;
+            const curveDist = 4 + Math.random() * 7;
+            meteor.pMid.x += Math.cos(curveAngle) * curveDist;
+            meteor.pMid.y += Math.sin(curveAngle) * curveDist;
+            meteor.pMid.z += (Math.random() - 0.5) * 6;
+        } else {
+            // AUTONOMOUS / SPONTANEOUS:
+            if (Math.random() < 0.75) {
+                meteor.ndcX = (Math.random() - 0.5) * 0.12;
+                meteor.ndcY = (Math.random() - 0.5) * 0.10;
+            } else {
+                meteor.ndcX = (Math.random() - 0.5) * 0.28;
+                meteor.ndcY = (Math.random() - 0.5) * 0.22;
+            }
+
+            meteor.eventDuration = isMobile ? 5.2 : 4.6;
+
+            const sideSign = Math.random() < 0.5 ? -1 : 1;
+            meteor.pStart.set(
+                sideSign * (6 + Math.random() * 10),
+                1.5 + Math.random() * 5,
+                -18 - Math.random() * 14
+            );
+
+            meteor.pMid.set(
+                sideSign * (2 + Math.random() * 4),
+                0.5 + Math.random() * 3,
+                -4 - Math.random() * 5
+            );
+            updateMeteorImpactPoint(meteor);
+        }
+
+        meteor.eventAge = 0;
+        evaluateBezier(0, meteor.pStart, meteor.pMid, meteor.pEnd, meteor.prevPos);
+        meteor.currentPos.copy(meteor.prevPos);
+        meteor.active = true;
+        meteor.root.visible = true;
+        meteor.trailMesh.visible = !prefersReducedMotion;
+        meteor.rockMat.uniforms.uOpacity.value = 1;
     }
 
-    function onHitScreen() {
-        active = false;
-        root.visible = false;
-        trailMesh.visible = false;
+    function onMeteorHit(meteor) {
+        meteor.active = false;
+        meteor.root.visible = false;
+        meteor.trailMesh.visible = false;
 
-        // Trigger flash
-        flashSprite.position.copy(pEnd);
-        flashSprite.scale.setScalar(bodyRadius * 11.0);
-        flashMat.opacity = 1.0;
-        flashSprite.visible = true;
-        flashAge = 0;
+        triggerImpactEffect(meteor.pEnd);
 
-        // Trigger 3D shockwave ring
-        shockRing.position.copy(pEnd);
-        shockRing.quaternion.copy(camera.quaternion);
-        shockRing.scale.setScalar(1.0);
-        shockRingMat.opacity = 0.95;
-        shockRing.visible = true;
-        shockRingAge = 0;
+        // Project exact screen coordinate (0 to 1)
+        const actualScreenX = (meteor.ndcX + 1) * 0.5;
+        const actualScreenY = (1 - meteor.ndcY) * 0.5;
 
-        // Exact screen projection matching pEnd (0 to 1, top-left origin)
-        const actualScreenX = (ndcX + 1) * 0.5;
-        const actualScreenY = (1 - ndcY) * 0.5;
-
-        // Notify UI overlay of impact at the exact screen coordinate
         if (typeof onScreenImpact === 'function') {
             onScreenImpact({
                 screenX: actualScreenX,
@@ -468,226 +564,156 @@ export function createScreenMeteorSystem({
                 intensity: 1.0,
             });
         }
+    }
 
-        const camRight = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-        const camUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
-        const camForward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+    let nextEventTime = 6.0;
 
-        // Scatter 3D shards bouncing off camera plane
-        shardsActive = true;
-        shardAge = 0;
-        shardMesh.visible = true;
-
-        for (let i = 0; i < shardCount; i++) {
-            const angle = (i / shardCount) * Math.PI * 2 + (random() - 0.5) * 0.6;
-            const speed = 2.2 + random() * 4.4;
-            shardPositions[i].copy(pEnd);
-
-            // Rebound shards laterally and back away into space
-            shardVelocities[i].set(0, 0, 0)
-                .addScaledVector(camRight, Math.cos(angle) * speed)
-                .addScaledVector(camUp, Math.sin(angle) * speed)
-                .addScaledVector(camForward, 0.4 + random() * 1.4);
-
-            shardScales[i] = (0.6 + random() * 0.9);
-            shardLives[i] = 1.0;
-            shardRotations[i].set(random() * Math.PI, random() * Math.PI, random() * Math.PI);
-            shardSpins[i].set((random() - 0.5) * 14, (random() - 0.5) * 14, (random() - 0.5) * 14);
-        }
-
-        // Scatter 3D fiery sparks burst
-        for (let i = 0; i < sparkBurstCount; i++) {
-            const i3 = i * 3;
-            sparkBurstPositions[i3] = pEnd.x;
-            sparkBurstPositions[i3 + 1] = pEnd.y;
-            sparkBurstPositions[i3 + 2] = pEnd.z;
-            const spAngle = (i / sparkBurstCount) * Math.PI * 2 + (random() - 0.5) * 0.5;
-            const spSpeed = 3.2 + random() * 6.8;
-            sparkBurstVelocities[i].set(0, 0, 0)
-                .addScaledVector(camRight, Math.cos(spAngle) * spSpeed)
-                .addScaledVector(camUp, Math.sin(spAngle) * spSpeed)
-                .addScaledVector(camForward, 0.5 + random() * 1.5);
-        }
-        sparkBurstPosAttr.needsUpdate = true;
-        sparkBurstMat.opacity = 1.0;
-        sparkBurstPoints.visible = true;
-        sparksBurstActive = true;
-        sparkBurstAge = 0;
-
-        // Periodic interval: 15 - 20 seconds
-        nextEventTime = 15.0 + random() * 5.0;
+    function trigger(isManual = true) {
+        spawnMeteor(isManual);
     }
 
     function update(dt, elapsedTime) {
-        if (!active) {
-            nextEventTime -= dt;
-            if (nextEventTime <= 0) {
-                trigger();
-            }
+        // 1. Autonomous cadence timer (independent of manual spam)
+        nextEventTime -= dt;
+        if (nextEventTime <= 0) {
+            spawnMeteor(false);
+            nextEventTime = 16.0 + Math.random() * 6.0;
         }
 
-        // Update flash
-        if (flashSprite.visible) {
-            flashAge += dt;
-            const flashFade = Math.max(0, 1 - flashAge * 5.0);
-            flashMat.opacity = flashFade;
-            flashSprite.scale.multiplyScalar(1 + dt * 2.5);
+        // 2. Update active impact effects
+        for (let i = 0; i < impactPool.length; i++) {
+            const imp = impactPool[i];
+            if (!imp.active) continue;
+            imp.age += dt;
+
+            // Flash fade
+            const flashFade = Math.max(0, 1.0 - imp.age * 5.0);
+            imp.flashMat.opacity = flashFade;
+            imp.flashSprite.scale.multiplyScalar(1 + dt * 2.5);
             if (flashFade <= 0.001) {
-                flashSprite.visible = false;
+                imp.flashSprite.visible = false;
             }
-        }
 
-        // Update shockwave ring
-        if (shockRing.visible) {
-            shockRingAge += dt;
-            const sProg = shockRingAge / 0.45;
+            // Shockwave ring expand & fade
+            const sProg = imp.age / 0.45;
             if (sProg >= 1.0) {
-                shockRing.visible = false;
+                imp.shockRing.visible = false;
             } else {
-                shockRing.scale.setScalar(1.0 + sProg * 8.5);
-                shockRingMat.opacity = (1 - sProg) * 0.9;
+                imp.shockRing.scale.setScalar(1.0 + sProg * 8.5);
+                imp.shockRingMat.opacity = (1 - sProg) * 0.9;
+            }
+
+            // Sparks
+            const sFade = Math.max(0, 1.0 - imp.age * 1.6);
+            imp.sparkBurstMat.opacity = sFade;
+            if (sFade > 0.001) {
+                for (let s = 0; s < imp.sparkBurstCount; s++) {
+                    const s3 = s * 3;
+                    imp.sparkBurstPositions[s3] += imp.sparkBurstVelocities[s].x * dt;
+                    imp.sparkBurstPositions[s3 + 1] += imp.sparkBurstVelocities[s].y * dt;
+                    imp.sparkBurstPositions[s3 + 2] += imp.sparkBurstVelocities[s].z * dt;
+                }
+                imp.sparkBurstPosAttr.needsUpdate = true;
+            } else {
+                imp.sparkBurstPoints.visible = false;
+            }
+
+            if (imp.age > 0.8) {
+                imp.active = false;
             }
         }
 
-        // Update 3D sparks
-        if (sparksBurstActive) {
-            sparkBurstAge += dt;
-            const sFade = Math.max(0, 1.0 - sparkBurstAge * 1.6);
-            sparkBurstMat.opacity = sFade;
-            for (let i = 0; i < sparkBurstCount; i++) {
-                const i3 = i * 3;
-                sparkBurstPositions[i3] += sparkBurstVelocities[i].x * dt;
-                sparkBurstPositions[i3 + 1] += sparkBurstVelocities[i].y * dt;
-                sparkBurstPositions[i3 + 2] += sparkBurstVelocities[i].z * dt;
+        // 3. Update active meteors
+        for (let m = 0; m < meteorPool.length; m++) {
+            const meteor = meteorPool[m];
+            if (!meteor.active) continue;
+
+            updateMeteorImpactPoint(meteor);
+            meteor.eventAge += dt;
+            const rawProgress = Math.min(1.0, meteor.eventAge / meteor.eventDuration);
+            const motionProgress = Math.pow(rawProgress, 1.75);
+
+            evaluateBezier(motionProgress, meteor.pStart, meteor.pMid, meteor.pEnd, meteor.currentPos);
+            meteor.tangent.subVectors(meteor.currentPos, meteor.prevPos).normalize();
+            meteor.prevPos.copy(meteor.currentPos);
+
+            meteor.root.position.copy(meteor.currentPos);
+            meteor.rockMesh.rotation.x += dt * meteor.rotSpeed.x;
+            meteor.rockMesh.rotation.y += dt * meteor.rotSpeed.y;
+            meteor.rockMesh.rotation.z += dt * meteor.rotSpeed.z;
+
+            const approachScale = 1.0 + Math.pow(rawProgress, 2.2) * 0.65;
+            meteor.root.scale.setScalar(approachScale);
+
+            const heat = THREE.MathUtils.smoothstep(rawProgress, 0.1, 0.95);
+            meteor.rockMat.uniforms.uTime.value = elapsedTime;
+            meteor.rockMat.uniforms.uHeat.value = heat;
+            meteor.rockMat.uniforms.uHeatDirection.value.copy(meteor.tangent).multiplyScalar(-1);
+
+            meteor.glowMat.opacity = heat * 0.9;
+            meteor.hotGlowMat.opacity = Math.pow(heat, 2.0) * 0.95;
+
+            // Trail update
+            const tailSpan = 0.32 * Math.max(0.12, motionProgress);
+            const trailArray = meteor.trailGeo.attributes.position.array;
+            for (let s = 0; s < trailSegments; s++) {
+                const segT = s / (trailSegments - 1);
+                const historyT = Math.max(0, motionProgress - segT * tailSpan);
+                evaluateBezier(historyT, meteor.pStart, meteor.pMid, meteor.pEnd, meteor.trailCenters[s]);
             }
-            sparkBurstPosAttr.needsUpdate = true;
-            if (sFade <= 0.001) {
-                sparksBurstActive = false;
-                sparkBurstPoints.visible = false;
+
+            for (let s = 0; s < trailSegments; s++) {
+                const center = meteor.trailCenters[s];
+                const before = meteor.trailCenters[Math.max(0, s - 1)];
+                const after = meteor.trailCenters[Math.min(trailSegments - 1, s + 1)];
+                meteor.tangent.subVectors(before, after).normalize();
+                meteor.viewDir.subVectors(camera.position, center).normalize();
+                meteor.sideVec.crossVectors(meteor.tangent, meteor.viewDir).normalize();
+
+                const segT = s / (trailSegments - 1);
+                const width = bodyRadius * approachScale * (0.9 + heat * 0.7) * (1.0 - segT * 0.9);
+                const v = s * 2;
+                trailArray[v * 3] = center.x + meteor.sideVec.x * width;
+                trailArray[v * 3 + 1] = center.y + meteor.sideVec.y * width;
+                trailArray[v * 3 + 2] = center.z + meteor.sideVec.z * width;
+                trailArray[(v + 1) * 3] = center.x - meteor.sideVec.x * width;
+                trailArray[(v + 1) * 3 + 1] = center.y - meteor.sideVec.y * width;
+                trailArray[(v + 1) * 3 + 2] = center.z - meteor.sideVec.z * width;
             }
-        }
 
-        // Update shards
-        if (shardsActive) {
-            shardAge += dt;
-            let anyAlive = false;
-            const shardFade = Math.max(0, 1 - shardAge * 0.85);
-            shardMat.uniforms.uOpacity.value = shardFade;
-            shardMat.uniforms.uHeat.value = Math.max(0, 1 - shardAge * 1.1);
-            shardMat.uniforms.uTime.value = elapsedTime;
+            meteor.trailGeo.attributes.position.needsUpdate = true;
+            meteor.trailMat.uniforms.uTime.value = elapsedTime;
+            meteor.trailMat.uniforms.uHeat.value = heat;
+            meteor.trailMat.uniforms.uOpacity.value = heat * (1.0 - rawProgress * 0.15);
 
-            for (let i = 0; i < shardCount; i++) {
-                if (shardLives[i] <= 0) continue;
-                anyAlive = true;
-                shardPositions[i].addScaledVector(shardVelocities[i], dt);
-                shardRotations[i].x += shardSpins[i].x * dt;
-                shardRotations[i].y += shardSpins[i].y * dt;
-                shardRotations[i].z += shardSpins[i].z * dt;
-
-                const curScale = shardScales[i] * shardFade;
-                dummy.position.copy(shardPositions[i]);
-                dummy.rotation.copy(shardRotations[i]);
-                dummy.scale.setScalar(curScale);
-                dummy.updateMatrix();
-                shardMesh.setMatrixAt(i, dummy.matrix);
+            if (rawProgress >= 1.0) {
+                onMeteorHit(meteor);
             }
-            shardMesh.instanceMatrix.needsUpdate = true;
-
-            if (!anyAlive || shardFade <= 0.001) {
-                shardsActive = false;
-                shardMesh.visible = false;
-                hideShards();
-            }
-        }
-
-        if (!active) return;
-
-        // Keep target locked dynamically to the user's camera viewpoint
-        updateImpactPoint();
-
-        eventAge += dt;
-        const rawProgress = Math.min(1.0, eventAge / eventDuration);
-
-        // Smooth cinematic acceleration — clearly visible flight and build-up
-        const motionProgress = Math.pow(rawProgress, 1.75);
-        evaluateBezier(motionProgress, currentPos);
-
-        // Tangent
-        tangent.subVectors(currentPos, prevPos).normalize();
-        prevPos.copy(currentPos);
-
-        root.position.copy(currentPos);
-        rockMesh.rotation.x += dt * 3.6;
-        rockMesh.rotation.y += dt * 5.2;
-        rockMesh.rotation.z += dt * 2.2;
-
-        // Dynamic perspective swelling as it approaches camera
-        const approachScale = 1.0 + Math.pow(rawProgress, 2.2) * 0.65;
-        root.scale.setScalar(approachScale);
-
-        const heat = THREE.MathUtils.smoothstep(rawProgress, 0.1, 0.95);
-        rockMat.uniforms.uTime.value = elapsedTime;
-        rockMat.uniforms.uHeat.value = heat;
-        rockMat.uniforms.uHeatDirection.value.copy(tangent).multiplyScalar(-1);
-
-        // Glow expands as it draws closer
-        glowMat.opacity = heat * 0.9;
-        hotGlowMat.opacity = Math.pow(heat, 2.0) * 0.95;
-
-        // Trail update
-        const tailSpan = 0.32 * Math.max(0.12, motionProgress);
-        const trailArray = trailGeo.attributes.position.array;
-        for (let s = 0; s < trailSegments; s++) {
-            const segT = s / (trailSegments - 1);
-            const historyT = Math.max(0, motionProgress - segT * tailSpan);
-            evaluateBezier(historyT, trailCenters[s]);
-        }
-
-        for (let s = 0; s < trailSegments; s++) {
-            const center = trailCenters[s];
-            const before = trailCenters[Math.max(0, s - 1)];
-            const after = trailCenters[Math.min(trailSegments - 1, s + 1)];
-            tangent.subVectors(before, after).normalize();
-            viewDir.subVectors(camera.position, center).normalize();
-            sideVec.crossVectors(tangent, viewDir).normalize();
-
-            const segT = s / (trailSegments - 1);
-            const width = bodyRadius * approachScale * (0.9 + heat * 0.7) * (1.0 - segT * 0.9);
-            const v = s * 2;
-            trailArray[v * 3] = center.x + sideVec.x * width;
-            trailArray[v * 3 + 1] = center.y + sideVec.y * width;
-            trailArray[v * 3 + 2] = center.z + sideVec.z * width;
-            trailArray[(v + 1) * 3] = center.x - sideVec.x * width;
-            trailArray[(v + 1) * 3 + 1] = center.y - sideVec.y * width;
-            trailArray[(v + 1) * 3 + 2] = center.z - sideVec.z * width;
-        }
-
-        trailGeo.attributes.position.needsUpdate = true;
-        trailMat.uniforms.uTime.value = elapsedTime;
-        trailMat.uniforms.uHeat.value = heat;
-        trailMat.uniforms.uOpacity.value = heat * (1.0 - rawProgress * 0.15);
-
-        // Check if reached destination (screen impact)
-        if (rawProgress >= 1.0) {
-            onHitScreen();
         }
     }
 
     function dispose() {
-        scene.remove(root, trailMesh, shardMesh, flashSprite, shockRing, sparkBurstPoints);
+        for (let m of meteorPool) {
+            scene.remove(m.root, m.trailMesh);
+            m.rockMat.dispose();
+            m.glowMat.dispose();
+            m.hotGlowMat.dispose();
+            m.trailGeo.dispose();
+            m.trailMat.dispose();
+        }
+        for (let imp of impactPool) {
+            scene.remove(imp.flashSprite, imp.shockRing, imp.sparkBurstPoints);
+            imp.flashMat.dispose();
+            imp.shockRingMat.dispose();
+            imp.sparkBurstGeo.dispose();
+            imp.sparkBurstMat.dispose();
+        }
         rockGeo.dispose();
-        rockMat.dispose();
-        glowMat.dispose();
-        hotGlowMat.dispose();
-        trailGeo.dispose();
-        trailMat.dispose();
-        shardGeo.dispose();
-        shardMat.dispose();
-        flashMat.dispose();
         shockRingGeo.dispose();
-        shockRingMat.dispose();
-        sparkBurstGeo.dispose();
-        sparkBurstMat.dispose();
+        baseRockMat.dispose();
+        baseGlowMat.dispose();
+        baseHotGlowMat.dispose();
+        baseTrailMat.dispose();
     }
 
     return {

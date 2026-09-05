@@ -1306,7 +1306,7 @@ return {
     resize,
     updateInput,
     setVisibility,
-    triggerScreenMeteor: () => screenMeteor.trigger(),
+    triggerScreenMeteor: (options) => screenMeteor.trigger(typeof options === 'boolean' ? options : (options?.isManual ?? true)),
     dispose,
     config: CONFIG,
 };

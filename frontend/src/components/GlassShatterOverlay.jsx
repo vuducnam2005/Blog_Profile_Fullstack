@@ -3,15 +3,31 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 /**
  * Web Audio procedural glass shatter sound synthesizer
  * Zero external audio files required — 100% reliable, zero latency.
+ * Reuses a single cached AudioContext to avoid browser limits during spam.
  */
+let sharedAudioCtx = null;
+
+function getAudioContext() {
+    try {
+        if (!sharedAudioCtx && typeof window !== 'undefined') {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) {
+                sharedAudioCtx = new AudioCtx();
+            }
+        }
+        if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') {
+            sharedAudioCtx.resume().catch(() => {});
+        }
+        return sharedAudioCtx;
+    } catch {
+        return null;
+    }
+}
+
 function playProceduralGlassSound() {
     try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!AudioCtx) return;
-        const ctx = new AudioCtx();
-        if (ctx.state === 'suspended') {
-            ctx.resume();
-        }
+        const ctx = getAudioContext();
+        if (!ctx) return;
 
         const now = ctx.currentTime;
 
@@ -21,7 +37,7 @@ function playProceduralGlassSound() {
         subOsc.type = 'sine';
         subOsc.frequency.setValueAtTime(140, now);
         subOsc.frequency.exponentialRampToValueAtTime(32, now + 0.18);
-        subGain.gain.setValueAtTime(0.5, now);
+        subGain.gain.setValueAtTime(0.4, now);
         subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
         subOsc.connect(subGain);
         subGain.connect(ctx.destination);
@@ -29,7 +45,7 @@ function playProceduralGlassSound() {
         subOsc.stop(now + 0.25);
 
         // 2. High-Frequency Glass Fracture Noise Crunch
-        const bufferSize = ctx.sampleRate * 0.35;
+        const bufferSize = Math.floor(ctx.sampleRate * 0.3);
         const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const output = noiseBuffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) {
@@ -45,14 +61,14 @@ function playProceduralGlassSound() {
         noiseFilter.Q.setValueAtTime(3.5, now);
 
         const noiseGain = ctx.createGain();
-        noiseGain.gain.setValueAtTime(0.75, now);
-        noiseGain.gain.exponentialRampToValueAtTime(0.005, now + 0.28);
+        noiseGain.gain.setValueAtTime(0.6, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.005, now + 0.25);
 
         whiteNoise.connect(noiseFilter);
         noiseFilter.connect(noiseGain);
         noiseGain.connect(ctx.destination);
         whiteNoise.start(now);
-        whiteNoise.stop(now + 0.35);
+        whiteNoise.stop(now + 0.3);
 
         // 3. Resonant Glass Shard Pings (Harmonic tinkling)
         const tinkleFreqs = [3200, 4800, 6400, 8200];
@@ -61,12 +77,12 @@ function playProceduralGlassSound() {
             const gain = ctx.createGain();
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(freq + Math.random() * 200, now + idx * 0.012);
-            gain.gain.setValueAtTime(0.18, now + idx * 0.012);
-            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35 + idx * 0.05);
+            gain.gain.setValueAtTime(0.14, now + idx * 0.012);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3 + idx * 0.04);
             osc.connect(gain);
             gain.connect(ctx.destination);
             osc.start(now + idx * 0.012);
-            osc.stop(now + 0.45);
+            osc.stop(now + 0.4);
         });
     } catch {
         // Audio playback gracefully suppressed if user hasn't interacted with page yet
@@ -258,45 +274,380 @@ function getPointAlongRay(points, targetDist) {
     return points[points.length - 1];
 }
 
+/**
+ * Draws an individual glass shatter crack layer by layer.
+ */
+function drawSingleCrack(ctx, crack, now) {
+    const elapsed = now - crack.startTime;
+    const totalDuration = crack.growthDuration + crack.sustainDuration + crack.fadeDuration;
+    if (elapsed >= totalDuration) {
+        return false;
+    }
+
+    // Calculate crack propagation (0 -> 1 in 60ms)
+    const growthProgress = Math.min(1.0, elapsed / crack.growthDuration);
+    const easedGrowth = 1 - Math.pow(1 - growthProgress, 3);
+
+    // Calculate fade out (1 -> 0 after sustain)
+    let opacity = 1.0;
+    if (elapsed > crack.growthDuration + crack.sustainDuration) {
+        const fadeElapsed = elapsed - (crack.growthDuration + crack.sustainDuration);
+        opacity = Math.max(0, 1.0 - fadeElapsed / crack.fadeDuration);
+    }
+
+    const { cx, cy, coreRadius, rays, webArcs, embers, flyingShards, dustPuffs, sparks } = crack.pattern;
+
+    ctx.save();
+    ctx.globalAlpha = opacity;
+
+    // ========================================================
+    // LAYER 0A: Kinetic Impact Flash (Intense blinding burst at t=0)
+    // ========================================================
+    if (elapsed < 140) {
+        const flashIntensity = Math.pow(1.0 - elapsed / 140, 2);
+        const flashGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreRadius * 9);
+        flashGrad.addColorStop(0, `rgba(255, 255, 255, ${0.95 * flashIntensity})`);
+        flashGrad.addColorStop(0.25, `rgba(255, 220, 130, ${0.75 * flashIntensity})`);
+        flashGrad.addColorStop(0.65, `rgba(255, 120, 30, ${0.4 * flashIntensity})`);
+        flashGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = flashGrad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, coreRadius * 9, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // ========================================================
+    // LAYER 0B: Expanding Glass Compression Shockwave Ring
+    // ========================================================
+    if (elapsed < 420) {
+        const waveProgress = elapsed / 420;
+        const waveRadius = coreRadius + waveProgress * (Math.max(window.innerWidth, window.innerHeight) * 0.42);
+        const waveAlpha = (1 - waveProgress) * 0.85;
+        ctx.save();
+        ctx.strokeStyle = `rgba(255, 245, 210, ${waveAlpha})`;
+        ctx.lineWidth = 3.5 * (1 - waveProgress);
+        ctx.shadowColor = 'rgba(255, 190, 80, 0.85)';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(cx, cy, waveRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    // ========================================================
+    // LAYER 1: Core Molten Ember Glow (fades quickly as rock cools)
+    // ========================================================
+    const heatElapsed = elapsed / 1000;
+    const coreHeat = Math.max(0, 1.0 - heatElapsed * 0.7);
+    if (coreHeat > 0.01) {
+        const glowGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreRadius * 4.5);
+        glowGrad.addColorStop(0, `rgba(255, 245, 210, ${0.85 * coreHeat})`);
+        glowGrad.addColorStop(0.2, `rgba(255, 140, 20, ${0.65 * coreHeat})`);
+        glowGrad.addColorStop(0.55, `rgba(220, 45, 5, ${0.35 * coreHeat})`);
+        glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = glowGrad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, coreRadius * 4.5, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // ========================================================
+    // LAYER 2: Refraction Shadow (Gives 3D glass thickness & depth)
+    // ========================================================
+    ctx.save();
+    ctx.translate(1.5, 1.8);
+    ctx.strokeStyle = 'rgba(10, 18, 28, 0.75)';
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'miter';
+
+    rays.forEach((ray) => {
+        const limit = Math.floor(ray.points.length * easedGrowth);
+        if (limit < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(ray.points[0].x, ray.points[0].y);
+        for (let i = 1; i < limit; i++) {
+            ctx.lineTo(ray.points[i].x, ray.points[i].y);
+        }
+        ctx.stroke();
+
+        if (easedGrowth > 0.5) {
+            ray.branches.forEach((bPoints) => {
+                ctx.beginPath();
+                ctx.moveTo(bPoints[0].x, bPoints[0].y);
+                for (let b = 1; b < bPoints.length; b++) {
+                    ctx.lineTo(bPoints[b].x, bPoints[b].y);
+                }
+                ctx.stroke();
+            });
+        }
+    });
+
+    if (easedGrowth > 0.3) {
+        webArcs.forEach((arc) => {
+            ctx.beginPath();
+            ctx.moveTo(arc.pA.x, arc.pA.y);
+            ctx.lineTo(arc.mid.x, arc.mid.y);
+            ctx.lineTo(arc.pB.x, arc.pB.y);
+            ctx.stroke();
+        });
+    }
+    ctx.restore();
+
+    // ========================================================
+    // LAYER 3: Chromatic Aberration Fringe (Cyan / Magenta split)
+    // ========================================================
+    ctx.save();
+    ctx.translate(-0.8, -0.6);
+    ctx.strokeStyle = 'rgba(0, 230, 255, 0.28)';
+    ctx.lineWidth = 1.0;
+    rays.forEach((ray) => {
+        const limit = Math.floor(ray.points.length * easedGrowth);
+        if (limit < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(ray.points[0].x, ray.points[0].y);
+        for (let i = 1; i < limit; i++) {
+            ctx.lineTo(ray.points[i].x, ray.points[i].y);
+        }
+        ctx.stroke();
+    });
+    ctx.restore();
+
+    // ========================================================
+    // LAYER 4: Brilliant Specular Highlight (Pure White Internal Glint)
+    // ========================================================
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+    ctx.shadowBlur = 3;
+    ctx.lineWidth = 1.3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'miter';
+
+    rays.forEach((ray) => {
+        const limit = Math.floor(ray.points.length * easedGrowth);
+        if (limit < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(ray.points[0].x, ray.points[0].y);
+        for (let i = 1; i < limit; i++) {
+            ctx.lineTo(ray.points[i].x, ray.points[i].y);
+        }
+        ctx.stroke();
+
+        if (easedGrowth > 0.5) {
+            ray.branches.forEach((bPoints) => {
+                ctx.beginPath();
+                ctx.moveTo(bPoints[0].x, bPoints[0].y);
+                for (let b = 1; b < bPoints.length; b++) {
+                    ctx.lineTo(bPoints[b].x, bPoints[b].y);
+                }
+                ctx.stroke();
+            });
+        }
+    });
+
+    if (easedGrowth > 0.3) {
+        ctx.lineWidth = 1.1;
+        webArcs.forEach((arc) => {
+            ctx.beginPath();
+            ctx.moveTo(arc.pA.x, arc.pA.y);
+            ctx.lineTo(arc.mid.x, arc.mid.y);
+            ctx.lineTo(arc.pB.x, arc.pB.y);
+            ctx.stroke();
+        });
+    }
+
+    // ========================================================
+    // LAYER 5: Pulverized Impact Core (Frosted White Micro-Cracks)
+    // ========================================================
+    ctx.shadowBlur = 0;
+    const coreGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, coreRadius);
+    coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.96)');
+    coreGrad.addColorStop(0.5, 'rgba(235, 245, 255, 0.75)');
+    coreGrad.addColorStop(0.85, 'rgba(180, 205, 230, 0.4)');
+    coreGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = coreGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, coreRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.lineWidth = 1.5;
+    for (let cr = 4; cr <= coreRadius; cr += 4) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+
+    ctx.fillStyle = 'rgba(8, 12, 18, 0.88)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, Math.max(3, coreRadius * 0.28), 0, Math.PI * 2);
+    ctx.fill();
+
+    // ========================================================
+    // LAYER 6: Molten Embers and Spark Debris
+    // ========================================================
+    if (coreHeat > 0.05) {
+        embers.forEach((emb) => {
+            const sparkAlpha = coreHeat * (0.6 + Math.sin(now * 0.02 + emb.x) * 0.4);
+            ctx.fillStyle = `rgba(255, ${Math.floor(120 * emb.heat + 100)}, 40, ${sparkAlpha})`;
+            ctx.beginPath();
+            ctx.arc(emb.x, emb.y, emb.size * coreHeat, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    }
+
+    // ========================================================
+    // LAYER 7: Detached Flying Glass Shards (Kinetic pop-off)
+    // ========================================================
+    if (flyingShards && elapsed < 800) {
+        const shardProgress = elapsed / 800;
+        const shardAlpha = Math.max(0, (1 - shardProgress * shardProgress));
+        const sec = elapsed / 1000;
+        ctx.save();
+        flyingShards.forEach((s) => {
+            const curX = s.x + s.vx * sec;
+            const curY = s.y + s.vy * sec + 140 * sec * sec;
+            const curRot = s.rot + s.vRot * sec;
+            ctx.save();
+            ctx.translate(curX, curY);
+            ctx.rotate(curRot);
+
+            ctx.fillStyle = `rgba(0, 0, 0, ${0.45 * shardAlpha})`;
+            ctx.beginPath();
+            s.points.forEach((pt, idx) => {
+                if (idx === 0) ctx.moveTo(pt.x + 3, pt.y + 3);
+                else ctx.lineTo(pt.x + 3, pt.y + 3);
+            });
+            ctx.closePath();
+            ctx.fill();
+
+            const glassGrad = ctx.createLinearGradient(-s.size, -s.size, s.size, s.size);
+            glassGrad.addColorStop(0, `rgba(255, 255, 255, ${0.95 * shardAlpha})`);
+            glassGrad.addColorStop(0.4, `rgba(215, 240, 255, ${0.55 * shardAlpha})`);
+            glassGrad.addColorStop(1, `rgba(180, 215, 245, ${0.8 * shardAlpha})`);
+            ctx.fillStyle = glassGrad;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.95 * shardAlpha})`;
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            s.points.forEach((pt, idx) => {
+                if (idx === 0) ctx.moveTo(pt.x, pt.y);
+                else ctx.lineTo(pt.x, pt.y);
+            });
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+        });
+        ctx.restore();
+    }
+
+    // ========================================================
+    // LAYER 8: Powdered Glass Dust & Vapor Puffs
+    // ========================================================
+    if (dustPuffs && elapsed < 900) {
+        const dustProgress = elapsed / 900;
+        const dustAlpha = Math.max(0, (1 - dustProgress) * 0.45);
+        const sec = elapsed / 1000;
+        ctx.save();
+        dustPuffs.forEach((dp) => {
+            const curX = dp.x + dp.vx * sec;
+            const curY = dp.y + dp.vy * sec;
+            const curR = dp.radius * (1 + dustProgress * 2.4);
+            const grad = ctx.createRadialGradient(curX, curY, 0, curX, curY, curR);
+            grad.addColorStop(0, `rgba(255, 255, 255, ${dustAlpha})`);
+            grad.addColorStop(0.5, `rgba(220, 235, 255, ${dustAlpha * 0.45})`);
+            grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(curX, curY, curR, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        ctx.restore();
+    }
+
+    // ========================================================
+    // LAYER 9: Blazing Kinetic Spark Streaks
+    // ========================================================
+    if (sparks && elapsed < 950) {
+        const sec = elapsed / 1000;
+        ctx.save();
+        sparks.forEach((sp) => {
+            if (sec > sp.maxLife) return;
+            const lifeRatio = Math.max(0, 1.0 - (sec / sp.maxLife));
+            const curX = sp.x + sp.vx * sec;
+            const curY = sp.y + sp.vy * sec + 160 * sec * sec;
+            const tailX = curX - (sp.vx * 0.024);
+            const tailY = curY - (sp.vy * 0.024) - (160 * sec * 0.024);
+
+            ctx.strokeStyle = sp.color;
+            ctx.shadowColor = sp.color;
+            ctx.shadowBlur = 8;
+            ctx.lineWidth = Math.max(0.5, sp.size * lifeRatio);
+            ctx.beginPath();
+            ctx.moveTo(tailX, tailY);
+            ctx.lineTo(curX, curY);
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(curX, curY, (sp.size * 0.8) * lifeRatio, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        ctx.restore();
+    }
+
+    ctx.restore();
+    return true;
+}
+
+const MAX_CONCURRENT_CRACKS = 16;
+
 export default function GlassShatterOverlay() {
     const canvasRef = useRef(null);
-    const activeCrackRef = useRef(null);
+    const activeCracksRef = useRef([]);
     const animationFrameRef = useRef(null);
+    const shakeFrameRef = useRef(null);
+    const shakeEndRef = useRef(0);
+    const shakeIntensityRef = useRef(1.0);
     const [shakeStyle, setShakeStyle] = useState({});
 
-    // Trigger physical screen shake on the viewport
+    // Trigger physical screen shake on the viewport (supporting overlapping impacts)
     const triggerShake = useCallback((intensity = 1.0) => {
-        const startTime = performance.now();
+        const now = performance.now();
         const duration = 450; // ms
+        shakeEndRef.current = Math.max(shakeEndRef.current, now + duration);
+        shakeIntensityRef.current = Math.min(2.5, shakeIntensityRef.current + intensity * 0.35);
+
+        if (shakeFrameRef.current) return;
 
         const updateShake = () => {
-            const elapsed = performance.now() - startTime;
-            if (elapsed >= duration) {
+            const current = performance.now();
+            if (current >= shakeEndRef.current) {
                 setShakeStyle({});
+                shakeFrameRef.current = null;
+                shakeIntensityRef.current = 1.0;
                 return;
             }
 
-            const progress = elapsed / duration;
-            // Damped high-frequency sinusoidal decay
-            const decay = Math.pow(1 - progress, 2.5);
-            const frequency = 40;
-            const magnitude = 10 * intensity * decay;
-            const dx = (Math.sin(elapsed * 0.04) + (Math.random() - 0.5) * 0.8) * magnitude;
-            const dy = (Math.cos(elapsed * 0.035) + (Math.random() - 0.5) * 0.8) * magnitude;
-            const rot = (Math.sin(elapsed * 0.03) * 0.45 * intensity * decay).toFixed(2);
+            const remaining = shakeEndRef.current - current;
+            const decay = Math.max(0, remaining / duration);
+            const magnitude = 10 * shakeIntensityRef.current * Math.pow(decay, 1.8);
+            const dx = (Math.sin(current * 0.04) + (Math.random() - 0.5) * 0.8) * magnitude;
+            const dy = (Math.cos(current * 0.035) + (Math.random() - 0.5) * 0.8) * magnitude;
+            const rot = (Math.sin(current * 0.03) * 0.45 * shakeIntensityRef.current * decay).toFixed(2);
 
             setShakeStyle({
                 transform: `translate3d(${dx.toFixed(1)}px, ${dy.toFixed(1)}px, 0) rotate(${rot}deg)`,
                 transition: 'none',
             });
 
-            requestAnimationFrame(updateShake);
+            shakeFrameRef.current = requestAnimationFrame(updateShake);
         };
 
-        requestAnimationFrame(updateShake);
+        shakeFrameRef.current = requestAnimationFrame(updateShake);
     }, []);
 
-    // Trigger broken glass crack
+    // Trigger broken glass crack at specific screen coordinates
     const triggerCrack = useCallback((screenX = 0.5, screenY = 0.5, intensity = 1.0) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -309,7 +660,8 @@ export default function GlassShatterOverlay() {
 
         const pattern = generateCrackPattern(pixelX, pixelY, width, height);
 
-        activeCrackRef.current = {
+        const newCrack = {
+            id: Math.random().toString(36).slice(2),
             pattern,
             startTime: performance.now(),
             growthDuration: 60, // Cracks propagate in 60ms (instant kinetic snap)
@@ -317,6 +669,11 @@ export default function GlassShatterOverlay() {
             fadeDuration: 2200, // Smoothly dissolves away over 2.2s
             intensity,
         };
+
+        if (activeCracksRef.current.length >= MAX_CONCURRENT_CRACKS) {
+            activeCracksRef.current.shift();
+        }
+        activeCracksRef.current.push(newCrack);
 
         playProceduralGlassSound();
         triggerShake(intensity);
@@ -328,6 +685,8 @@ export default function GlassShatterOverlay() {
         if (!canvas) return undefined;
         const ctx = canvas.getContext('2d');
         if (!ctx) return undefined;
+
+        let hasDrawn = false;
 
         const handleResize = () => {
             const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -342,346 +701,29 @@ export default function GlassShatterOverlay() {
 
         const render = (now) => {
             animationFrameRef.current = requestAnimationFrame(render);
-            const crack = activeCrackRef.current;
-            if (!crack) {
+            const cracks = activeCracksRef.current;
+
+            if (cracks.length === 0) {
+                if (hasDrawn) {
+                    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+                    hasDrawn = false;
+                }
                 return;
             }
 
-            const elapsed = now - crack.startTime;
-            const totalDuration = crack.growthDuration + crack.sustainDuration + crack.fadeDuration;
-
-            if (elapsed >= totalDuration) {
-                // Complete cleanup: clear canvas and reset
-                ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-                activeCrackRef.current = null;
-                return;
-            }
-
-            // Calculate crack propagation (0 -> 1 in 60ms)
-            const growthProgress = Math.min(1.0, elapsed / crack.growthDuration);
-            const easedGrowth = 1 - Math.pow(1 - growthProgress, 3);
-
-            // Calculate fade out (1 -> 0 after sustain)
-            let opacity = 1.0;
-            if (elapsed > crack.growthDuration + crack.sustainDuration) {
-                const fadeElapsed = elapsed - (crack.growthDuration + crack.sustainDuration);
-                opacity = Math.max(0, 1.0 - fadeElapsed / crack.fadeDuration);
-            }
-
-            // Clear frame
+            hasDrawn = true;
             ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
-            const { cx, cy, coreRadius, rays, webArcs, embers, flyingShards, dustPuffs, sparks } = crack.pattern;
-
-            ctx.save();
-            ctx.globalAlpha = opacity;
-
-            // ========================================================
-            // LAYER 0A: Kinetic Impact Flash (Intense blinding burst at t=0)
-            // ========================================================
-            if (elapsed < 140) {
-                const flashIntensity = Math.pow(1.0 - elapsed / 140, 2);
-                const flashGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreRadius * 9);
-                flashGrad.addColorStop(0, `rgba(255, 255, 255, ${0.95 * flashIntensity})`);
-                flashGrad.addColorStop(0.25, `rgba(255, 220, 130, ${0.75 * flashIntensity})`);
-                flashGrad.addColorStop(0.65, `rgba(255, 120, 30, ${0.4 * flashIntensity})`);
-                flashGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-                ctx.fillStyle = flashGrad;
-                ctx.beginPath();
-                ctx.arc(cx, cy, coreRadius * 9, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            // ========================================================
-            // LAYER 0B: Expanding Glass Compression Shockwave Ring
-            // ========================================================
-            if (elapsed < 420) {
-                const waveProgress = elapsed / 420;
-                const waveRadius = coreRadius + waveProgress * (Math.max(window.innerWidth, window.innerHeight) * 0.42);
-                const waveAlpha = (1 - waveProgress) * 0.85;
-                ctx.save();
-                ctx.strokeStyle = `rgba(255, 245, 210, ${waveAlpha})`;
-                ctx.lineWidth = 3.5 * (1 - waveProgress);
-                ctx.shadowColor = 'rgba(255, 190, 80, 0.85)';
-                ctx.shadowBlur = 10;
-                ctx.beginPath();
-                ctx.arc(cx, cy, waveRadius, 0, Math.PI * 2);
-                ctx.stroke();
-                ctx.restore();
-            }
-
-            // ========================================================
-            // LAYER 1: Core Molten Ember Glow (fades quickly as rock cools)
-            // ========================================================
-            const heatElapsed = elapsed / 1000;
-            const coreHeat = Math.max(0, 1.0 - heatElapsed * 0.7);
-            if (coreHeat > 0.01) {
-                const glowGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreRadius * 4.5);
-                glowGrad.addColorStop(0, `rgba(255, 245, 210, ${0.85 * coreHeat})`);
-                glowGrad.addColorStop(0.2, `rgba(255, 140, 20, ${0.65 * coreHeat})`);
-                glowGrad.addColorStop(0.55, `rgba(220, 45, 5, ${0.35 * coreHeat})`);
-                glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-                ctx.fillStyle = glowGrad;
-                ctx.beginPath();
-                ctx.arc(cx, cy, coreRadius * 4.5, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            // ========================================================
-            // LAYER 2: Refraction Shadow (Gives 3D glass thickness & depth)
-            // ========================================================
-            ctx.save();
-            ctx.translate(1.5, 1.8); // Offset shadow
-            ctx.strokeStyle = 'rgba(10, 18, 28, 0.75)';
-            ctx.lineWidth = 2.2;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'miter';
-
-            // Shadow for radial rays
-            rays.forEach((ray) => {
-                const limit = Math.floor(ray.points.length * easedGrowth);
-                if (limit < 2) return;
-                ctx.beginPath();
-                ctx.moveTo(ray.points[0].x, ray.points[0].y);
-                for (let i = 1; i < limit; i++) {
-                    ctx.lineTo(ray.points[i].x, ray.points[i].y);
+            const survivingCracks = [];
+            for (let i = 0; i < cracks.length; i++) {
+                const crack = cracks[i];
+                const alive = drawSingleCrack(ctx, crack, now);
+                if (alive) {
+                    survivingCracks.push(crack);
                 }
-                ctx.stroke();
-
-                if (easedGrowth > 0.5) {
-                    ray.branches.forEach((bPoints) => {
-                        ctx.beginPath();
-                        ctx.moveTo(bPoints[0].x, bPoints[0].y);
-                        for (let b = 1; b < bPoints.length; b++) {
-                            ctx.lineTo(bPoints[b].x, bPoints[b].y);
-                        }
-                        ctx.stroke();
-                    });
-                }
-            });
-
-            // Shadow for web arcs
-            if (easedGrowth > 0.3) {
-                webArcs.forEach((arc) => {
-                    ctx.beginPath();
-                    ctx.moveTo(arc.pA.x, arc.pA.y);
-                    ctx.lineTo(arc.mid.x, arc.mid.y);
-                    ctx.lineTo(arc.pB.x, arc.pB.y);
-                    ctx.stroke();
-                });
-            }
-            ctx.restore();
-
-            // ========================================================
-            // LAYER 3: Chromatic Aberration Fringe (Cyan / Magenta split)
-            // ========================================================
-            ctx.save();
-            ctx.translate(-0.8, -0.6);
-            ctx.strokeStyle = 'rgba(0, 230, 255, 0.28)';
-            ctx.lineWidth = 1.0;
-            rays.forEach((ray) => {
-                const limit = Math.floor(ray.points.length * easedGrowth);
-                if (limit < 2) return;
-                ctx.beginPath();
-                ctx.moveTo(ray.points[0].x, ray.points[0].y);
-                for (let i = 1; i < limit; i++) {
-                    ctx.lineTo(ray.points[i].x, ray.points[i].y);
-                }
-                ctx.stroke();
-            });
-            ctx.restore();
-
-            // ========================================================
-            // LAYER 4: Brilliant Specular Highlight (Pure White Internal Glint)
-            // ========================================================
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
-            ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
-            ctx.shadowBlur = 3;
-            ctx.lineWidth = 1.3;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'miter';
-
-            rays.forEach((ray) => {
-                const limit = Math.floor(ray.points.length * easedGrowth);
-                if (limit < 2) return;
-                ctx.beginPath();
-                ctx.moveTo(ray.points[0].x, ray.points[0].y);
-                for (let i = 1; i < limit; i++) {
-                    ctx.lineTo(ray.points[i].x, ray.points[i].y);
-                }
-                ctx.stroke();
-
-                if (easedGrowth > 0.5) {
-                    ray.branches.forEach((bPoints) => {
-                        ctx.beginPath();
-                        ctx.moveTo(bPoints[0].x, bPoints[0].y);
-                        for (let b = 1; b < bPoints.length; b++) {
-                            ctx.lineTo(bPoints[b].x, bPoints[b].y);
-                        }
-                        ctx.stroke();
-                    });
-                }
-            });
-
-            // Web arcs highlight
-            if (easedGrowth > 0.3) {
-                ctx.lineWidth = 1.1;
-                webArcs.forEach((arc) => {
-                    ctx.beginPath();
-                    ctx.moveTo(arc.pA.x, arc.pA.y);
-                    ctx.lineTo(arc.mid.x, arc.mid.y);
-                    ctx.lineTo(arc.pB.x, arc.pB.y);
-                    ctx.stroke();
-                });
             }
 
-            // ========================================================
-            // LAYER 5: Pulverized Impact Core (Frosted White Micro-Cracks)
-            // ========================================================
-            ctx.shadowBlur = 0;
-            // Opaque frosted glass disc
-            const coreGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, coreRadius);
-            coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.96)');
-            coreGrad.addColorStop(0.5, 'rgba(235, 245, 255, 0.75)');
-            coreGrad.addColorStop(0.85, 'rgba(180, 205, 230, 0.4)');
-            coreGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-            ctx.fillStyle = coreGrad;
-            ctx.beginPath();
-            ctx.arc(cx, cy, coreRadius, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Concentric crushed micro-rings
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.lineWidth = 1.5;
-            for (let cr = 4; cr <= coreRadius; cr += 4) {
-                ctx.beginPath();
-                ctx.arc(cx, cy, cr, 0, Math.PI * 2);
-                ctx.stroke();
-            }
-
-            // Dark center puncture hole
-            ctx.fillStyle = 'rgba(8, 12, 18, 0.88)';
-            ctx.beginPath();
-            ctx.arc(cx, cy, Math.max(3, coreRadius * 0.28), 0, Math.PI * 2);
-            ctx.fill();
-
-            // ========================================================
-            // LAYER 6: Molten Embers and Spark Debris
-            // ========================================================
-            if (coreHeat > 0.05) {
-                embers.forEach((emb) => {
-                    const sparkAlpha = coreHeat * (0.6 + Math.sin(now * 0.02 + emb.x) * 0.4);
-                    ctx.fillStyle = `rgba(255, ${Math.floor(120 * emb.heat + 100)}, 40, ${sparkAlpha})`;
-                    ctx.beginPath();
-                    ctx.arc(emb.x, emb.y, emb.size * coreHeat, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-            }
-
-            // ========================================================
-            // LAYER 7: Detached Flying Glass Shards (Kinetic pop-off)
-            // ========================================================
-            if (flyingShards && elapsed < 800) {
-                const shardProgress = elapsed / 800;
-                const shardAlpha = Math.max(0, (1 - shardProgress * shardProgress));
-                const sec = elapsed / 1000;
-                ctx.save();
-                flyingShards.forEach((s) => {
-                    const curX = s.x + s.vx * sec;
-                    const curY = s.y + s.vy * sec + 140 * sec * sec;
-                    const curRot = s.rot + s.vRot * sec;
-                    ctx.save();
-                    ctx.translate(curX, curY);
-                    ctx.rotate(curRot);
-
-                    // Drop shadow
-                    ctx.fillStyle = `rgba(0, 0, 0, ${0.45 * shardAlpha})`;
-                    ctx.beginPath();
-                    s.points.forEach((pt, idx) => {
-                        if (idx === 0) ctx.moveTo(pt.x + 3, pt.y + 3);
-                        else ctx.lineTo(pt.x + 3, pt.y + 3);
-                    });
-                    ctx.closePath();
-                    ctx.fill();
-
-                    // Glass body with specular gradient
-                    const glassGrad = ctx.createLinearGradient(-s.size, -s.size, s.size, s.size);
-                    glassGrad.addColorStop(0, `rgba(255, 255, 255, ${0.95 * shardAlpha})`);
-                    glassGrad.addColorStop(0.4, `rgba(215, 240, 255, ${0.55 * shardAlpha})`);
-                    glassGrad.addColorStop(1, `rgba(180, 215, 245, ${0.8 * shardAlpha})`);
-                    ctx.fillStyle = glassGrad;
-                    ctx.strokeStyle = `rgba(255, 255, 255, ${0.95 * shardAlpha})`;
-                    ctx.lineWidth = 1.2;
-                    ctx.beginPath();
-                    s.points.forEach((pt, idx) => {
-                        if (idx === 0) ctx.moveTo(pt.x, pt.y);
-                        else ctx.lineTo(pt.x, pt.y);
-                    });
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.stroke();
-                    ctx.restore();
-                });
-                ctx.restore();
-            }
-
-            // ========================================================
-            // LAYER 8: Powdered Glass Dust & Vapor Puffs
-            // ========================================================
-            if (dustPuffs && elapsed < 900) {
-                const dustProgress = elapsed / 900;
-                const dustAlpha = Math.max(0, (1 - dustProgress) * 0.45);
-                const sec = elapsed / 1000;
-                ctx.save();
-                dustPuffs.forEach((dp) => {
-                    const curX = dp.x + dp.vx * sec;
-                    const curY = dp.y + dp.vy * sec;
-                    const curR = dp.radius * (1 + dustProgress * 2.4);
-                    const grad = ctx.createRadialGradient(curX, curY, 0, curX, curY, curR);
-                    grad.addColorStop(0, `rgba(255, 255, 255, ${dustAlpha})`);
-                    grad.addColorStop(0.5, `rgba(220, 235, 255, ${dustAlpha * 0.45})`);
-                    grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-                    ctx.fillStyle = grad;
-                    ctx.beginPath();
-                    ctx.arc(curX, curY, curR, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-                ctx.restore();
-            }
-
-            // ========================================================
-            // LAYER 9: Blazing Kinetic Spark Streaks (Tia lửa bắn tóe)
-            // ========================================================
-            if (sparks && elapsed < 950) {
-                const sec = elapsed / 1000;
-                ctx.save();
-                sparks.forEach((sp) => {
-                    if (sec > sp.maxLife) return;
-                    const lifeRatio = Math.max(0, 1.0 - (sec / sp.maxLife));
-                    const curX = sp.x + sp.vx * sec;
-                    const curY = sp.y + sp.vy * sec + 160 * sec * sec;
-                    const tailX = curX - (sp.vx * 0.024);
-                    const tailY = curY - (sp.vy * 0.024) - (160 * sec * 0.024);
-
-                    ctx.strokeStyle = sp.color;
-                    ctx.shadowColor = sp.color;
-                    ctx.shadowBlur = 8;
-                    ctx.lineWidth = Math.max(0.5, sp.size * lifeRatio);
-                    ctx.beginPath();
-                    ctx.moveTo(tailX, tailY);
-                    ctx.lineTo(curX, curY);
-                    ctx.stroke();
-
-                    // Glowing spark head
-                    ctx.fillStyle = '#ffffff';
-                    ctx.beginPath();
-                    ctx.arc(curX, curY, (sp.size * 0.8) * lifeRatio, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-                ctx.restore();
-            }
-
-            ctx.restore();
+            activeCracksRef.current = survivingCracks;
         };
 
         animationFrameRef.current = requestAnimationFrame(render);
@@ -690,28 +732,44 @@ export default function GlassShatterOverlay() {
             if (animationFrameRef.current) {
                 cancelAnimationFrame(animationFrameRef.current);
             }
+            if (shakeFrameRef.current) {
+                cancelAnimationFrame(shakeFrameRef.current);
+            }
             window.removeEventListener('resize', handleResize);
         };
     }, []);
 
-    // Listen for custom screen impact event from background engine
+    // Listen for custom screen impact event from background engine & keyboard spam
     useEffect(() => {
         const handleScreenImpact = (event) => {
             const { screenX, screenY, intensity } = event.detail || {};
             triggerCrack(screenX ?? 0.5, screenY ?? 0.5, intensity ?? 1.0);
         };
 
+        let lastKeyTime = 0;
         const handleKeyDown = (event) => {
-            // Secret test hotkey: Press 'B' to trigger impact immediately
             if (event.key === 'b' || event.key === 'B') {
-                if (event.target && ['INPUT', 'TEXTAREA'].includes(event.target.tagName)) {
+                if (event.target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName)) {
                     return; // Don't trigger when typing in inputs
                 }
-                // If background engine is available, trigger 3D projectile (which will hit center and trigger crack exactly there)
+                if (event.target && event.target.isContentEditable) {
+                    return;
+                }
+
+                // If user holds down key, throttle slightly to ~10 per second to keep silky smooth
+                const now = performance.now();
+                if (event.repeat && now - lastKeyTime < 95) {
+                    return;
+                }
+                lastKeyTime = now;
+
+                // Spawn 3D projectile which travels from a random cosmic position to a random screen target
                 if (typeof window.__triggerScreenImpact === 'function') {
-                    window.__triggerScreenImpact();
+                    window.__triggerScreenImpact({ isManual: true });
                 } else {
-                    triggerCrack(0.5, 0.5, 1.0);
+                    const randomX = 0.15 + Math.random() * 0.7;
+                    const randomY = 0.15 + Math.random() * 0.7;
+                    triggerCrack(randomX, randomY, 1.0);
                 }
             }
         };
