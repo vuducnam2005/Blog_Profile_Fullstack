@@ -367,4 +367,22 @@ export async function recallChatMessage(messageId, sessionId, isFromAdmin = fals
   return res.data;
 }
 
+/**
+ * API REST: Cập nhật tên hiển thị của khách và đồng bộ sang Admin
+ */
+export async function updateVisitorName(sessionId, newName) {
+  if (!sessionId || !newName) return null;
+  try {
+    const res = await axios.post(`${API_BASE_URL}/api/directchat/rename`, {
+      sessionId: String(sessionId).trim(),
+      newName: String(newName).trim()
+    });
+    return res.data;
+  } catch (err) {
+    console.error('Lỗi khi cập nhật tên khách:', err);
+    throw err;
+  }
+}
+
+
 

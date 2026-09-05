@@ -698,6 +698,13 @@ export default function DirectChatManager() {
           setHasNewUnreadWhileScrolled(true);
           setShowScrollBottomBtn(true);
         }
+
+        // Nếu khách vừa đổi tên và gửi tin mới, đồng bộ tên hiển thị cho các tin nhắn cũ của khách
+        if (!msg.isFromAdmin && msg.senderName) {
+          setActiveMessages((prev) =>
+            prev.map((m) => (!m.isFromAdmin && m.senderName !== msg.senderName ? { ...m, senderName: msg.senderName } : m))
+          );
+        }
       }
 
       // Cập nhật danh sách sessions
@@ -735,7 +742,27 @@ export default function DirectChatManager() {
       });
     });
 
-    hub.on('ConversationUpdated', () => {
+    hub.on('VisitorNameChanged', (data) => {
+      if (!data?.sessionId || !data?.newName) return;
+      const { sessionId, newName } = data;
+
+      setSessions((prev) =>
+        prev.map((s) => (s.sessionId === sessionId ? { ...s, senderName: newName } : s))
+      );
+
+      if (activeSessionRef.current === sessionId) {
+        setActiveMessages((prev) =>
+          prev.map((m) => (!m.isFromAdmin ? { ...m, senderName: newName } : m))
+        );
+      }
+    });
+
+    hub.on('ConversationUpdated', (data) => {
+      if (data?.sessionId && data?.senderName) {
+        setSessions((prev) =>
+          prev.map((s) => (s.sessionId === data.sessionId ? { ...s, senderName: data.senderName } : s))
+        );
+      }
       loadSessions(true);
     });
 

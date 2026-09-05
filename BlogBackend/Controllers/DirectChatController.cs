@@ -413,7 +413,18 @@ namespace BlogBackend.Controllers
                 {
                     if (!isFromAdmin && !string.IsNullOrWhiteSpace(senderName))
                     {
+                        var nameChanged = sessionInfo.VisitorName != senderName;
                         sessionInfo.VisitorName = senderName;
+                        if (nameChanged)
+                        {
+                            var oldMsgs = await _context.DirectChatMessages
+                                .Where(m => m.SessionId == sessionId && !m.IsFromAdmin)
+                                .ToListAsync(cancellationToken);
+                            foreach (var om in oldMsgs)
+                            {
+                                om.SenderName = senderName;
+                            }
+                        }
                     }
                     sessionInfo.LastActivityAt = DateTime.UtcNow;
                 }
@@ -481,6 +492,10 @@ namespace BlogBackend.Controllers
 
         private async Task<object> QuerySessionsInternalAsync(CancellationToken cancellationToken)
         {
+            var sessions = await _context.DirectChatSessions
+                .AsNoTracking()
+                .ToDictionaryAsync(s => s.SessionId, s => s.VisitorName, cancellationToken);
+
             var allMessages = await _context.DirectChatMessages
                 .AsNoTracking()
                 .OrderByDescending(m => m.CreatedAt)
@@ -491,8 +506,16 @@ namespace BlogBackend.Controllers
                 .Select(g =>
                 {
                     var latest = g.First();
-                    // Lấy tên người dùng gần nhất không phải Admin
-                    var visitorName = g.FirstOrDefault(m => !m.IsFromAdmin)?.SenderName ?? latest.SenderName;
+                    string? visitorName = null;
+                    if (sessions.TryGetValue(g.Key, out var sName) && !string.IsNullOrWhiteSpace(sName))
+                    {
+                        visitorName = sName;
+                    }
+                    else
+                    {
+                        visitorName = g.FirstOrDefault(m => !m.IsFromAdmin)?.SenderName ?? latest.SenderName;
+                    }
+
                     var unreadCount = g.Count(m => !m.IsReadByAdmin && !m.IsFromAdmin);
 
                     return new
@@ -724,6 +747,74 @@ namespace BlogBackend.Controllers
 
             return Ok(new { success = true, message = "Thu hồi tin nhắn thành công.", data = recallPayload });
         }
+
+        // POST: api/directchat/rename
+        [HttpPost("rename")]
+        public async Task<IActionResult> RenameVisitor([FromBody] RenameVisitorDto dto, CancellationToken cancellationToken)
+        {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.SessionId) || string.IsNullOrWhiteSpace(dto.NewName))
+            {
+                return BadRequest(new { message = "SessionId và NewName không được để trống." });
+            }
+
+            var sessionId = dto.SessionId.Trim();
+            var newName = dto.NewName.Trim();
+
+            try
+            {
+                await EnsureSchemaAsync();
+
+                var session = await _context.DirectChatSessions.FirstOrDefaultAsync(s => s.SessionId == sessionId, cancellationToken);
+                if (session == null)
+                {
+                    session = new DirectChatSession
+                    {
+                        SessionId = sessionId,
+                        VisitorName = newName,
+                        CreatedAt = DateTime.UtcNow,
+                        LastActivityAt = DateTime.UtcNow
+                    };
+                    _context.DirectChatSessions.Add(session);
+                }
+                else
+                {
+                    session.VisitorName = newName;
+                    session.LastActivityAt = DateTime.UtcNow;
+                }
+
+                // Cập nhật tên người gửi trên tất cả các tin nhắn trước đây của khách trong phiên này
+                var visitorMessages = await _context.DirectChatMessages
+                    .Where(m => m.SessionId == sessionId && !m.IsFromAdmin)
+                    .ToListAsync(cancellationToken);
+                foreach (var msg in visitorMessages)
+                {
+                    msg.SenderName = newName;
+                }
+
+                await _context.SaveChangesAsync(cancellationToken);
+
+                var payload = new { sessionId, newName };
+                await _hubContext.Clients.Group(AdminsGroup).SendAsync("VisitorNameChanged", payload, cancellationToken);
+                await _hubContext.Clients.Group($"session_{sessionId}").SendAsync("VisitorNameChanged", payload, cancellationToken);
+                await _hubContext.Clients.Group(AdminsGroup).SendAsync("ConversationUpdated", new
+                {
+                    sessionId,
+                    senderName = newName
+                }, cancellationToken);
+
+                return Ok(new { success = true, sessionId, newName });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+    }
+
+    public class RenameVisitorDto
+    {
+        public string SessionId { get; set; } = string.Empty;
+        public string NewName { get; set; } = string.Empty;
     }
 
     public class SendDirectMessageDto

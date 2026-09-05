@@ -37,7 +37,8 @@ import {
   isSameDay,
   registerSessionEmail,
   getFullMediaUrl,
-  recallChatMessage
+  recallChatMessage,
+  updateVisitorName
 } from '../services/directChatService';
 
 function ImageLightboxModal({ imageUrl, onClose }) {
@@ -1044,13 +1045,23 @@ export default function DirectChatWidget({ isOpen, onClose }) {
     }
   };
 
-  const handleSaveName = (e) => {
+  const handleSaveName = async (e) => {
     e?.preventDefault();
     const trimmed = inputName.trim();
     if (!trimmed) return;
     setUserName(trimmed);
     setDirectChatUserName(trimmed);
     setIsEditingName(false);
+
+    // Đồng bộ tức thì tên mới lên Server và gửi SignalR cho Admin
+    try {
+      if (hubConnectionRef.current && isConnected) {
+        await hubConnectionRef.current.invoke('UpdateVisitorName', sessionId, trimmed);
+      }
+      await updateVisitorName(sessionId, trimmed);
+    } catch (err) {
+      console.warn('Lỗi khi đồng bộ tên mới lên server:', err);
+    }
   };
 
   const lastTypingSentRef = useRef(0);
@@ -1116,7 +1127,10 @@ export default function DirectChatWidget({ isOpen, onClose }) {
         <div className="flex items-center gap-1">
           {userName && !isEditingName && !isSessionDeletedNotice && (
             <button
-              onClick={() => setIsEditingName(true)}
+              onClick={() => {
+                setInputName(userName);
+                setIsEditingName(true);
+              }}
               title={`Đổi tên hiển thị (hiện tại: ${userName})`}
               className="p-1.5 text-gray-400 hover:text-[#F1D89E] hover:bg-white/10 rounded-lg transition cursor-pointer"
             >

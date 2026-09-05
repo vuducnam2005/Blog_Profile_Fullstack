@@ -147,7 +147,18 @@ namespace BlogBackend.Hubs
                 {
                     if (!isFromAdmin && !string.IsNullOrWhiteSpace(senderName))
                     {
+                        var nameChanged = sessionInfo.VisitorName != senderName;
                         sessionInfo.VisitorName = senderName;
+                        if (nameChanged)
+                        {
+                            var oldMsgs = await _context.DirectChatMessages
+                                .Where(m => m.SessionId == sessionId && !m.IsFromAdmin)
+                                .ToListAsync();
+                            foreach (var om in oldMsgs)
+                            {
+                                om.SenderName = senderName;
+                            }
+                        }
                     }
                     sessionInfo.LastActivityAt = DateTime.UtcNow;
                 }
@@ -323,6 +334,61 @@ namespace BlogBackend.Hubs
             catch (Exception ex)
             {
                 Console.WriteLine($"[DirectChatHub] Lỗi lưu email khách: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdateVisitorName(string sessionId, string newName)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId) || string.IsNullOrWhiteSpace(newName)) return false;
+            sessionId = sessionId.Trim();
+            newName = newName.Trim();
+
+            try
+            {
+                var session = await _context.DirectChatSessions.FirstOrDefaultAsync(s => s.SessionId == sessionId);
+                if (session == null)
+                {
+                    session = new DirectChatSession
+                    {
+                        SessionId = sessionId,
+                        VisitorName = newName,
+                        CreatedAt = DateTime.UtcNow,
+                        LastActivityAt = DateTime.UtcNow
+                    };
+                    _context.DirectChatSessions.Add(session);
+                }
+                else
+                {
+                    session.VisitorName = newName;
+                    session.LastActivityAt = DateTime.UtcNow;
+                }
+
+                // Cập nhật tên người gửi trên tất cả các tin nhắn trước đây của khách trong phiên này
+                var visitorMessages = await _context.DirectChatMessages
+                    .Where(m => m.SessionId == sessionId && !m.IsFromAdmin)
+                    .ToListAsync();
+                foreach (var msg in visitorMessages)
+                {
+                    msg.SenderName = newName;
+                }
+
+                await _context.SaveChangesAsync();
+
+                var payload = new { sessionId, newName };
+                await Clients.Group(AdminsGroup).SendAsync("VisitorNameChanged", payload);
+                await Clients.Group($"session_{sessionId}").SendAsync("VisitorNameChanged", payload);
+                await Clients.Group(AdminsGroup).SendAsync("ConversationUpdated", new
+                {
+                    sessionId,
+                    senderName = newName
+                });
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DirectChatHub.UpdateVisitorName] Lỗi: {ex.Message}");
                 return false;
             }
         }
