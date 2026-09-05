@@ -14,6 +14,7 @@ namespace BlogBackend.Data
         public DbSet<Comment> Comments { get; set; }
         public DbSet<DirectChatMessage> DirectChatMessages { get; set; }
         public DbSet<DirectChatSession> DirectChatSessions { get; set; }
+        public DbSet<DirectChatSetting> DirectChatSettings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -25,6 +25,35 @@ namespace BlogBackend.Controllers
 
         private static bool _schemaEnsured = false;
         private static readonly SemaphoreSlim _schemaLock = new(1, 1);
+        private static bool _adminEmailNotificationEnabled = true;
+        private static bool _adminEmailSettingLoaded = false;
+
+        public static bool IsAdminEmailNotificationEnabled(BlogDbContext? context = null)
+        {
+            if (!_adminEmailSettingLoaded && context != null)
+            {
+                try
+                {
+                    var setting = context.DirectChatSettings.FirstOrDefault(s => s.Key == "AdminEmailNotificationEnabled");
+                    if (setting != null && bool.TryParse(setting.Value, out var parsedVal))
+                    {
+                        _adminEmailNotificationEnabled = parsedVal;
+                    }
+                    _adminEmailSettingLoaded = true;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[DirectChat] Lỗi nạp AdminEmailNotificationEnabled: {ex.Message}");
+                }
+            }
+            return _adminEmailNotificationEnabled;
+        }
+
+        public static void SetAdminEmailNotificationEnabled(bool enabled)
+        {
+            _adminEmailNotificationEnabled = enabled;
+            _adminEmailSettingLoaded = true;
+        }
 
         public DirectChatController(BlogDbContext context, IHubContext<DirectChatHub> hubContext, IEmailService emailService)
         {
@@ -56,10 +85,46 @@ namespace BlogBackend.Controllers
                         ""LastActivityAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
                     );
 
+                    CREATE TABLE IF NOT EXISTS ""DirectChatSettings"" (
+                        ""Key"" VARCHAR(100) PRIMARY KEY,
+                        ""Value"" TEXT NOT NULL,
+                        ""UpdatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+                    );
+
                     ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToId"" INTEGER;
                     ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToSender"" VARCHAR(100);
                     ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToContent"" TEXT;
                 ");
+
+                try
+                {
+                    var emailSetting = await _context.DirectChatSettings.FirstOrDefaultAsync(s => s.Key == "AdminEmailNotificationEnabled");
+                    if (emailSetting == null)
+                    {
+                        emailSetting = new DirectChatSetting
+                        {
+                            Key = "AdminEmailNotificationEnabled",
+                            Value = "true",
+                            UpdatedAt = DateTime.UtcNow
+                        };
+                        _context.DirectChatSettings.Add(emailSetting);
+                        await _context.SaveChangesAsync();
+                        _adminEmailNotificationEnabled = true;
+                    }
+                    else
+                    {
+                        if (bool.TryParse(emailSetting.Value, out var parsedVal))
+                        {
+                            _adminEmailNotificationEnabled = parsedVal;
+                        }
+                    }
+                    _adminEmailSettingLoaded = true;
+                }
+                catch (Exception setEx)
+                {
+                    Console.WriteLine($"[DirectChatController] EnsureSchemaAsync setting warning: {setEx.Message}");
+                }
+
                 _schemaEnsured = true;
                 Console.WriteLine("[DirectChatController] EnsureSchemaAsync: schema đồng bộ thành công.");
             }
@@ -124,6 +189,87 @@ namespace BlogBackend.Controllers
                 success,
                 message = msg
             });
+        }
+
+        public class AdminNotificationSettingDto
+        {
+            public bool EmailNotificationEnabled { get; set; }
+        }
+
+        // GET: api/directchat/admin-notification-setting
+        [HttpGet("admin-notification-setting")]
+        public async Task<IActionResult> GetAdminNotificationSetting()
+        {
+            if (!IsAuthorizedAdmin())
+            {
+                return Unauthorized(new { message = "Khóa bí mật không hợp lệ." });
+            }
+
+            await EnsureSchemaAsync();
+            return Ok(new
+            {
+                success = true,
+                emailNotificationEnabled = _adminEmailNotificationEnabled
+            });
+        }
+
+        // POST: api/directchat/admin-notification-setting
+        [HttpPost("admin-notification-setting")]
+        public async Task<IActionResult> UpdateAdminNotificationSetting([FromBody] AdminNotificationSettingDto dto)
+        {
+            if (!IsAuthorizedAdmin())
+            {
+                return Unauthorized(new { message = "Khóa bí mật không hợp lệ." });
+            }
+
+            await EnsureSchemaAsync();
+
+            try
+            {
+                var setting = await _context.DirectChatSettings.FirstOrDefaultAsync(s => s.Key == "AdminEmailNotificationEnabled");
+                if (setting == null)
+                {
+                    setting = new DirectChatSetting
+                    {
+                        Key = "AdminEmailNotificationEnabled",
+                        Value = dto.EmailNotificationEnabled.ToString().ToLower(),
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    _context.DirectChatSettings.Add(setting);
+                }
+                else
+                {
+                    setting.Value = dto.EmailNotificationEnabled.ToString().ToLower();
+                    setting.UpdatedAt = DateTime.UtcNow;
+                }
+
+                await _context.SaveChangesAsync();
+                _adminEmailNotificationEnabled = dto.EmailNotificationEnabled;
+                _adminEmailSettingLoaded = true;
+
+                // Broadcast tới tất cả Admin đang kết nối SignalR
+                await _hubContext.Clients.Group(AdminsGroup).SendAsync("AdminEmailNotificationSettingChanged", new
+                {
+                    emailNotificationEnabled = dto.EmailNotificationEnabled
+                });
+
+                return Ok(new
+                {
+                    success = true,
+                    emailNotificationEnabled = dto.EmailNotificationEnabled,
+                    message = dto.EmailNotificationEnabled
+                        ? "Đã bật nhận thông báo tin nhắn mới qua email cho Admin."
+                        : "Đã tắt nhận thông báo tin nhắn mới qua email cho Admin."
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Lỗi khi lưu cài đặt thông báo email: " + ex.Message
+                });
+            }
         }
 
         // GET: api/directchat/history/{sessionId}
@@ -268,7 +414,14 @@ namespace BlogBackend.Controllers
                 // Gửi thông báo Email bất đồng bộ (chạy nền không block HTTP response)
                 if (!isFromAdmin)
                 {
-                    _ = Task.Run(() => _emailService.SendAdminNewMessageNotificationAsync(senderName, content, sessionId));
+                    if (IsAdminEmailNotificationEnabled(_context))
+                    {
+                        _ = Task.Run(() => _emailService.SendAdminNewMessageNotificationAsync(senderName, content, sessionId));
+                    }
+                    else
+                    {
+                        Console.WriteLine("[DirectChatController] Admin đã tắt nhận thông báo qua email. Bỏ qua gửi email.");
+                    }
                 }
                 else if (sessionInfo != null && sessionInfo.WantsEmailNotification && !string.IsNullOrWhiteSpace(sessionInfo.VisitorEmail))
                 {

@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using BlogBackend.Data;
 using BlogBackend.Models;
 using BlogBackend.Services;
+using BlogBackend.Controllers;
 
 namespace BlogBackend.Hubs
 {
@@ -145,7 +146,14 @@ namespace BlogBackend.Hubs
                 // Gửi thông báo Email bất đồng bộ (chạy nền)
                 if (!isFromAdmin)
                 {
-                    _ = Task.Run(() => _emailService.SendAdminNewMessageNotificationAsync(senderName, content, sessionId));
+                    if (DirectChatController.IsAdminEmailNotificationEnabled(_context))
+                    {
+                        _ = Task.Run(() => _emailService.SendAdminNewMessageNotificationAsync(senderName, content, sessionId));
+                    }
+                    else
+                    {
+                        Console.WriteLine("[DirectChatHub] Admin đã tắt nhận thông báo qua email. Bỏ qua gửi email.");
+                    }
                 }
                 else if (sessionInfo != null && sessionInfo.WantsEmailNotification && !string.IsNullOrWhiteSpace(sessionInfo.VisitorEmail))
                 {
@@ -305,6 +313,45 @@ namespace BlogBackend.Hubs
             catch (Exception ex)
             {
                 Console.WriteLine($"[DirectChatHub] Lỗi lưu email khách: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> UpdateAdminNotificationSetting(bool enabled, string adminKey)
+        {
+            if (adminKey != AdminSecretKey) return false;
+            try
+            {
+                var setting = await _context.DirectChatSettings.FirstOrDefaultAsync(s => s.Key == "AdminEmailNotificationEnabled");
+                if (setting == null)
+                {
+                    setting = new DirectChatSetting
+                    {
+                        Key = "AdminEmailNotificationEnabled",
+                        Value = enabled.ToString().ToLower(),
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    _context.DirectChatSettings.Add(setting);
+                }
+                else
+                {
+                    setting.Value = enabled.ToString().ToLower();
+                    setting.UpdatedAt = DateTime.UtcNow;
+                }
+
+                await _context.SaveChangesAsync();
+                DirectChatController.SetAdminEmailNotificationEnabled(enabled);
+
+                await Clients.Group(AdminsGroup).SendAsync("AdminEmailNotificationSettingChanged", new
+                {
+                    emailNotificationEnabled = enabled
+                });
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DirectChatHub] Lỗi UpdateAdminNotificationSetting: {ex.Message}");
                 return false;
             }
         }

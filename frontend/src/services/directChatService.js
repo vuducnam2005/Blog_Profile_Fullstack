@@ -313,3 +313,31 @@ export async function registerSessionEmail(sessionId, email, wantsNotification =
     return null;
   }
 }
+
+/**
+ * API REST Admin: Lấy trạng thái cài đặt nhận thông báo email của Admin
+ */
+export async function fetchAdminNotificationSetting() {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/api/directchat/admin-notification-setting`, {
+      headers: { 'X-Admin-Key': ADMIN_API_KEY }
+    });
+    return res.data;
+  } catch (err) {
+    console.error('Lỗi khi tải cài đặt thông báo email:', err);
+    return { success: false, emailNotificationEnabled: true };
+  }
+}
+
+/**
+ * API REST Admin: Cập nhật trạng thái nhận thông báo email của Admin (Bật/Tắt)
+ */
+export async function updateAdminNotificationSetting(enabled) {
+  const res = await axios.post(
+    `${API_BASE_URL}/api/directchat/admin-notification-setting`,
+    { emailNotificationEnabled: Boolean(enabled) },
+    { headers: { 'X-Admin-Key': ADMIN_API_KEY } }
+  );
+  return res.data;
+}
+

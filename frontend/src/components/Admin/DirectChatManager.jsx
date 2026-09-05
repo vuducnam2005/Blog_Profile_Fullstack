@@ -16,7 +16,8 @@ import {
   Reply,
   MoreHorizontal,
   Copy,
-  X
+  X,
+  Mail
 } from 'lucide-react';
 import { PortfolioContext } from '../../context/PortfolioContext';
 import AdminAvatar from '../AdminAvatar';
@@ -31,7 +32,9 @@ import {
   formatMessageTime,
   formatSessionTime,
   formatDateDivider,
-  isSameDay
+  isSameDay,
+  fetchAdminNotificationSetting,
+  updateAdminNotificationSetting
 } from '../../services/directChatService';
 import { ADMIN_API_KEY } from '../../context/AuthContext';
 
@@ -343,10 +346,28 @@ export default function DirectChatManager() {
   const [visitorTyping, setVisitorTyping] = useState(false);
   const [mobileView, setMobileView] = useState('list'); // 'list' | 'chat'
 
+  // Trạng thái bật/tắt nhận thông báo qua email cho Admin
+  const [emailNotificationEnabled, setEmailNotificationEnabled] = useState(true);
+  const [updatingEmailSetting, setUpdatingEmailSetting] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
+
   // Trạng thái trả lời tin nhắn kiểu Messenger
   const [replyingTo, setReplyingTo] = useState(null);
   const [activeMenuMsgId, setActiveMenuMsgId] = useState(null);
   const [highlightedMsgId, setHighlightedMsgId] = useState(null);
+
+  // Lấy trạng thái cài đặt thông báo email khi mở trang
+  useEffect(() => {
+    let isMounted = true;
+    fetchAdminNotificationSetting().then((data) => {
+      if (isMounted && data && typeof data.emailNotificationEnabled === 'boolean') {
+        setEmailNotificationEnabled(data.emailNotificationEnabled);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const activeSessionRef = useRef(activeSessionId);
   const chatEndRef = useRef(null);
@@ -497,6 +518,12 @@ export default function DirectChatManager() {
       }
     });
 
+    hub.on('AdminEmailNotificationSettingChanged', (data) => {
+      if (data && typeof data.emailNotificationEnabled === 'boolean') {
+        setEmailNotificationEnabled(data.emailNotificationEnabled);
+      }
+    });
+
     hub
       .start()
       .then(async () => {
@@ -564,6 +591,30 @@ export default function DirectChatManager() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Xử lý bật/tắt nhận thông báo qua email khi có khách nhắn tin
+  const handleToggleEmailNotification = async () => {
+    if (updatingEmailSetting) return;
+    const nextVal = !emailNotificationEnabled;
+    setEmailNotificationEnabled(nextVal);
+    setUpdatingEmailSetting(true);
+
+    try {
+      await updateAdminNotificationSetting(nextVal);
+      setToastMessage(
+        nextVal
+          ? 'Đã BẬT thông báo qua email khi có khách nhắn tin.'
+          : 'Đã TẮT thông báo qua email (chống spam hòm thư).'
+      );
+      setTimeout(() => setToastMessage(null), 3500);
+    } catch (err) {
+      console.error('Lỗi khi cập nhật cài đặt thông báo email:', err);
+      setEmailNotificationEnabled(!nextVal); // rollback
+      alert('Không thể lưu cài đặt thông báo email. Vui lòng thử lại!');
+    } finally {
+      setUpdatingEmailSetting(false);
+    }
+  };
 
   // Xử lý chọn hội thoại
   const handleSelectSession = (sessionId) => {
@@ -718,8 +769,100 @@ export default function DirectChatManager() {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto px-2 sm:px-4 md:px-6 pt-0 pb-2 sm:pb-6">
-      <div className="bg-[#0b0d14] border border-white/15 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row h-[calc(100dvh-120px)] sm:h-[calc(100dvh-150px)] md:h-[740px] min-h-[460px] max-h-[850px]">
+    <div className="max-w-6xl mx-auto px-2 sm:px-4 md:px-6 pt-0 pb-2 sm:pb-6 relative">
+      {/* Toast thông báo khi bật/tắt thành công */}
+      {toastMessage && (
+        <div className="fixed top-20 right-4 sm:right-8 z-[100] px-4 py-2.5 rounded-2xl bg-[#0c0e18]/95 border border-[#F1D89E]/40 shadow-2xl text-xs sm:text-sm font-medium text-white flex items-center gap-2 animate-in fade-in slide-in-from-top-3 duration-300">
+          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* THANH ĐIỀU KHIỂN ĐỈNH TRANG & BẬT/TẮT THÔNG BÁO EMAIL CHO ADMIN */}
+      <div className="mb-2 sm:mb-3 flex flex-wrap items-center justify-between gap-2 px-1 sm:px-2">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#F1D89E]/20 to-amber-500/10 border border-[#F1D89E]/40 flex items-center justify-center text-[#F1D89E] shadow-sm">
+            <MessageSquare className="w-4 h-4" />
+          </div>
+          <div>
+            <h2 className="text-white text-xs sm:text-sm font-bold flex items-center gap-2 leading-tight">
+              <span>Tin Nhắn Khách Trực Tiếp</span>
+              {totalUnread > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-black animate-pulse shadow-md">
+                  {totalUnread} tin mới
+                </span>
+              )}
+            </h2>
+            <p className="text-[10px] sm:text-[11px] text-gray-400">
+              {sessions.length} cuộc hội thoại đang lưu trữ
+            </p>
+          </div>
+        </div>
+
+        {/* Nút Bật/Tắt Nhận Thông Báo Qua Mail */}
+        <button
+          type="button"
+          onClick={handleToggleEmailNotification}
+          disabled={updatingEmailSetting}
+          title={
+            emailNotificationEnabled
+              ? 'Thông báo Email đang BẬT. Khi có khách nhắn tin, hệ thống sẽ gửi mail cho bạn. Bấm để TẮT.'
+              : 'Thông báo Email đang TẮT. Tránh tình trạng hòm thư nhận quá nhiều thông báo. Bấm để BẬT.'
+          }
+          className={`group relative flex items-center gap-2.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl border transition-all duration-200 cursor-pointer shadow-lg active:scale-95 select-none ${
+            emailNotificationEnabled
+              ? 'bg-gradient-to-r from-emerald-950/60 via-emerald-900/40 to-teal-950/60 border-emerald-500/50 text-emerald-300 hover:border-emerald-400 hover:shadow-[0_0_20px_rgba(16,185,129,0.25)]'
+              : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/10 hover:border-white/20 text-gray-400 hover:text-gray-200'
+          }`}
+        >
+          <div
+            className={`w-6 h-6 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${
+              emailNotificationEnabled
+                ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                : 'bg-white/5 text-gray-400'
+            }`}
+          >
+            <Mail className="w-3.5 h-3.5" />
+          </div>
+
+          <div className="flex flex-col text-left">
+            <div className="flex items-center gap-1.5 leading-none">
+              <span className="text-[11px] sm:text-xs font-semibold">
+                Thông báo qua Mail:
+              </span>
+              <span
+                className={`text-[11px] sm:text-xs font-black tracking-wide uppercase ${
+                  emailNotificationEnabled ? 'text-emerald-400' : 'text-gray-400'
+                }`}
+              >
+                {emailNotificationEnabled ? 'BẬT' : 'TẮT'}
+              </span>
+            </div>
+            <span className="text-[9px] sm:text-[10px] text-gray-400 leading-tight mt-0.5 hidden sm:inline">
+              {emailNotificationEnabled
+                ? 'Gửi mail khi có khách nhắn'
+                : 'Không gửi mail (chống spam)'}
+            </span>
+          </div>
+
+          {/* Toggle Switch Visual */}
+          <div
+            className={`w-8 h-4.5 sm:w-9 sm:h-5 rounded-full transition-colors flex items-center p-0.5 ml-1 border ${
+              emailNotificationEnabled
+                ? 'bg-emerald-500 border-emerald-400 justify-end'
+                : 'bg-gray-700/80 border-gray-600 justify-start'
+            }`}
+          >
+            <div
+              className={`w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full bg-white shadow-md transform transition-transform ${
+                updatingEmailSetting ? 'animate-spin' : ''
+              }`}
+            />
+          </div>
+        </button>
+      </div>
+
+      <div className="bg-[#0b0d14] border border-white/15 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row h-[calc(100dvh-150px)] sm:h-[calc(100dvh-175px)] md:h-[720px] min-h-[460px] max-h-[850px]">
         
         {/* ======================================================== */}
         {/* CỘT TRÁI: DANH SÁCH HỘI THOẠI (SESSIONS LIST) */}
