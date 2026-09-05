@@ -34,5 +34,8 @@ namespace BlogBackend.Models
         public string? ReplyToSender { get; set; }
 
         public string? ReplyToContent { get; set; }
+
+        // Ảnh đính kèm (URL ảnh Cloudinary hoặc local)
+        public string? ImageUrl { get; set; }
     }
 }

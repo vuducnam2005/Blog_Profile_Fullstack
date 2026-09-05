@@ -13,10 +13,13 @@ import {
   Mail,
   Reply,
   MoreHorizontal,
-  Copy
+  Copy,
+  Image as ImageIcon,
+  Loader2
 } from 'lucide-react';
 import { PortfolioContext } from '../context/PortfolioContext';
 import AdminAvatar from './AdminAvatar';
+import { uploadFile } from '../utils/upload';
 import {
   getDirectChatSessionId,
   getDirectChatUserName,
@@ -30,14 +33,65 @@ import {
   formatMessageTime,
   formatDateDivider,
   isSameDay,
-  registerSessionEmail
+  registerSessionEmail,
+  getFullMediaUrl
 } from '../services/directChatService';
+
+function ImageLightboxModal({ imageUrl, onClose }) {
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  if (!imageUrl) return null;
+
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200 select-none"
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute top-4 right-4 z-10 p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+        title="Đóng (Esc)"
+      >
+        <X className="w-5 h-5 sm:w-6 sm:h-6" />
+      </button>
+
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative max-w-[95vw] max-h-[90vh] flex flex-col items-center"
+      >
+        <img
+          src={imageUrl}
+          alt="Ảnh phóng to"
+          className="max-w-full max-h-[82vh] object-contain rounded-2xl shadow-2xl border border-white/10"
+        />
+        <div className="mt-3 flex items-center gap-3">
+          <a
+            href={imageUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-1.5 rounded-full bg-white/15 hover:bg-[#F1D89E] hover:text-black text-white text-xs font-medium transition flex items-center gap-1.5 shadow-md"
+          >
+            Mở ảnh gốc trong tab mới
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function VisitorChatMessageBubble({
   msg,
   heroAvatar,
   onReply,
   onScrollToMessage,
+  onPreviewImage,
   isHighlighted,
   activeMenuId,
   setActiveMenuId
@@ -241,13 +295,28 @@ function VisitorChatMessageBubble({
                 </span>
               </div>
               <p className={`text-[11px] truncate max-w-full leading-tight mt-0.5 font-normal ${isMe ? 'text-stone-900' : 'text-gray-300'}`}>
-                {msg.replyToContent}
+                {msg.replyToContent === '[Hình ảnh]' ? '📷 [Hình ảnh]' : msg.replyToContent}
               </p>
             </div>
           )}
 
-          {/* Nội dung chính */}
-          <div className="whitespace-pre-wrap break-words text-[13px] sm:text-xs leading-relaxed">{msg.content}</div>
+          {/* Hình ảnh đính kèm */}
+          {msg.imageUrl && (
+            <div className="mb-1 rounded-xl overflow-hidden cursor-pointer group/img relative">
+              <img
+                src={getFullMediaUrl(msg.imageUrl)}
+                alt="Ảnh đính kèm"
+                className="max-w-full max-h-60 sm:max-h-72 rounded-xl object-cover hover:opacity-90 transition shadow-sm block"
+                loading="lazy"
+                onClick={() => onPreviewImage && onPreviewImage(getFullMediaUrl(msg.imageUrl))}
+              />
+            </div>
+          )}
+
+          {/* Nội dung chính (chỉ hiển thị nếu có text khác [Hình ảnh] hoặc không có ảnh) */}
+          {(!msg.imageUrl || msg.content !== '[Hình ảnh]') && (
+            <div className="whitespace-pre-wrap break-words text-[13px] sm:text-xs leading-relaxed">{msg.content}</div>
+          )}
 
           {/* Thời gian & Trạng thái đã xem */}
           <div
@@ -354,6 +423,59 @@ export default function DirectChatWidget({ isOpen, onClose }) {
   const [activeMenuMsgId, setActiveMenuMsgId] = useState(null);
   const [highlightedMsgId, setHighlightedMsgId] = useState(null);
   const inputRef = useRef(null);
+
+  // Trạng thái gửi ảnh & phóng to ảnh
+  const [selectedImageFile, setSelectedImageFile] = useState(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState(null);
+  const fileInputRef = useRef(null);
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Vui lòng chỉ chọn file hình ảnh (JPG, PNG, GIF, WebP)!');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Dung lượng ảnh tối đa là 10MB!');
+      return;
+    }
+    setSelectedImageFile(file);
+    const preview = URL.createObjectURL(file);
+    setImagePreviewUrl(preview);
+    e.target.value = '';
+  };
+
+  const handleRemoveSelectedImage = () => {
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl);
+    }
+    setSelectedImageFile(null);
+    setImagePreviewUrl(null);
+  };
+
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith('image/')) {
+        const file = items[i].getAsFile();
+        if (file) {
+          e.preventDefault();
+          if (file.size > 10 * 1024 * 1024) {
+            alert('Dung lượng ảnh tối đa là 10MB!');
+            return;
+          }
+          setSelectedImageFile(file);
+          const preview = URL.createObjectURL(file);
+          setImagePreviewUrl(preview);
+          break;
+        }
+      }
+    }
+  };
 
   const chatEndRef = useRef(null);
   const hubConnectionRef = useRef(null);
@@ -496,7 +618,7 @@ export default function DirectChatWidget({ isOpen, onClose }) {
               typeof m.id === 'number' &&
               m.id > 1000000000000 &&
               m.isFromAdmin === msg.isFromAdmin &&
-              m.content === msg.content
+              (m.content === msg.content || (m.imageUrl && m.imageUrl === msg.imageUrl))
           );
 
           if (optimisticIndex !== -1) {
@@ -560,24 +682,49 @@ export default function DirectChatWidget({ isOpen, onClose }) {
     };
   }, [isOpen, sessionId]);
 
-  // Xử lý gửi tin nhắn
+  // Xử lý gửi tin nhắn (kèm ảnh hoặc chỉ ảnh/chỉ text)
   const handleSendMessage = async (textToSend) => {
-    const text = (textToSend || input).trim();
-    if (!text || loading) return;
+    const text = (textToSend !== undefined ? textToSend : input).trim();
+    if ((!text && !selectedImageFile) || loading || isUploadingImage) return;
 
     const currentName = userName.trim() || 'Khách truy cập';
     const targetReply = replyingTo;
+    const currentImageFile = selectedImageFile;
+    const currentPreview = imagePreviewUrl;
+
     setInput('');
+    setSelectedImageFile(null);
+    setImagePreviewUrl(null);
     setReplyingTo(null);
     setActiveMenuMsgId(null);
     setLoading(true);
 
+    let uploadedImageUrl = null;
+    if (currentImageFile) {
+      setIsUploadingImage(true);
+      try {
+        uploadedImageUrl = await uploadFile(currentImageFile);
+      } catch (uploadErr) {
+        console.error('Lỗi khi tải ảnh lên:', uploadErr);
+        alert('Không thể tải ảnh lên. Vui lòng thử lại!');
+        setLoading(false);
+        setIsUploadingImage(false);
+        setSelectedImageFile(currentImageFile);
+        setImagePreviewUrl(currentPreview);
+        return;
+      } finally {
+        setIsUploadingImage(false);
+      }
+    }
+
+    const finalContent = text || (uploadedImageUrl ? '[Hình ảnh]' : '');
     const tempId = Date.now();
     const optimisticMsg = {
       id: tempId,
       sessionId,
       senderName: currentName,
-      content: text,
+      content: finalContent,
+      imageUrl: uploadedImageUrl,
       isFromAdmin: false,
       isReadByAdmin: false,
       isReadByUser: true,
@@ -596,12 +743,13 @@ export default function DirectChatWidget({ isOpen, onClose }) {
           'SendMessage',
           sessionId,
           currentName,
-          text,
+          finalContent,
           false,
           null,
           optimisticMsg.replyToId,
           optimisticMsg.replyToSender,
-          optimisticMsg.replyToContent
+          optimisticMsg.replyToContent,
+          uploadedImageUrl
         );
         if (saved) {
           setMessages((prev) => prev.map((m) => (m.id === tempId ? saved : m)));
@@ -610,7 +758,8 @@ export default function DirectChatWidget({ isOpen, onClose }) {
         const saved = await sendChatMessage({
           sessionId,
           senderName: currentName,
-          content: text,
+          content: finalContent,
+          imageUrl: uploadedImageUrl,
           isFromAdmin: false,
           replyToId: optimisticMsg.replyToId,
           replyToSender: optimisticMsg.replyToSender,
@@ -625,7 +774,8 @@ export default function DirectChatWidget({ isOpen, onClose }) {
         const saved = await sendChatMessage({
           sessionId,
           senderName: currentName,
-          content: text,
+          content: finalContent,
+          imageUrl: uploadedImageUrl,
           isFromAdmin: false,
           replyToId: optimisticMsg.replyToId,
           replyToSender: optimisticMsg.replyToSender,
@@ -849,6 +999,7 @@ export default function DirectChatWidget({ isOpen, onClose }) {
               heroAvatar={hero.avatar}
               onReply={handleInitiateReply}
               onScrollToMessage={scrollToOriginalMessage}
+              onPreviewImage={setLightboxImage}
               isHighlighted={highlightedMsgId === 'welcome_greeting'}
               activeMenuId={activeMenuMsgId}
               setActiveMenuId={setActiveMenuMsgId}
@@ -875,6 +1026,7 @@ export default function DirectChatWidget({ isOpen, onClose }) {
                     heroAvatar={hero.avatar}
                     onReply={handleInitiateReply}
                     onScrollToMessage={scrollToOriginalMessage}
+                    onPreviewImage={setLightboxImage}
                     isHighlighted={highlightedMsgId === msg.id}
                     activeMenuId={activeMenuMsgId}
                     setActiveMenuId={setActiveMenuMsgId}
@@ -1017,7 +1169,7 @@ export default function DirectChatWidget({ isOpen, onClose }) {
                     <span>Đang trả lời {replyingTo.isFromAdmin ? 'Đức Nam' : 'chính bạn'}</span>
                   </div>
                   <p className="text-[10.5px] text-gray-300 truncate font-normal leading-tight mt-0.5">
-                    {replyingTo.content}
+                    {replyingTo.content === '[Hình ảnh]' ? '📷 [Hình ảnh]' : replyingTo.content}
                   </p>
                 </div>
               </div>
@@ -1032,34 +1184,106 @@ export default function DirectChatWidget({ isOpen, onClose }) {
             </div>
           )}
 
+          {/* Thanh xem trước ảnh chuẩn bị gửi */}
+          {imagePreviewUrl && (
+            <div className="mx-2.5 sm:mx-3 my-1 p-2 bg-[#161926] border border-[#F1D89E]/40 rounded-xl flex items-center justify-between gap-2 shadow-xl animate-in slide-in-from-bottom-2 duration-200 shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-black/40 border border-white/10 shrink-0">
+                  <img
+                    src={imagePreviewUrl}
+                    alt="Xem trước ảnh"
+                    className="w-full h-full object-cover"
+                  />
+                  {isUploadingImage && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                      <Loader2 className="w-4 h-4 text-[#F1D89E] animate-spin" />
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1 text-left">
+                  <div className="text-[11px] font-bold text-[#F1D89E] flex items-center gap-1">
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    <span>Hình ảnh đính kèm</span>
+                  </div>
+                  <p className="text-[10px] text-gray-400 truncate mt-0.5">
+                    {selectedImageFile ? `${selectedImageFile.name} (${(selectedImageFile.size / 1024).toFixed(0)} KB)` : 'Ảnh từ clipboard'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleRemoveSelectedImage}
+                disabled={isUploadingImage}
+                title="Xóa ảnh đính kèm"
+                className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition shrink-0 cursor-pointer disabled:opacity-40"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           {/* Ô NHẬP TIN NHẮN */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
               handleSendMessage();
             }}
-            className="p-3 bg-[#11131c] border-t border-white/10 flex gap-2 items-center shrink-0"
+            onPaste={handlePaste}
+            className="p-2.5 sm:p-3 bg-[#11131c] border-t border-white/10 flex gap-2 items-center shrink-0"
           >
+            {/* Input file ẩn */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+
+            {/* Nút đính kèm ảnh */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading || isUploadingImage}
+              title="Gửi hình ảnh (hoặc dán Ctrl+V)"
+              className="p-2 text-gray-400 hover:text-[#F1D89E] hover:bg-white/5 rounded-xl transition cursor-pointer shrink-0 disabled:opacity-30"
+            >
+              <ImageIcon className="w-4 h-4" />
+            </button>
+
             <input
               ref={inputRef}
               type="text"
               value={input}
               onChange={handleInputChange}
-              placeholder={replyingTo ? 'Nhập câu trả lời...' : `Nhắn tin với tư cách "${userName}"...`}
+              placeholder={
+                replyingTo
+                  ? 'Nhập câu trả lời...'
+                  : selectedImageFile
+                  ? 'Thêm chú thích cho ảnh...'
+                  : `Nhắn tin với tư cách "${userName}"...`
+              }
               maxLength={1000}
-              className="flex-1 bg-black/50 border border-white/10 focus:border-[#F1D89E] rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-400 focus:outline-none transition"
+              className="flex-1 bg-black/50 border border-white/10 focus:border-[#F1D89E] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-gray-400 focus:outline-none transition"
             />
             <button
               type="submit"
-              disabled={loading || !input.trim()}
-              className="bg-gradient-to-r from-[#F1D89E] to-[#d8b868] hover:opacity-90 disabled:opacity-30 text-black p-2.5 rounded-xl transition font-bold shadow-md shadow-[#F1D89E]/20 cursor-pointer"
+              disabled={loading || isUploadingImage || (!input.trim() && !selectedImageFile)}
+              className="bg-gradient-to-r from-[#F1D89E] to-[#d8b868] hover:opacity-90 disabled:opacity-30 text-black p-2.5 rounded-xl transition font-bold shadow-md shadow-[#F1D89E]/20 cursor-pointer flex items-center justify-center shrink-0"
               title="Gửi tin nhắn"
             >
-              <Send className="w-4 h-4" />
+              {loading || isUploadingImage ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
             </button>
           </form>
         </>
       )}
+
+      {/* Lightbox Modal phóng to ảnh */}
+      <ImageLightboxModal imageUrl={lightboxImage} onClose={() => setLightboxImage(null)} />
     </div>
   );
 }

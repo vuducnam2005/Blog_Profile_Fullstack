@@ -56,15 +56,22 @@ namespace BlogBackend.Hubs
             string? adminKey = null,
             int? replyToId = null,
             string? replyToSender = null,
-            string? replyToContent = null)
+            string? replyToContent = null,
+            string? imageUrl = null)
         {
-            if (string.IsNullOrWhiteSpace(sessionId) || string.IsNullOrWhiteSpace(content))
+            if (string.IsNullOrWhiteSpace(sessionId))
+            {
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(content) && string.IsNullOrWhiteSpace(imageUrl))
             {
                 return null;
             }
 
             sessionId = sessionId.Trim();
-            content = content.Trim();
+            imageUrl = !string.IsNullOrWhiteSpace(imageUrl) ? imageUrl.Trim() : null;
+            content = !string.IsNullOrWhiteSpace(content) ? content.Trim() : (imageUrl != null ? "[Hình ảnh]" : string.Empty);
 
             if (isFromAdmin)
             {
@@ -91,6 +98,7 @@ namespace BlogBackend.Hubs
                 SessionId = sessionId,
                 SenderName = senderName,
                 Content = content,
+                ImageUrl = imageUrl,
                 IsFromAdmin = isFromAdmin,
                 IsReadByAdmin = isFromAdmin,
                 IsReadByUser = !isFromAdmin,
@@ -109,6 +117,7 @@ namespace BlogBackend.Hubs
                 sessionId = msg.SessionId,
                 senderName = msg.SenderName,
                 content = msg.Content,
+                imageUrl = msg.ImageUrl,
                 isFromAdmin = msg.IsFromAdmin,
                 isReadByAdmin = msg.IsReadByAdmin,
                 isReadByUser = msg.IsReadByUser,
@@ -148,7 +157,7 @@ namespace BlogBackend.Hubs
                 {
                     if (DirectChatController.IsAdminEmailNotificationEnabled(_context))
                     {
-                        _ = Task.Run(() => _emailService.SendAdminNewMessageNotificationAsync(senderName, content, sessionId));
+                        _ = Task.Run(() => _emailService.SendAdminNewMessageNotificationAsync(senderName, content, sessionId, imageUrl));
                     }
                     else
                     {
@@ -157,7 +166,7 @@ namespace BlogBackend.Hubs
                 }
                 else if (sessionInfo != null && sessionInfo.WantsEmailNotification && !string.IsNullOrWhiteSpace(sessionInfo.VisitorEmail))
                 {
-                    _ = Task.Run(() => _emailService.SendVisitorReplyNotificationAsync(sessionInfo.VisitorEmail, sessionInfo.VisitorName ?? "Bạn", content, sessionId));
+                    _ = Task.Run(() => _emailService.SendVisitorReplyNotificationAsync(sessionInfo.VisitorEmail, sessionInfo.VisitorName ?? "Bạn", content, sessionId, imageUrl));
                 }
             }
             catch (Exception ex)

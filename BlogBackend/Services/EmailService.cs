@@ -69,7 +69,7 @@ namespace BlogBackend.Services
                    !string.IsNullOrWhiteSpace(password);
         }
 
-        public async Task SendAdminNewMessageNotificationAsync(string visitorName, string content, string sessionId)
+        public async Task SendAdminNewMessageNotificationAsync(string visitorName, string content, string sessionId, string? imageUrl = null)
         {
             var (host, port, user, password, adminEmail) = GetSmtpSettings();
 
@@ -85,6 +85,12 @@ namespace BlogBackend.Services
                 var nowStr = DateTime.UtcNow.AddHours(7).ToString("HH:mm:ss dd/MM/yyyy");
                 var safeSender = string.IsNullOrWhiteSpace(visitorName) ? "Khách truy cập" : visitorName.Trim();
                 var safeContent = WebUtility.HtmlEncode(content ?? "");
+                var imageHtml = !string.IsNullOrWhiteSpace(imageUrl)
+                    ? $@"<div style=""margin-top: 14px; text-align: center;"">
+                            <span style=""font-size: 11px; color: #9ca3af; display: block; margin-bottom: 6px;"">📷 Ảnh đính kèm:</span>
+                            <img src=""{imageUrl}"" alt=""Ảnh đính kèm"" style=""max-width: 100%; max-height: 320px; border-radius: 10px; border: 1px solid rgba(241, 216, 158, 0.4); box-shadow: 0 4px 15px rgba(0,0,0,0.5);"" />
+                         </div>"
+                    : "";
 
                 var subject = $"💬 [Tin nhắn mới từ Blog] {safeSender} vừa nhắn tin cho bạn!";
                 var bodyHtml = $@"
@@ -118,6 +124,7 @@ namespace BlogBackend.Services
                 <div>
                     <span style=""font-size: 12px; color: #9ca3af; display: block; margin-bottom: 6px;"">Nội dung tin nhắn:</span>
                     <div style=""background: #1a1d2e; border-left: 4px solid #F1D89E; padding: 12px 16px; border-radius: 6px; font-size: 14px; color: #ffffff; line-height: 1.6; white-space: pre-wrap;"">{safeContent}</div>
+                    {imageHtml}
                 </div>
             </div>
 
@@ -149,7 +156,7 @@ namespace BlogBackend.Services
             }
         }
 
-        public async Task SendVisitorReplyNotificationAsync(string visitorEmail, string visitorName, string replyContent, string sessionId)
+        public async Task SendVisitorReplyNotificationAsync(string visitorEmail, string visitorName, string replyContent, string sessionId, string? imageUrl = null)
         {
             if (string.IsNullOrWhiteSpace(visitorEmail)) return;
 
@@ -167,6 +174,12 @@ namespace BlogBackend.Services
                 var nowStr = DateTime.UtcNow.AddHours(7).ToString("HH:mm:ss dd/MM/yyyy");
                 var safeName = string.IsNullOrWhiteSpace(visitorName) ? "bạn" : visitorName.Trim();
                 var safeReply = WebUtility.HtmlEncode(replyContent ?? "");
+                var imageHtml = !string.IsNullOrWhiteSpace(imageUrl)
+                    ? $@"<div style=""margin-top: 14px; margin-bottom: 24px; text-align: center;"">
+                            <span style=""font-size: 11px; color: #9ca3af; display: block; margin-bottom: 6px;"">📷 Ảnh đính kèm:</span>
+                            <img src=""{imageUrl}"" alt=""Ảnh đính kèm"" style=""max-width: 100%; max-height: 320px; border-radius: 10px; border: 1px solid rgba(241, 216, 158, 0.4); box-shadow: 0 4px 15px rgba(0,0,0,0.5);"" />
+                         </div>"
+                    : "";
 
                 var subject = $"💬 Vũ Đức Nam vừa trả lời tin nhắn của bạn!";
                 var bodyHtml = $@"
@@ -195,7 +208,8 @@ namespace BlogBackend.Services
                 Đức Nam đã phản hồi tin nhắn của bạn vào lúc <strong style=""color: #e5e7eb;"">{nowStr}</strong>:
             </p>
 
-            <div style=""background: #1a1d2e; border-left: 4px solid #F1D89E; padding: 14px 18px; border-radius: 8px; font-size: 14px; color: #ffffff; line-height: 1.6; margin-bottom: 24px; white-space: pre-wrap;"">{safeReply}</div>
+            <div style=""background: #1a1d2e; border-left: 4px solid #F1D89E; padding: 14px 18px; border-radius: 8px; font-size: 14px; color: #ffffff; line-height: 1.6; margin-bottom: 14px; white-space: pre-wrap;"">{safeReply}</div>
+            {imageHtml}
 
             <!-- Action Button -->
             <div style=""text-align: center; margin-top: 20px; margin-bottom: 12px;"">

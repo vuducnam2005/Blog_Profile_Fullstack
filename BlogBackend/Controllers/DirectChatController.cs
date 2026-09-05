@@ -94,6 +94,7 @@ namespace BlogBackend.Controllers
                     ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToId"" INTEGER;
                     ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToSender"" VARCHAR(100);
                     ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToContent"" TEXT;
+                    ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ImageUrl"" TEXT;
                 ");
 
                 try
@@ -308,6 +309,7 @@ namespace BlogBackend.Controllers
                     m.SessionId,
                     m.SenderName,
                     m.Content,
+                    m.ImageUrl,
                     m.IsFromAdmin,
                     m.IsReadByAdmin,
                     m.IsReadByUser,
@@ -323,13 +325,14 @@ namespace BlogBackend.Controllers
         [HttpPost("send")]
         public async Task<IActionResult> SendMessage([FromBody] SendDirectMessageDto dto, CancellationToken cancellationToken)
         {
-            if (dto == null || string.IsNullOrWhiteSpace(dto.SessionId) || string.IsNullOrWhiteSpace(dto.Content))
+            if (dto == null || string.IsNullOrWhiteSpace(dto.SessionId) || (string.IsNullOrWhiteSpace(dto.Content) && string.IsNullOrWhiteSpace(dto.ImageUrl)))
             {
                 return BadRequest(new { message = "Dữ liệu tin nhắn không hợp lệ." });
             }
 
             var sessionId = dto.SessionId.Trim();
-            var content = dto.Content.Trim();
+            var content = string.IsNullOrWhiteSpace(dto.Content) ? "[Hình ảnh]" : dto.Content.Trim();
+            var imageUrl = !string.IsNullOrWhiteSpace(dto.ImageUrl) ? dto.ImageUrl.Trim() : null;
             var isFromAdmin = dto.IsFromAdmin;
             string senderName;
 
@@ -351,6 +354,7 @@ namespace BlogBackend.Controllers
                 SessionId = sessionId,
                 SenderName = senderName,
                 Content = content,
+                ImageUrl = imageUrl,
                 IsFromAdmin = isFromAdmin,
                 IsReadByAdmin = isFromAdmin,
                 IsReadByUser = !isFromAdmin,
@@ -377,6 +381,7 @@ namespace BlogBackend.Controllers
                 sessionId = msg.SessionId,
                 senderName = msg.SenderName,
                 content = msg.Content,
+                imageUrl = msg.ImageUrl,
                 isFromAdmin = msg.IsFromAdmin,
                 isReadByAdmin = msg.IsReadByAdmin,
                 isReadByUser = msg.IsReadByUser,
@@ -416,7 +421,7 @@ namespace BlogBackend.Controllers
                 {
                     if (IsAdminEmailNotificationEnabled(_context))
                     {
-                        _ = Task.Run(() => _emailService.SendAdminNewMessageNotificationAsync(senderName, content, sessionId));
+                        _ = Task.Run(() => _emailService.SendAdminNewMessageNotificationAsync(senderName, content, sessionId, imageUrl));
                     }
                     else
                     {
@@ -425,7 +430,7 @@ namespace BlogBackend.Controllers
                 }
                 else if (sessionInfo != null && sessionInfo.WantsEmailNotification && !string.IsNullOrWhiteSpace(sessionInfo.VisitorEmail))
                 {
-                    _ = Task.Run(() => _emailService.SendVisitorReplyNotificationAsync(sessionInfo.VisitorEmail, sessionInfo.VisitorName ?? "Bạn", content, sessionId));
+                    _ = Task.Run(() => _emailService.SendVisitorReplyNotificationAsync(sessionInfo.VisitorEmail, sessionInfo.VisitorName ?? "Bạn", content, sessionId, imageUrl));
                 }
             }
             catch (Exception ex)
@@ -661,6 +666,7 @@ namespace BlogBackend.Controllers
         public string SessionId { get; set; } = string.Empty;
         public string? SenderName { get; set; }
         public string Content { get; set; } = string.Empty;
+        public string? ImageUrl { get; set; }
         public bool IsFromAdmin { get; set; } = false;
         public int? ReplyToId { get; set; }
         public string? ReplyToSender { get; set; }

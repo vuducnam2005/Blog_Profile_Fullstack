@@ -220,12 +220,24 @@ export async function fetchChatHistory(sessionId) {
 }
 
 /**
+ * Chuẩn hóa URL ảnh (hỗ trợ cả Cloudinary URL tuyệt đối và URL tương đối từ server backend)
+ */
+export function getFullMediaUrl(url) {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
+    return url;
+  }
+  return `${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
+/**
  * API REST: Gửi tin nhắn
  */
 export async function sendChatMessage({
   sessionId,
   senderName,
   content,
+  imageUrl = null,
   isFromAdmin = false,
   replyToId = null,
   replyToSender = null,
@@ -236,6 +248,7 @@ export async function sendChatMessage({
     sessionId,
     senderName,
     content,
+    imageUrl,
     isFromAdmin,
     replyToId,
     replyToSender,
