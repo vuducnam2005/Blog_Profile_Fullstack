@@ -57,21 +57,31 @@ namespace BlogBackend.Hubs
             int? replyToId = null,
             string? replyToSender = null,
             string? replyToContent = null,
-            string? imageUrl = null)
+            string? imageUrl = null,
+            string? fileUrl = null,
+            string? fileName = null,
+            long? fileSize = null,
+            string? fileType = null)
         {
             if (string.IsNullOrWhiteSpace(sessionId))
             {
                 return null;
             }
 
-            if (string.IsNullOrWhiteSpace(content) && string.IsNullOrWhiteSpace(imageUrl))
+            if (string.IsNullOrWhiteSpace(content) && string.IsNullOrWhiteSpace(imageUrl) && string.IsNullOrWhiteSpace(fileUrl))
             {
                 return null;
             }
 
             sessionId = sessionId.Trim();
             imageUrl = !string.IsNullOrWhiteSpace(imageUrl) ? imageUrl.Trim() : null;
-            content = !string.IsNullOrWhiteSpace(content) ? content.Trim() : (imageUrl != null ? "[Hình ảnh]" : string.Empty);
+            fileUrl = !string.IsNullOrWhiteSpace(fileUrl) ? fileUrl.Trim() : null;
+            fileName = !string.IsNullOrWhiteSpace(fileName) ? fileName.Trim() : null;
+            fileType = !string.IsNullOrWhiteSpace(fileType) ? fileType.Trim() : null;
+
+            content = !string.IsNullOrWhiteSpace(content) 
+                ? content.Trim() 
+                : (imageUrl != null ? "[Hình ảnh]" : (fileName != null ? $"[Tệp] {fileName}" : "[Tệp đính kèm]"));
 
             if (isFromAdmin)
             {
@@ -99,6 +109,10 @@ namespace BlogBackend.Hubs
                 SenderName = senderName,
                 Content = content,
                 ImageUrl = imageUrl,
+                FileUrl = fileUrl,
+                FileName = fileName,
+                FileSize = fileSize,
+                FileType = fileType,
                 IsFromAdmin = isFromAdmin,
                 IsReadByAdmin = isFromAdmin,
                 IsReadByUser = !isFromAdmin,
@@ -118,6 +132,10 @@ namespace BlogBackend.Hubs
                 senderName = msg.SenderName,
                 content = msg.Content,
                 imageUrl = msg.ImageUrl,
+                fileUrl = msg.FileUrl,
+                fileName = msg.FileName,
+                fileSize = msg.FileSize,
+                fileType = msg.FileType,
                 isRecalled = msg.IsRecalled,
                 isFromAdmin = msg.IsFromAdmin,
                 isReadByAdmin = msg.IsReadByAdmin,
@@ -453,6 +471,10 @@ namespace BlogBackend.Hubs
 
             msg.IsRecalled = true;
             msg.ImageUrl = null;
+            msg.FileUrl = null;
+            msg.FileName = null;
+            msg.FileSize = null;
+            msg.FileType = null;
             msg.Content = "[Tin nhắn đã được thu hồi]";
             await _context.SaveChangesAsync();
 
@@ -462,7 +484,11 @@ namespace BlogBackend.Hubs
                 sessionId = msg.SessionId,
                 isRecalled = true,
                 content = msg.Content,
-                imageUrl = (string?)null
+                imageUrl = (string?)null,
+                fileUrl = (string?)null,
+                fileName = (string?)null,
+                fileSize = (long?)null,
+                fileType = (string?)null
             };
 
             await Clients.Group($"session_{sessionId}").SendAsync("MessageRecalled", recallPayload);

@@ -95,6 +95,10 @@ namespace BlogBackend.Controllers
                     ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToSender"" VARCHAR(100);
                     ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ReplyToContent"" TEXT;
                     ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""ImageUrl"" TEXT;
+                    ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""FileUrl"" TEXT;
+                    ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""FileName"" VARCHAR(260);
+                    ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""FileSize"" BIGINT;
+                    ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""FileType"" VARCHAR(100);
                     ALTER TABLE ""DirectChatMessages"" ADD COLUMN IF NOT EXISTS ""IsRecalled"" BOOLEAN NOT NULL DEFAULT FALSE;
                 ");
 
@@ -311,6 +315,10 @@ namespace BlogBackend.Controllers
                     m.SenderName,
                     m.Content,
                     m.ImageUrl,
+                    m.FileUrl,
+                    m.FileName,
+                    m.FileSize,
+                    m.FileType,
                     m.IsRecalled,
                     m.IsFromAdmin,
                     m.IsReadByAdmin,
@@ -327,14 +335,19 @@ namespace BlogBackend.Controllers
         [HttpPost("send")]
         public async Task<IActionResult> SendMessage([FromBody] SendDirectMessageDto dto, CancellationToken cancellationToken)
         {
-            if (dto == null || string.IsNullOrWhiteSpace(dto.SessionId) || (string.IsNullOrWhiteSpace(dto.Content) && string.IsNullOrWhiteSpace(dto.ImageUrl)))
+            if (dto == null || string.IsNullOrWhiteSpace(dto.SessionId) || (string.IsNullOrWhiteSpace(dto.Content) && string.IsNullOrWhiteSpace(dto.ImageUrl) && string.IsNullOrWhiteSpace(dto.FileUrl)))
             {
                 return BadRequest(new { message = "Dữ liệu tin nhắn không hợp lệ." });
             }
 
             var sessionId = dto.SessionId.Trim();
-            var content = string.IsNullOrWhiteSpace(dto.Content) ? "[Hình ảnh]" : dto.Content.Trim();
             var imageUrl = !string.IsNullOrWhiteSpace(dto.ImageUrl) ? dto.ImageUrl.Trim() : null;
+            var fileUrl = !string.IsNullOrWhiteSpace(dto.FileUrl) ? dto.FileUrl.Trim() : null;
+            var fileName = !string.IsNullOrWhiteSpace(dto.FileName) ? dto.FileName.Trim() : null;
+            var content = !string.IsNullOrWhiteSpace(dto.Content)
+                ? dto.Content.Trim()
+                : (imageUrl != null ? "[Hình ảnh]" : (fileName != null ? $"[Tệp] {fileName}" : "[Tệp đính kèm]"));
+
             var isFromAdmin = dto.IsFromAdmin;
             string senderName;
 
@@ -357,6 +370,10 @@ namespace BlogBackend.Controllers
                 SenderName = senderName,
                 Content = content,
                 ImageUrl = imageUrl,
+                FileUrl = fileUrl,
+                FileName = fileName,
+                FileSize = dto.FileSize,
+                FileType = !string.IsNullOrWhiteSpace(dto.FileType) ? dto.FileType.Trim() : null,
                 IsFromAdmin = isFromAdmin,
                 IsReadByAdmin = isFromAdmin,
                 IsReadByUser = !isFromAdmin,
@@ -384,6 +401,10 @@ namespace BlogBackend.Controllers
                 senderName = msg.SenderName,
                 content = msg.Content,
                 imageUrl = msg.ImageUrl,
+                fileUrl = msg.FileUrl,
+                fileName = msg.FileName,
+                fileSize = msg.FileSize,
+                fileType = msg.FileType,
                 isRecalled = msg.IsRecalled,
                 isFromAdmin = msg.IsFromAdmin,
                 isReadByAdmin = msg.IsReadByAdmin,
@@ -713,6 +734,10 @@ namespace BlogBackend.Controllers
 
             msg.IsRecalled = true;
             msg.ImageUrl = null;
+            msg.FileUrl = null;
+            msg.FileName = null;
+            msg.FileSize = null;
+            msg.FileType = null;
             msg.Content = "[Tin nhắn đã được thu hồi]";
             await _context.SaveChangesAsync(cancellationToken);
 
@@ -722,7 +747,11 @@ namespace BlogBackend.Controllers
                 sessionId = msg.SessionId,
                 isRecalled = true,
                 content = msg.Content,
-                imageUrl = (string?)null
+                imageUrl = (string?)null,
+                fileUrl = (string?)null,
+                fileName = (string?)null,
+                fileSize = (long?)null,
+                fileType = (string?)null
             };
 
             await _hubContext.Clients.Group($"session_{msg.SessionId}").SendAsync("MessageRecalled", recallPayload, cancellationToken);
@@ -823,6 +852,10 @@ namespace BlogBackend.Controllers
         public string? SenderName { get; set; }
         public string Content { get; set; } = string.Empty;
         public string? ImageUrl { get; set; }
+        public string? FileUrl { get; set; }
+        public string? FileName { get; set; }
+        public long? FileSize { get; set; }
+        public string? FileType { get; set; }
         public bool IsFromAdmin { get; set; } = false;
         public int? ReplyToId { get; set; }
         public string? ReplyToSender { get; set; }

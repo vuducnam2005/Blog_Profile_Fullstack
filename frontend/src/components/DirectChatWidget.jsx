@@ -17,11 +17,16 @@ import {
   Image as ImageIcon,
   Loader2,
   RotateCcw,
-  ChevronDown
+  ChevronDown,
+  Paperclip,
+  FileText,
+  Download,
+  UploadCloud,
+  File as FileGenericIcon
 } from 'lucide-react';
 import { PortfolioContext } from '../context/PortfolioContext';
 import AdminAvatar from './AdminAvatar';
-import { uploadFile } from '../utils/upload';
+import { uploadFile, uploadChatAttachment } from '../utils/upload';
 import {
   getDirectChatSessionId,
   getDirectChatUserName,
@@ -38,8 +43,40 @@ import {
   registerSessionEmail,
   getFullMediaUrl,
   recallChatMessage,
-  updateVisitorName
+  updateVisitorName,
+  formatFileSize
 } from '../services/directChatService';
+
+export function getFileMeta(fileName, fileType) {
+  const name = fileName || 'file';
+  const ext = (name.includes('.') ? name.split('.').pop() : (fileType || '')).toLowerCase();
+
+  if (['pdf'].includes(ext)) {
+    return { ext: 'PDF', color: 'text-rose-400 bg-rose-500/15 border-rose-500/30' };
+  }
+  if (['doc', 'docx'].includes(ext)) {
+    return { ext: 'DOC', color: 'text-blue-400 bg-blue-500/15 border-blue-500/30' };
+  }
+  if (['xls', 'xlsx', 'csv'].includes(ext)) {
+    return { ext: 'XLS', color: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30' };
+  }
+  if (['ppt', 'pptx'].includes(ext)) {
+    return { ext: 'PPT', color: 'text-amber-400 bg-amber-500/15 border-amber-500/30' };
+  }
+  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
+    return { ext: 'ZIP', color: 'text-yellow-400 bg-yellow-500/15 border-yellow-500/30' };
+  }
+  if (['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext)) {
+    return { ext: 'AUDIO', color: 'text-purple-400 bg-purple-500/15 border-purple-500/30' };
+  }
+  if (['mp4', 'mov', 'avi', 'webm', 'mkv'].includes(ext)) {
+    return { ext: 'VIDEO', color: 'text-pink-400 bg-pink-500/15 border-pink-500/30' };
+  }
+  if (['json', 'js', 'ts', 'jsx', 'tsx', 'html', 'css', 'sql', 'py', 'cs', 'cpp', 'java', 'xml', 'md', 'txt'].includes(ext)) {
+    return { ext: ext.toUpperCase(), color: 'text-cyan-400 bg-cyan-500/15 border-cyan-500/30' };
+  }
+  return { ext: ext.toUpperCase() || 'FILE', color: 'text-[#F1D89E] bg-[#F1D89E]/15 border-[#F1D89E]/30' };
+}
 
 function ImageLightboxModal({ imageUrl, onClose }) {
   useEffect(() => {
@@ -105,15 +142,24 @@ function VisitorChatMessageBubble({
   const isMe = !msg.isFromAdmin;
   const isRecalled = Boolean(msg.isRecalled || msg.IsRecalled);
   const rawImageUrl = msg.imageUrl || msg.ImageUrl;
+  const rawFileUrl = msg.fileUrl || msg.FileUrl;
+  const effectiveFileUrl = isRecalled ? null : rawFileUrl;
+  const isImageFile = Boolean(
+    (msg.fileType && ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(msg.fileType.toLowerCase())) ||
+    (msg.fileName && /\.(jpe?g|png|gif|webp|svg|bmp|ico)$/i.test(msg.fileName))
+  );
   const isContentImageUrl =
     !isRecalled &&
     !rawImageUrl &&
+    !rawFileUrl &&
     typeof msg.content === 'string' &&
     (msg.content.startsWith('http://') || msg.content.startsWith('https://') || msg.content.startsWith('/uploads/')) &&
     (msg.content.includes('res.cloudinary.com') ||
       msg.content.includes('/uploads/') ||
       /\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i.test(msg.content));
-  const effectiveImageUrl = isRecalled ? null : (rawImageUrl || (isContentImageUrl ? msg.content : null));
+  const effectiveImageUrl = isRecalled ? null : (rawImageUrl || (isImageFile ? effectiveFileUrl : (isContentImageUrl ? msg.content : null)));
+  const finalFileUrl = !isImageFile ? effectiveFileUrl : null;
+  const fileMeta = finalFileUrl ? getFileMeta(msg.fileName, msg.fileType) : null;
 
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -352,7 +398,7 @@ function VisitorChatMessageBubble({
                 </span>
               </div>
               <p className={`text-[11px] truncate max-w-full leading-tight mt-0.5 font-normal ${isMe ? 'text-stone-900' : 'text-gray-300'}`}>
-                {msg.replyToContent === '[Hình ảnh]' ? '📷 [Hình ảnh]' : msg.replyToContent}
+                {msg.replyToContent === '[Hình ảnh]' ? '📷 [Hình ảnh]' : (msg.replyToContent.startsWith('[Tệp]') ? `📎 ${msg.replyToContent}` : msg.replyToContent)}
               </p>
             </div>
           )}
@@ -366,7 +412,7 @@ function VisitorChatMessageBubble({
             >
               <img
                 src={getFullMediaUrl(effectiveImageUrl)}
-                alt="Ảnh đính kèm"
+                alt={msg.fileName || 'Ảnh đính kèm'}
                 className="max-w-full max-h-60 sm:max-h-80 rounded-xl object-cover block"
                 loading="lazy"
                 onLoad={onImageLoad}
@@ -374,9 +420,61 @@ function VisitorChatMessageBubble({
             </div>
           )}
 
-          {/* Nội dung chính (chỉ hiển thị nếu có text khác [Hình ảnh] hoặc không có ảnh) */}
-          {(!effectiveImageUrl || (msg.content && msg.content !== '[Hình ảnh]')) && msg.content && (
-            <div className="whitespace-pre-wrap break-words text-[13px] sm:text-xs leading-relaxed">{msg.content}</div>
+          {/* Thẻ tệp đính kèm phong cách Zalo */}
+          {finalFileUrl && (
+            <a
+              href={getFullMediaUrl(finalFileUrl)}
+              target="_blank"
+              rel="noopener noreferrer"
+              download={msg.fileName || 'file'}
+              onClick={(e) => e.stopPropagation()}
+              className={`my-1 p-2.5 rounded-xl border flex items-center gap-2.5 transition-all duration-200 group/file no-underline select-none ${
+                isMe
+                  ? 'bg-black/10 hover:bg-black/20 border-black/15 text-black'
+                  : 'bg-white/[0.06] hover:bg-white/[0.12] border-white/10 text-white'
+              }`}
+              title={`Tải về: ${msg.fileName || 'Tệp đính kèm'}`}
+            >
+              <div className={`w-9 h-9 rounded-lg flex flex-col items-center justify-center shrink-0 border font-extrabold text-[9px] tracking-wider shadow-sm transition-transform group-hover/file:scale-105 ${fileMeta.color}`}>
+                <FileText className="w-4 h-4 mb-0.5" />
+                <span className="leading-none text-[8px] truncate max-w-[32px]">{fileMeta.ext}</span>
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <div className={`text-xs font-bold truncate leading-tight ${
+                  isMe ? 'text-black group-hover/file:underline' : 'text-gray-100 group-hover/file:text-[#F1D89E]'
+                }`}>
+                  {msg.fileName || 'Tệp đính kèm'}
+                </div>
+                <div className={`text-[10px] mt-0.5 font-medium ${isMe ? 'text-black/60' : 'text-gray-400'}`}>
+                  {formatFileSize(msg.fileSize)}
+                </div>
+              </div>
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border transition-all ${
+                isMe
+                  ? 'bg-black/10 text-black group-hover/file:bg-black group-hover/file:text-[#F1D89E]'
+                  : 'bg-white/10 text-gray-300 group-hover/file:bg-[#F1D89E] group-hover/file:text-black border-white/10'
+              }`}>
+                <Download className="w-3.5 h-3.5 transition-transform group-hover/file:translate-y-0.5" />
+              </div>
+            </a>
+          )}
+
+          {/* Nội dung chính (chỉ hiển thị nếu có text khác [Hình ảnh] hoặc [Tệp] hoặc không có tệp/ảnh) */}
+          {(() => {
+            const isDefaultCaption = !msg.content || msg.content === '[Hình ảnh]' || (msg.fileName && msg.content === `[Tệp] ${msg.fileName}`) || msg.content === '[Tệp đính kèm]';
+            if (isDefaultCaption && (effectiveImageUrl || finalFileUrl)) return null;
+            if (!msg.content) return null;
+            return (
+              <div className="whitespace-pre-wrap break-words text-[13px] sm:text-xs leading-relaxed mt-0.5">{msg.content}</div>
+            );
+          })()}
+
+          {/* Trạng thái đang tải lên */}
+          {msg.isUploading && (
+            <div className="flex items-center gap-1.5 text-[10px] text-amber-900 font-bold mt-1">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span>Đang gửi tệp...</span>
+            </div>
           )}
 
           {/* Thời gian & Trạng thái đã xem */}
@@ -386,7 +484,7 @@ function VisitorChatMessageBubble({
             }`}
           >
             <span>{formatMessageTime(msg.createdAt)}</span>
-            {isMe && (
+            {isMe && !msg.isUploading && (
               <span>
                 {msg.isReadByAdmin ? (
                   <CheckCheck className="w-3 motion-safe:animate-pulse text-blue-800" title="Đã xem" />
@@ -485,53 +583,79 @@ export default function DirectChatWidget({ isOpen, onClose }) {
   const [highlightedMsgId, setHighlightedMsgId] = useState(null);
   const inputRef = useRef(null);
 
-  // Trạng thái gửi ảnh & phóng to ảnh
-  const [selectedImageFile, setSelectedImageFile] = useState(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  // Trạng thái tệp đính kèm & phóng to ảnh
+  const [pendingAttachment, setPendingAttachment] = useState(null); // { file, name, size, type, isImage, previewUrl }
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const [lightboxImage, setLightboxImage] = useState(null);
   const fileInputRef = useRef(null);
+  const generalFileInputRef = useRef(null);
+  const inputFormRef = useRef(null);
+
+  // Trạng thái Kéo & Thả Zalo Style
+  const [isDraggingOverChat, setIsDraggingOverChat] = useState(false);
+  const [isDraggingOverInput, setIsDraggingOverInput] = useState(false);
+  const chatDragCounterRef = useRef(0);
+  const inputDragCounterRef = useRef(0);
+
+  const validateFile = (file) => {
+    if (!file) return false;
+    const BLOCKED_EXTENSIONS = ['.exe', '.bat', '.cmd', '.sh', '.ps1', '.vbs', '.msi', '.dll', '.com', '.scr', '.jar', '.reg', '.pif'];
+    const ext = file.name ? '.' + file.name.split('.').pop().toLowerCase() : '';
+    if (BLOCKED_EXTENSIONS.includes(ext)) {
+      alert('Định dạng tệp này không được hỗ trợ vì lý do bảo mật!');
+      return false;
+    }
+    if (file.size > 30 * 1024 * 1024) {
+      alert('Dung lượng tệp tối đa là 30MB!');
+      return false;
+    }
+    return true;
+  };
+
+  // Đính kèm tệp vào ô nhập tin nhắn (chưa gửi ngay, cho phép nhập lời nhắn kèm)
+  const handleAttachPendingFile = (file) => {
+    if (!validateFile(file)) return;
+    if (pendingAttachment?.previewUrl) {
+      URL.revokeObjectURL(pendingAttachment.previewUrl);
+    }
+    const isImage = file.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|svg|bmp|ico)$/i.test(file.name);
+    const previewUrl = isImage ? URL.createObjectURL(file) : null;
+    setPendingAttachment({
+      file,
+      name: file.name,
+      size: file.size,
+      type: file.type || (file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : ''),
+      isImage,
+      previewUrl
+    });
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
+  };
+
+  const handleRemovePendingAttachment = () => {
+    if (pendingAttachment?.previewUrl) {
+      URL.revokeObjectURL(pendingAttachment.previewUrl);
+    }
+    setPendingAttachment(null);
+  };
 
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      alert('Vui lòng chỉ chọn file hình ảnh (JPG, PNG, GIF, WebP)!');
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      alert('Dung lượng ảnh tối đa là 10MB!');
-      return;
-    }
-    setSelectedImageFile(file);
-    const preview = URL.createObjectURL(file);
-    setImagePreviewUrl(preview);
+    handleAttachPendingFile(file);
     e.target.value = '';
-  };
-
-  const handleRemoveSelectedImage = () => {
-    if (imagePreviewUrl) {
-      URL.revokeObjectURL(imagePreviewUrl);
-    }
-    setSelectedImageFile(null);
-    setImagePreviewUrl(null);
   };
 
   const handlePaste = (e) => {
     const items = e.clipboardData?.items;
     if (!items) return;
     for (let i = 0; i < items.length; i++) {
-      if (items[i].type.startsWith('image/')) {
+      if (items[i].kind === 'file') {
         const file = items[i].getAsFile();
         if (file) {
           e.preventDefault();
-          if (file.size > 10 * 1024 * 1024) {
-            alert('Dung lượng ảnh tối đa là 10MB!');
-            return;
-          }
-          setSelectedImageFile(file);
-          const preview = URL.createObjectURL(file);
-          setImagePreviewUrl(preview);
+          handleAttachPendingFile(file);
           break;
         }
       }
@@ -758,7 +882,7 @@ export default function DirectChatWidget({ isOpen, onClose }) {
               typeof m.id === 'number' &&
               m.id > 1000000000000 &&
               m.isFromAdmin === msg.isFromAdmin &&
-              (m.content === msg.content || (m.imageUrl && m.imageUrl === msg.imageUrl))
+              (m.content === msg.content || (m.imageUrl && m.imageUrl === msg.imageUrl) || (m.fileName && m.fileName === msg.fileName))
           );
 
           if (optimisticIndex !== -1) {
@@ -891,49 +1015,133 @@ export default function DirectChatWidget({ isOpen, onClose }) {
     [sessionId]
   );
 
-  // Xử lý gửi tin nhắn (kèm ảnh hoặc chỉ ảnh/chỉ text)
+  // Kéo thả trực tiếp vào đoạn chat: Tải lên và gửi ngay lập tức (phong cách Zalo)
+  const handleSendFileDirectly = async (file) => {
+    if (!validateFile(file) || loading || isUploadingAttachment) return;
+    const isImage = file.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|svg|bmp|ico)$/i.test(file.name);
+    const currentName = userName.trim() || 'Khách truy cập';
+    const tempId = Date.now();
+    const previewUrl = isImage ? URL.createObjectURL(file) : null;
+    const defaultContent = isImage ? '[Hình ảnh]' : `[Tệp] ${file.name}`;
+
+    const optimisticMsg = {
+      id: tempId,
+      sessionId,
+      senderName: currentName,
+      content: defaultContent,
+      imageUrl: previewUrl,
+      fileUrl: previewUrl,
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type || (file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : ''),
+      isUploading: true,
+      isFromAdmin: false,
+      isReadByAdmin: false,
+      isReadByUser: true,
+      createdAt: new Date().toISOString()
+    };
+
+    isAtBottomRef.current = true;
+    setShowScrollBottomBtn(false);
+    setHasNewUnreadWhileScrolled(false);
+    setMessages((prev) => [...prev, optimisticMsg]);
+    scrollToBottom(true, true);
+
+    try {
+      setIsUploadingAttachment(true);
+      const uploadRes = await uploadChatAttachment(file);
+
+      const payloadToSend = {
+        sessionId,
+        senderName: currentName,
+        content: defaultContent,
+        imageUrl: uploadRes.isImage ? uploadRes.url : null,
+        fileUrl: uploadRes.url,
+        fileName: uploadRes.fileName,
+        fileSize: uploadRes.fileSize,
+        fileType: uploadRes.fileType,
+        isFromAdmin: false
+      };
+
+      if (hubConnectionRef.current && isConnected) {
+        const saved = await hubConnectionRef.current.invoke(
+          'SendMessage',
+          sessionId,
+          currentName,
+          defaultContent,
+          false,
+          null,
+          null,
+          null,
+          null,
+          payloadToSend.imageUrl,
+          payloadToSend.fileUrl,
+          payloadToSend.fileName,
+          payloadToSend.fileSize,
+          payloadToSend.fileType
+        );
+        if (saved) {
+          setMessages((prev) => prev.map((m) => (m.id === tempId ? saved : m)));
+        }
+      } else {
+        const saved = await sendChatMessage(payloadToSend);
+        setMessages((prev) => prev.map((m) => (m.id === tempId ? saved : m)));
+      }
+    } catch (err) {
+      console.error('Lỗi khi gửi tệp trực tiếp:', err);
+      alert('Không thể tải tệp lên. Vui lòng thử lại!');
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+    } finally {
+      setIsUploadingAttachment(false);
+      scrollToBottom(true, true);
+    }
+  };
+
+  // Xử lý gửi tin nhắn (kèm tệp/ảnh hoặc chỉ tệp/chỉ text)
   const handleSendMessage = async (textToSend) => {
     const text = (textToSend !== undefined ? textToSend : input).trim();
-    if ((!text && !selectedImageFile) || loading || isUploadingImage) return;
+    if ((!text && !pendingAttachment) || loading || isUploadingAttachment) return;
 
     const currentName = userName.trim() || 'Khách truy cập';
     const targetReply = replyingTo;
-    const currentImageFile = selectedImageFile;
-    const currentPreview = imagePreviewUrl;
+    const currentAttachment = pendingAttachment;
 
     setInput('');
-    setSelectedImageFile(null);
-    setImagePreviewUrl(null);
+    setPendingAttachment(null);
     setReplyingTo(null);
     setActiveMenuMsgId(null);
     setLoading(true);
 
-    let uploadedImageUrl = null;
-    if (currentImageFile) {
-      setIsUploadingImage(true);
+    let uploadRes = null;
+    if (currentAttachment?.file) {
+      setIsUploadingAttachment(true);
       try {
-        uploadedImageUrl = await uploadFile(currentImageFile);
+        uploadRes = await uploadChatAttachment(currentAttachment.file);
       } catch (uploadErr) {
-        console.error('Lỗi khi tải ảnh lên:', uploadErr);
-        alert('Không thể tải ảnh lên. Vui lòng thử lại!');
+        console.error('Lỗi khi tải tệp đính kèm lên:', uploadErr);
+        alert('Không thể tải tệp lên. Vui lòng thử lại!');
         setLoading(false);
-        setIsUploadingImage(false);
-        setSelectedImageFile(currentImageFile);
-        setImagePreviewUrl(currentPreview);
+        setIsUploadingAttachment(false);
+        setPendingAttachment(currentAttachment);
         return;
       } finally {
-        setIsUploadingImage(false);
+        setIsUploadingAttachment(false);
       }
     }
 
-    const finalContent = text || (uploadedImageUrl ? '[Hình ảnh]' : '');
+    const isImage = uploadRes?.isImage;
+    const finalContent = text || (uploadRes ? (isImage ? '[Hình ảnh]' : `[Tệp] ${uploadRes.fileName}`) : '');
     const tempId = Date.now();
     const optimisticMsg = {
       id: tempId,
       sessionId,
       senderName: currentName,
       content: finalContent,
-      imageUrl: uploadedImageUrl,
+      imageUrl: isImage ? uploadRes.url : null,
+      fileUrl: uploadRes?.url || null,
+      fileName: uploadRes?.fileName || null,
+      fileSize: uploadRes?.fileSize || null,
+      fileType: uploadRes?.fileType || null,
       isFromAdmin: false,
       isReadByAdmin: false,
       isReadByUser: true,
@@ -962,7 +1170,11 @@ export default function DirectChatWidget({ isOpen, onClose }) {
           optimisticMsg.replyToId,
           optimisticMsg.replyToSender,
           optimisticMsg.replyToContent,
-          uploadedImageUrl
+          optimisticMsg.imageUrl,
+          optimisticMsg.fileUrl,
+          optimisticMsg.fileName,
+          optimisticMsg.fileSize,
+          optimisticMsg.fileType
         );
         if (saved) {
           setMessages((prev) => prev.map((m) => (m.id === tempId ? saved : m)));
@@ -972,7 +1184,11 @@ export default function DirectChatWidget({ isOpen, onClose }) {
           sessionId,
           senderName: currentName,
           content: finalContent,
-          imageUrl: uploadedImageUrl,
+          imageUrl: optimisticMsg.imageUrl,
+          fileUrl: optimisticMsg.fileUrl,
+          fileName: optimisticMsg.fileName,
+          fileSize: optimisticMsg.fileSize,
+          fileType: optimisticMsg.fileType,
           isFromAdmin: false,
           replyToId: optimisticMsg.replyToId,
           replyToSender: optimisticMsg.replyToSender,
@@ -988,7 +1204,11 @@ export default function DirectChatWidget({ isOpen, onClose }) {
           sessionId,
           senderName: currentName,
           content: finalContent,
-          imageUrl: uploadedImageUrl,
+          imageUrl: optimisticMsg.imageUrl,
+          fileUrl: optimisticMsg.fileUrl,
+          fileName: optimisticMsg.fileName,
+          fileSize: optimisticMsg.fileSize,
+          fileType: optimisticMsg.fileType,
           isFromAdmin: false,
           replyToId: optimisticMsg.replyToId,
           replyToSender: optimisticMsg.replyToSender,
@@ -1211,7 +1431,55 @@ export default function DirectChatWidget({ isOpen, onClose }) {
       ) : (
         /* 3. KHUNG HIỂN THỊ TIN NHẮN */
         <>
-          <div className="relative flex-1 min-h-0 flex flex-col">
+          <div
+            className="relative flex-1 min-h-0 flex flex-col"
+            onDragEnter={(e) => {
+              if (e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+                e.preventDefault();
+                chatDragCounterRef.current++;
+                setIsDraggingOverChat(true);
+              }
+            }}
+            onDragOver={(e) => {
+              if (e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+              }
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              chatDragCounterRef.current--;
+              if (chatDragCounterRef.current <= 0) {
+                chatDragCounterRef.current = 0;
+                setIsDraggingOverChat(false);
+              }
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              chatDragCounterRef.current = 0;
+              setIsDraggingOverChat(false);
+              const files = e.dataTransfer.files;
+              if (files && files.length > 0) {
+                handleSendFileDirectly(files[0]);
+              }
+            }}
+          >
+            {/* OVERLAY THẢ FILE GỬI NGAY (ZALO STYLE) */}
+            {isDraggingOverChat && (
+              <div className="absolute inset-2 z-40 bg-[#0c0e18]/90 backdrop-blur-md border-2 border-dashed border-[#F1D89E] rounded-2xl flex flex-col items-center justify-center p-4 text-center pointer-events-none animate-in fade-in zoom-in-95 duration-150 shadow-[0_0_30px_rgba(241,216,158,0.25)]">
+                <div className="w-14 h-14 rounded-2xl bg-[#F1D89E]/20 text-[#F1D89E] flex items-center justify-center mb-2 shadow-lg animate-bounce">
+                  <UploadCloud className="w-8 h-8" />
+                </div>
+                <h4 className="text-white text-sm font-bold tracking-wide">
+                  Thả file vào đây để gửi ngay
+                </h4>
+                <p className="text-[11px] text-gray-300 mt-1">
+                  Tệp sẽ được tải lên và gửi tự động tới cuộc trò chuyện
+                </p>
+              </div>
+            )}
+
             <div
               ref={messagesContainerRef}
               onScroll={handleScroll}
@@ -1440,37 +1708,44 @@ export default function DirectChatWidget({ isOpen, onClose }) {
             </div>
           )}
 
-          {/* Thanh xem trước ảnh chuẩn bị gửi */}
-          {imagePreviewUrl && (
+          {/* Thanh xem trước tệp chuẩn bị gửi (kèm theo tin nhắn) */}
+          {pendingAttachment && (
             <div className="mx-2.5 sm:mx-3 my-1 p-2 bg-[#161926] border border-[#F1D89E]/40 rounded-xl flex items-center justify-between gap-2 shadow-xl animate-in slide-in-from-bottom-2 duration-200 shrink-0">
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-black/40 border border-white/10 shrink-0">
-                  <img
-                    src={imagePreviewUrl}
-                    alt="Xem trước ảnh"
-                    className="w-full h-full object-cover"
-                  />
-                  {isUploadingImage && (
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                      <Loader2 className="w-4 h-4 text-[#F1D89E] animate-spin" />
-                    </div>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1 text-left">
-                  <div className="text-[11px] font-bold text-[#F1D89E] flex items-center gap-1">
-                    <ImageIcon className="w-3.5 h-3.5" />
-                    <span>Hình ảnh đính kèm</span>
+                {pendingAttachment.isImage && pendingAttachment.previewUrl ? (
+                  <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-black/40 border border-white/10 shrink-0">
+                    <img
+                      src={pendingAttachment.previewUrl}
+                      alt="Xem trước ảnh"
+                      className="w-full h-full object-cover"
+                    />
+                    {isUploadingAttachment && (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <Loader2 className="w-4 h-4 text-[#F1D89E] animate-spin" />
+                      </div>
+                    )}
                   </div>
-                  <p className="text-[10px] text-gray-400 truncate mt-0.5">
-                    {selectedImageFile ? `${selectedImageFile.name} (${(selectedImageFile.size / 1024).toFixed(0)} KB)` : 'Ảnh từ clipboard'}
+                ) : (
+                  <div className={`w-11 h-11 rounded-lg flex flex-col items-center justify-center shrink-0 border font-extrabold text-[9px] tracking-wider shadow-sm ${getFileMeta(pendingAttachment.name, pendingAttachment.type).color}`}>
+                    <FileText className="w-4 h-4 mb-0.5" />
+                    <span className="leading-none text-[8px] truncate max-w-[34px]">{getFileMeta(pendingAttachment.name, pendingAttachment.type).ext}</span>
+                  </div>
+                )}
+                <div className="min-w-0 flex-1 text-left">
+                  <div className="text-[11px] font-bold text-[#F1D89E] flex items-center gap-1.5">
+                    {pendingAttachment.isImage ? <ImageIcon className="w-3.5 h-3.5" /> : <Paperclip className="w-3.5 h-3.5" />}
+                    <span className="truncate">{pendingAttachment.name}</span>
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-0.5 font-medium">
+                    {formatFileSize(pendingAttachment.size)} • Nhập tin nhắn phía dưới rồi bấm Gửi
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={handleRemoveSelectedImage}
-                disabled={isUploadingImage}
-                title="Xóa ảnh đính kèm"
+                onClick={handleRemovePendingAttachment}
+                disabled={isUploadingAttachment}
+                title="Hủy đính kèm"
                 className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition shrink-0 cursor-pointer disabled:opacity-40"
               >
                 <X className="w-4 h-4" />
@@ -1480,14 +1755,61 @@ export default function DirectChatWidget({ isOpen, onClose }) {
 
           {/* Ô NHẬP TIN NHẮN */}
           <form
+            ref={inputFormRef}
             onSubmit={(e) => {
               e.preventDefault();
               handleSendMessage();
             }}
             onPaste={handlePaste}
-            className="p-2.5 sm:p-3 bg-[#11131c] border-t border-white/10 flex gap-2 items-center shrink-0"
+            onDragEnter={(e) => {
+              if (e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+                e.preventDefault();
+                e.stopPropagation();
+                inputDragCounterRef.current++;
+                setIsDraggingOverInput(true);
+              }
+            }}
+            onDragOver={(e) => {
+              if (e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = 'copy';
+              }
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              inputDragCounterRef.current--;
+              if (inputDragCounterRef.current <= 0) {
+                inputDragCounterRef.current = 0;
+                setIsDraggingOverInput(false);
+              }
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              inputDragCounterRef.current = 0;
+              setIsDraggingOverInput(false);
+              const files = e.dataTransfer.files;
+              if (files && files.length > 0) {
+                handleAttachPendingFile(files[0]);
+              }
+            }}
+            className={`p-2.5 sm:p-3 bg-[#11131c] border-t border-white/10 flex gap-2 items-center shrink-0 relative transition-colors ${
+              isDraggingOverInput ? 'bg-[#1e2235] ring-2 ring-[#F1D89E]' : ''
+            }`}
           >
-            {/* Input file ẩn */}
+            {/* OVERLAY KÉO THẢ VÀO Ô NHẬP TIN NHẮN (CHƯA GỬI NGAY, ĐÍNH KÈM ĐỂ GÕ THÊM TIN NHẮN) */}
+            {isDraggingOverInput && (
+              <div className="absolute inset-1 z-30 bg-[#151928]/95 border-2 border-dashed border-[#F1D89E] rounded-xl flex items-center justify-center gap-2 pointer-events-none animate-in fade-in duration-100">
+                <Paperclip className="w-4 h-4 text-[#F1D89E] animate-pulse" />
+                <span className="text-xs font-bold text-[#F1D89E]">
+                  Thả vào đây để đính kèm & nhập tin nhắn kèm
+                </span>
+              </div>
+            )}
+
+            {/* Input file ẩn cho ảnh */}
             <input
               ref={fileInputRef}
               type="file"
@@ -1496,12 +1818,31 @@ export default function DirectChatWidget({ isOpen, onClose }) {
               className="hidden"
             />
 
+            {/* Input file ẩn cho mọi loại tệp */}
+            <input
+              ref={generalFileInputRef}
+              type="file"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+
+            {/* Nút đính kèm tệp */}
+            <button
+              type="button"
+              onClick={() => generalFileInputRef.current?.click()}
+              disabled={loading || isUploadingAttachment}
+              title="Đính kèm tệp (PDF, Word, Excel, ZIP, v.v.)"
+              className="p-2 text-gray-400 hover:text-[#F1D89E] hover:bg-white/5 rounded-xl transition cursor-pointer shrink-0 disabled:opacity-30"
+            >
+              <Paperclip className="w-4 h-4" />
+            </button>
+
             {/* Nút đính kèm ảnh */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={loading || isUploadingImage}
-              title="Gửi hình ảnh (hoặc dán Ctrl+V)"
+              disabled={loading || isUploadingAttachment}
+              title="Gửi hình ảnh"
               className="p-2 text-gray-400 hover:text-[#F1D89E] hover:bg-white/5 rounded-xl transition cursor-pointer shrink-0 disabled:opacity-30"
             >
               <ImageIcon className="w-4 h-4" />
@@ -1515,8 +1856,8 @@ export default function DirectChatWidget({ isOpen, onClose }) {
               placeholder={
                 replyingTo
                   ? 'Nhập câu trả lời...'
-                  : selectedImageFile
-                  ? 'Thêm chú thích cho ảnh...'
+                  : pendingAttachment
+                  ? 'Thêm tin nhắn kèm cho tệp... (hoặc bấm Gửi)'
                   : `Nhắn tin với tư cách "${userName}"...`
               }
               maxLength={1000}
@@ -1524,11 +1865,11 @@ export default function DirectChatWidget({ isOpen, onClose }) {
             />
             <button
               type="submit"
-              disabled={loading || isUploadingImage || (!input.trim() && !selectedImageFile)}
+              disabled={loading || isUploadingAttachment || (!input.trim() && !pendingAttachment)}
               className="bg-gradient-to-r from-[#F1D89E] to-[#d8b868] hover:opacity-90 disabled:opacity-30 text-black p-2.5 rounded-xl transition font-bold shadow-md shadow-[#F1D89E]/20 cursor-pointer flex items-center justify-center shrink-0"
               title="Gửi tin nhắn"
             >
-              {loading || isUploadingImage ? (
+              {loading || isUploadingAttachment ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Send className="w-4 h-4" />

@@ -23,18 +23,34 @@ namespace BlogBackend.Controllers
             }
         }
 
+        private static readonly HashSet<string> BlockedExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".exe", ".bat", ".cmd", ".sh", ".ps1", ".vbs", ".msi", ".dll", ".com", ".scr", ".jar", ".reg", ".pif", ".app", ".dmg", ".bin", ".iso"
+        };
+
+        private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp", ".ico"
+        };
+
+        private static readonly HashSet<string> MediaExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".mp4", ".mov", ".avi", ".webm", ".mkv", ".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac"
+        };
+
         [HttpPost]
         public async Task<IActionResult> UploadImage(IFormFile file)
         {
             if (file == null || file.Length == 0)
                 return BadRequest("Không tìm thấy file hợp lệ.");
 
+            if (file.Length > 30 * 1024 * 1024)
+                return BadRequest("Dung lượng file tối đa là 30MB.");
+
             var extension = Path.GetExtension(file.FileName).ToLower();
-            if (extension != ".jpg" && extension != ".jpeg" && extension != ".png" && extension != ".gif" && extension != ".webp" && extension != ".pdf" &&
-                extension != ".mp4" && extension != ".mov" && extension != ".avi" && extension != ".webm" && 
-                extension != ".mp3" && extension != ".wav" && extension != ".ogg" && extension != ".m4a")
+            if (string.IsNullOrEmpty(extension) || BlockedExtensions.Contains(extension))
             {
-                return BadRequest("Định dạng file không được hỗ trợ.");
+                return BadRequest("Định dạng file không được hỗ trợ vì lý do bảo mật.");
             }
 
             // Nếu ĐÃ cấu hình CLOUDINARY_URL trên Render, upload tự động lên đám mây vĩnh viễn!
@@ -42,29 +58,7 @@ namespace BlogBackend.Controllers
             {
                 using var stream = file.OpenReadStream();
                 
-                if (extension == ".pdf")
-                {
-                    var uploadParams = new RawUploadParams()
-                    {
-                        File = new FileDescription(file.FileName, stream)
-                    };
-                    var uploadResult = await _cloudinary.UploadAsync(uploadParams);
-                    return Ok(new { url = uploadResult.SecureUrl.ToString() });
-                }
-                else if (extension == ".mp4" || extension == ".mov" || extension == ".avi" || extension == ".webm" || 
-                         extension == ".mp3" || extension == ".wav" || extension == ".ogg" || extension == ".m4a")
-                {
-                    var uploadParams = new VideoUploadParams()
-                    {
-                        File = new FileDescription(file.FileName, stream),
-                        UseFilename = true,
-                        UniqueFilename = true,
-                        Overwrite = false
-                    };
-                    var uploadResult = await _cloudinary.UploadAsync(uploadParams);
-                    return Ok(new { url = uploadResult.SecureUrl.ToString() });
-                }
-                else
+                if (ImageExtensions.Contains(extension))
                 {
                     var uploadParams = new ImageUploadParams()
                     {
@@ -74,7 +68,50 @@ namespace BlogBackend.Controllers
                         Overwrite = false
                     };
                     var uploadResult = await _cloudinary.UploadAsync(uploadParams);
-                    return Ok(new { url = uploadResult.SecureUrl.ToString() });
+                    return Ok(new 
+                    { 
+                        url = uploadResult.SecureUrl.ToString(),
+                        fileName = file.FileName,
+                        fileSize = file.Length,
+                        fileType = extension.TrimStart('.')
+                    });
+                }
+                else if (MediaExtensions.Contains(extension))
+                {
+                    var uploadParams = new VideoUploadParams()
+                    {
+                        File = new FileDescription(file.FileName, stream),
+                        UseFilename = true,
+                        UniqueFilename = true,
+                        Overwrite = false
+                    };
+                    var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+                    return Ok(new 
+                    { 
+                        url = uploadResult.SecureUrl.ToString(),
+                        fileName = file.FileName,
+                        fileSize = file.Length,
+                        fileType = extension.TrimStart('.')
+                    });
+                }
+                else
+                {
+                    // Các tệp tài liệu (PDF, Word, Excel, ZIP, TXT, ...) lưu dưới dạng Raw
+                    var uploadParams = new RawUploadParams()
+                    {
+                        File = new FileDescription(file.FileName, stream),
+                        UseFilename = true,
+                        UniqueFilename = true,
+                        Overwrite = false
+                    };
+                    var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+                    return Ok(new 
+                    { 
+                        url = uploadResult.SecureUrl.ToString(),
+                        fileName = file.FileName,
+                        fileSize = file.Length,
+                        fileType = extension.TrimStart('.')
+                    });
                 }
             }
 
@@ -92,7 +129,13 @@ namespace BlogBackend.Controllers
                 await file.CopyToAsync(fileStream);
             }
 
-            return Ok(new { url = $"/uploads/{fileName}" });
+            return Ok(new 
+            { 
+                url = $"/uploads/{fileName}",
+                fileName = file.FileName,
+                fileSize = file.Length,
+                fileType = extension.TrimStart('.')
+            });
         }
 
         [HttpGet("signature")]

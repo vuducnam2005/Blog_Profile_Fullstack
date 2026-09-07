@@ -231,6 +231,17 @@ export function getFullMediaUrl(url) {
 }
 
 /**
+ * Định dạng dung lượng tệp (B, KB, MB, GB)
+ */
+export function formatFileSize(bytes) {
+  if (!bytes || isNaN(bytes) || bytes <= 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+/**
  * API REST: Gửi tin nhắn
  */
 export async function sendChatMessage({
@@ -238,6 +249,10 @@ export async function sendChatMessage({
   senderName,
   content,
   imageUrl = null,
+  fileUrl = null,
+  fileName = null,
+  fileSize = null,
+  fileType = null,
   isFromAdmin = false,
   replyToId = null,
   replyToSender = null,
@@ -249,6 +264,10 @@ export async function sendChatMessage({
     senderName,
     content,
     imageUrl,
+    fileUrl,
+    fileName,
+    fileSize,
+    fileType,
     isFromAdmin,
     replyToId,
     replyToSender,

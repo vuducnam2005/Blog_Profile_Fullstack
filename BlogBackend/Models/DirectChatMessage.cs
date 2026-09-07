@@ -38,6 +38,17 @@ namespace BlogBackend.Models
         // Ảnh đính kèm (URL ảnh Cloudinary hoặc local)
         public string? ImageUrl { get; set; }
 
+        // Tệp đính kèm (File URL, Tên file gốc, Kích thước byte, Loại tệp)
+        public string? FileUrl { get; set; }
+
+        [MaxLength(260)]
+        public string? FileName { get; set; }
+
+        public long? FileSize { get; set; }
+
+        [MaxLength(100)]
+        public string? FileType { get; set; }
+
         // Trạng thái thu hồi tin nhắn
         public bool IsRecalled { get; set; } = false;
     }
