@@ -1089,7 +1089,8 @@ export default function DirectChatWidget({ isOpen, onClose }) {
       }
     } catch (err) {
       console.error('Lỗi khi gửi tệp trực tiếp:', err);
-      alert('Không thể tải tệp lên. Vui lòng thử lại!');
+      const errorMsg = err.response?.data?.message || err.response?.data || err.message || 'Không thể tải tệp lên. Vui lòng thử lại!';
+      alert(typeof errorMsg === 'string' ? errorMsg : 'Không thể tải tệp lên. Vui lòng thử lại!');
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
     } finally {
       setIsUploadingAttachment(false);
@@ -1119,7 +1120,8 @@ export default function DirectChatWidget({ isOpen, onClose }) {
         uploadRes = await uploadChatAttachment(currentAttachment.file);
       } catch (uploadErr) {
         console.error('Lỗi khi tải tệp đính kèm lên:', uploadErr);
-        alert('Không thể tải tệp lên. Vui lòng thử lại!');
+        const errorMsg = uploadErr.response?.data?.message || uploadErr.response?.data || uploadErr.message || 'Không thể tải tệp lên. Vui lòng thử lại!';
+        alert(typeof errorMsg === 'string' ? errorMsg : 'Không thể tải tệp lên. Vui lòng thử lại!');
         setLoading(false);
         setIsUploadingAttachment(false);
         setPendingAttachment(currentAttachment);

@@ -41,9 +41,7 @@ export const uploadChatAttachment = async (file) => {
                 formData.append('timestamp', timestamp);
                 formData.append('signature', signature);
 
-                const uploadRes = await axios.post(cloudinaryUrl, formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
+                const uploadRes = await axios.post(cloudinaryUrl, formData);
 
                 if (uploadRes.data?.secure_url) {
                     console.log('[uploadChatAttachment] Upload Cloudinary thành công:', uploadRes.data.secure_url);
@@ -63,9 +61,7 @@ export const uploadChatAttachment = async (file) => {
         // 3. Fallback: Upload qua endpoint /api/uploads của backend server
         const formData = new FormData();
         formData.append('file', file);
-        const res = await axios.post(`${API_BASE_URL}/api/uploads`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        const res = await axios.post(`${API_BASE_URL}/api/uploads`, formData);
 
         console.log('[uploadChatAttachment] Upload server thành công:', res.data.url);
         return {
