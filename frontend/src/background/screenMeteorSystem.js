@@ -566,7 +566,8 @@ export function createScreenMeteorSystem({
         }
     }
 
-    let nextEventTime = 18.0 + Math.random() * 2.0;
+    const NATURAL_SCREEN_METEOR_INTERVAL = 60.0; // Chu kỳ tự động xuất hiện quả cầu đập màn hình: 1 phút (60s)
+    let nextEventTime = NATURAL_SCREEN_METEOR_INTERVAL;
 
     function trigger(isManual = true) {
         spawnMeteor(isManual);
@@ -577,7 +578,7 @@ export function createScreenMeteorSystem({
         nextEventTime -= dt;
         if (nextEventTime <= 0) {
             spawnMeteor(false);
-            nextEventTime = 18.0 + Math.random() * 2.0;
+            nextEventTime = NATURAL_SCREEN_METEOR_INTERVAL;
         }
 
         // 2. Update active impact effects

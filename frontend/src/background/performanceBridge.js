@@ -322,7 +322,8 @@ export function startBlackHoleBackground() {
     const handleChatOpenChange = (event) => {
         const isChatOpen = Boolean(event.detail?.isOpen);
         isChatOpenState = isChatOpen;
-        const shouldBeVisible = !document.hidden && !isChatOpen;
+        // Giữ hiệu ứng 3D vũ trụ tiếp tục hoạt động sinh động ngay cả khi người dùng mở chat
+        const shouldBeVisible = !document.hidden;
         pendingInput.visible = shouldBeVisible;
         if (worker && (mode === 'worker' || mode === 'worker-starting')) {
             worker.postMessage({ type: 'visibility', visible: shouldBeVisible });

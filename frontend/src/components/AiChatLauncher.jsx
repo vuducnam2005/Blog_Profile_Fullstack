@@ -138,7 +138,7 @@ export default function AiChatLauncher() {
     window.dispatchEvent(new CustomEvent('chatOpenChange', { detail: { isOpen } }));
   };
 
-  // Tạm dừng Three.js canvas phía sau khi mở chat để giải phóng 100% CPU/GPU cho việc gõ phím mượt mà
+  // Thông báo trạng thái mở chat để tối ưu kích thước giao diện/bàn phím
   useEffect(() => {
     const isAnyChatOpen = isAiOpen || isDirectOpen;
     notifyChatOpen(isAnyChatOpen);
@@ -332,7 +332,7 @@ export default function AiChatLauncher() {
       <AvatarButton
         buttonRef={avatarRef}
         isOpen={isAnyChatOpen}
-        isPaused={isAnyChatOpen}
+        isPaused={false}
         unreadCount={unreadCount}
         isMenuOpen={isMenuOpen}
         onClick={handleAvatarClick}
