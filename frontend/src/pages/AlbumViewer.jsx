@@ -148,8 +148,8 @@ export default function AlbumViewer() {
 
       {/* ====== CONTENT ====== */}
       <div
-        className="w-full relative z-10 min-h-screen"
-        style={{ padding: '80px 16px 40px 16px' }}
+        className="w-full relative z-30 min-h-screen"
+        style={{ padding: '80px 16px 40px 16px', pointerEvents: 'auto' }}
       >
         <div className="max-w-6xl mx-auto">
 
@@ -162,8 +162,9 @@ export default function AlbumViewer() {
             ].map((btn) => (
               <button
                 key={btn.key}
+                type="button"
                 onClick={() => setFilter(btn.key)}
-                className={`flex items-center gap-2 px-5 py-2 rounded-full font-bold text-sm transition-all duration-300 ${filter === btn.key
+                className={`flex items-center gap-2 px-5 py-2 rounded-full font-bold text-sm cursor-pointer select-none transition-all duration-300 ${filter === btn.key
                     ? 'bg-[#F1D89E] text-black shadow-[0_0_20px_rgba(241,216,158,0.5)] scale-105'
                     : 'bg-white/5 text-gray-400 border border-white/10 hover:border-[#F1D89E]/50 hover:text-[#F1D89E]'
                   }`}
@@ -188,8 +189,18 @@ export default function AlbumViewer() {
                 return (
                   <div
                     key={index}
-                    className="album-item nexbot-content-card relative group rounded-xl overflow-hidden cursor-pointer bg-black/40 border border-white/10 hover:border-[#F1D89E]/40 transition-all duration-300 hover:shadow-[0_0_20px_rgba(241,216,158,0.15)]"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Xem ${item.type === 'video' ? 'video' : 'ảnh'} ${index + 1}`}
+                    className="album-item nexbot-content-card relative group rounded-xl overflow-hidden cursor-pointer bg-black/40 border border-white/10 hover:border-[#F1D89E]/40 transition-all duration-300 hover:shadow-[0_0_20px_rgba(241,216,158,0.15)] select-none"
+                    style={{ pointerEvents: 'auto' }}
                     onClick={() => openLightbox(index)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openLightbox(index);
+                      }
+                    }}
                   >
                     {item.type === 'video' ? (
                       <div className="relative">
@@ -202,7 +213,10 @@ export default function AlbumViewer() {
                           className="w-full album-thumb-video rounded-xl"
                         />
                         {/* Play overlay */}
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/50 transition-colors rounded-xl">
+                        <div 
+                          className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/50 transition-colors rounded-xl pointer-events-none"
+                          style={{ pointerEvents: 'none' }}
+                        >
                           <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-[#F1D89E]/90 flex items-center justify-center shadow-[0_0_15px_rgba(241,216,158,0.5)] group-hover:scale-110 transition-transform">
                             <Play className="w-5 h-5 md:w-6 md:h-6 text-black ml-0.5" />
                           </div>
@@ -220,10 +234,16 @@ export default function AlbumViewer() {
                     )}
 
                     {/* Hover glow border */}
-                    <div className="absolute inset-0 pointer-events-none rounded-xl border-2 border-transparent group-hover:border-[#F1D89E]/30 transition-colors duration-300"></div>
+                    <div 
+                      className="absolute inset-0 pointer-events-none rounded-xl border-2 border-transparent group-hover:border-[#F1D89E]/30 transition-colors duration-300"
+                      style={{ pointerEvents: 'none' }}
+                    />
 
                     {/* Type badge */}
-                    <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm rounded-full px-2 py-0.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div 
+                      className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm rounded-full px-2 py-0.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                      style={{ pointerEvents: 'none' }}
+                    >
                       {item.type === 'video' ? (
                         <Film className="w-3 h-3 text-[#F1D89E]" />
                       ) : (
@@ -242,27 +262,32 @@ export default function AlbumViewer() {
       {/* ====== LIGHTBOX MODAL ====== */}
       {lightbox.open && currentItem && (
         <div
-          className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center"
+          className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center select-none"
           onClick={closeLightbox}
+          style={{ pointerEvents: 'auto' }}
         >
           {/* Close button */}
           <button
+            type="button"
             onClick={closeLightbox}
-            className="absolute top-4 right-4 md:top-6 md:right-6 z-[110] text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-all hover:scale-110"
+            aria-label="Đóng"
+            className="absolute top-4 right-4 md:top-6 md:right-6 z-[110] text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-all hover:scale-110 cursor-pointer"
           >
             <X className="w-6 h-6" />
           </button>
 
           {/* Counter */}
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 md:top-6 z-[110] text-gray-400 text-sm font-medium bg-black/50 backdrop-blur-sm px-4 py-1.5 rounded-full">
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 md:top-6 z-[110] text-gray-400 text-sm font-medium bg-black/50 backdrop-blur-sm px-4 py-1.5 rounded-full select-none">
             {lightbox.index + 1} / {filteredAlbums.length}
           </div>
 
           {/* Navigate prev */}
           {filteredAlbums.length > 1 && (
             <button
+              type="button"
               onClick={(e) => { e.stopPropagation(); goPrev(); }}
-              className="absolute left-2 md:left-6 z-[110] text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 md:p-3 transition-all hover:scale-110"
+              aria-label="Trước"
+              className="absolute left-2 md:left-6 z-[110] text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 md:p-3 transition-all hover:scale-110 cursor-pointer"
             >
               <ChevronLeft className="w-6 h-6 md:w-8 md:h-8" />
             </button>
@@ -271,8 +296,10 @@ export default function AlbumViewer() {
           {/* Navigate next */}
           {filteredAlbums.length > 1 && (
             <button
+              type="button"
               onClick={(e) => { e.stopPropagation(); goNext(); }}
-              className="absolute right-2 md:right-6 z-[110] text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 md:p-3 transition-all hover:scale-110"
+              aria-label="Tiếp theo"
+              className="absolute right-2 md:right-6 z-[110] text-white/60 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 md:p-3 transition-all hover:scale-110 cursor-pointer"
             >
               <ChevronRight className="w-6 h-6 md:w-8 md:h-8" />
             </button>

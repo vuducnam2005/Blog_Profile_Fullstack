@@ -786,12 +786,13 @@ export default function GlassShatterOverlay() {
     return (
         <div
             className="fixed inset-0 pointer-events-none z-[25] overflow-hidden"
-            style={shakeStyle}
+            style={{ ...shakeStyle, pointerEvents: 'none' }}
             aria-hidden="true"
         >
             <canvas
                 ref={canvasRef}
                 className="w-full h-full block pointer-events-none"
+                style={{ pointerEvents: 'none' }}
             />
         </div>
     );

@@ -267,6 +267,13 @@ body {
   pointer-events: auto;
 }
 
+/* Đảm bảo class pointer-events-none của Tailwind luôn có hiệu lực tuyệt đối bên trong #root */
+#root .pointer-events-none,
+#root [class*="pointer-events-none"],
+.pointer-events-none {
+  pointer-events: none !important;
+}
+
 /* ==========================================
    BLOG INTERACTION ANIMATIONS
    ========================================== */
