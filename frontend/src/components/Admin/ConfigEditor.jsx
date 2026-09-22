@@ -19,6 +19,10 @@ export default function ConfigEditor() {
     const [experienceDropIndex, setExperienceDropIndex] = useState(null);
     const draggedExperienceIndexRef = useRef(null);
 
+    const [draggedSkillCategoryIndex, setDraggedSkillCategoryIndex] = useState(null);
+    const [skillCategoryDropIndex, setSkillCategoryDropIndex] = useState(null);
+    const draggedSkillCategoryIndexRef = useRef(null);
+
     const heroRef = useRef(null);
     const aboutRef = useRef(null);
     const projectsRef = useRef(null);
@@ -67,6 +71,11 @@ export default function ConfigEditor() {
                         { id: 2, title: 'Frontend', items: ['ReactJS', 'Vite', 'Three.js', 'TailwindCSS', 'HTML / CSS', 'JavaScript'] },
                         { id: 3, title: 'Khác (Tools/Soft)', items: ['Word/Excel', 'Giao tiếp tốt', 'Tư duy Logic', 'Đọc hiểu English', 'Làm việc nhóm'] }
                     ];
+                } else {
+                    fetchedConfig.skillsCategories = fetchedConfig.skillsCategories.map((cat, idx) => ({
+                        ...cat,
+                        id: cat.id || Date.now() + idx
+                    }));
                 }
                 if (!fetchedConfig.stats || fetchedConfig.stats.length === 0) {
                     fetchedConfig.stats = [
@@ -164,6 +173,55 @@ export default function ConfigEditor() {
         const toIndex = index + direction;
         const lastIndex = (config.experiences?.length || 0) - 1;
         if (toIndex >= 0 && toIndex <= lastIndex) reorderExperience(index, toIndex);
+    };
+
+    const reorderSkillCategory = (fromIndex, toIndex) => {
+        if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+
+        setConfig(prev => {
+            const skillsCategories = [...(prev.skillsCategories || [])];
+            if (fromIndex >= skillsCategories.length || toIndex >= skillsCategories.length) return prev;
+
+            const [movedItem] = skillsCategories.splice(fromIndex, 1);
+            skillsCategories.splice(toIndex, 0, movedItem);
+            return { ...prev, skillsCategories };
+        });
+    };
+
+    const handleSkillCategoryDragStart = (event, index) => {
+        draggedSkillCategoryIndexRef.current = index;
+        setDraggedSkillCategoryIndex(index);
+        setSkillCategoryDropIndex(index);
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', String(index));
+
+        const card = event.currentTarget.closest('[data-skill-category-card]');
+        if (card) event.dataTransfer.setDragImage(card, 32, 32);
+    };
+
+    const handleSkillCategoryDrop = (event, toIndex) => {
+        event.preventDefault();
+        const fromIndex = draggedSkillCategoryIndexRef.current;
+        if (fromIndex !== null) reorderSkillCategory(fromIndex, toIndex);
+        draggedSkillCategoryIndexRef.current = null;
+        setDraggedSkillCategoryIndex(null);
+        setSkillCategoryDropIndex(null);
+    };
+
+    const handleSkillCategoryDragEnd = () => {
+        draggedSkillCategoryIndexRef.current = null;
+        setDraggedSkillCategoryIndex(null);
+        setSkillCategoryDropIndex(null);
+    };
+
+    const handleSkillCategoryHandleKeyDown = (event, index) => {
+        if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+
+        event.preventDefault();
+        const direction = event.key === 'ArrowUp' ? -1 : 1;
+        const toIndex = index + direction;
+        const lastIndex = (config.skillsCategories?.length || 0) - 1;
+        if (toIndex >= 0 && toIndex <= lastIndex) reorderSkillCategory(index, toIndex);
     };
 
     const handleSkillsChange = (e) => {
@@ -630,14 +688,44 @@ export default function ConfigEditor() {
                         </button>
                     </div>
 
+                    <p className="mb-4 text-sm text-gray-400">
+                        Giữ và kéo biểu tượng <GripVertical className="inline h-4 w-4 text-[#F1D89E]" /> để đổi thứ tự, sau đó bấm Cập nhật để lưu.
+                    </p>
+
                     <div className="space-y-4">
                         {config.skillsCategories?.map((cat, index) => (
-                            <div key={cat.id || index} className="relative bg-white/5 p-5 rounded-2xl border border-white/10 group hover:border-[#F1D89E]/30 transition-all">
+                            <div
+                                key={cat.id || index}
+                                data-skill-category-card
+                                onDragEnter={() => setSkillCategoryDropIndex(index)}
+                                onDragOver={(event) => {
+                                    event.preventDefault();
+                                    event.dataTransfer.dropEffect = 'move';
+                                }}
+                                onDrop={(event) => handleSkillCategoryDrop(event, index)}
+                                className={`relative bg-white/5 p-5 rounded-2xl border group transition-all ${
+                                    skillCategoryDropIndex === index && draggedSkillCategoryIndex !== null && draggedSkillCategoryIndex !== index
+                                        ? 'border-[#F1D89E] bg-[#F1D89E]/10 shadow-[0_0_24px_rgba(241,216,158,0.18)]'
+                                        : 'border-white/10 hover:border-[#F1D89E]/30'
+                                } ${draggedSkillCategoryIndex === index ? 'opacity-60' : ''}`}
+                            >
+                                <button
+                                    type="button"
+                                    draggable
+                                    onDragStart={(event) => handleSkillCategoryDragStart(event, index)}
+                                    onDragEnd={handleSkillCategoryDragEnd}
+                                    onKeyDown={(event) => handleSkillCategoryHandleKeyDown(event, index)}
+                                    className="absolute top-4 right-16 cursor-grab active:cursor-grabbing text-gray-400 bg-white/5 p-2 rounded-lg hover:bg-[#F1D89E]/20 hover:text-[#F1D89E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F1D89E]"
+                                    aria-label={`Kéo để đổi vị trí danh mục ${cat.title || index + 1}. Dùng phím mũi tên lên hoặc xuống để sắp xếp.`}
+                                    title="Giữ và kéo để đổi thứ tự"
+                                >
+                                    <GripVertical className="w-5 h-5" />
+                                </button>
                                 <button onClick={() => handleRemoveArrayItem('skillsCategories', index)} className="absolute top-4 right-4 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity bg-red-400/10 p-2 rounded-lg hover:bg-red-400 hover:text-white">
                                     <Trash2 className="w-5 h-5"/>
                                 </button>
                                 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-24">
                                     <div className="md:col-span-1">
                                         <label className="text-[10px] text-[#F1D89E] font-bold uppercase tracking-wider mb-1 block">Tên danh mục</label>
                                         <input value={cat.title || ""} onChange={e => handleArrayChange('skillsCategories', index, 'title', e.target.value)} className="w-full bg-black/40 border border-transparent p-2 rounded-lg text-white font-bold outline-none focus:border-[#F1D89E]" placeholder="Ví dụ: BACKEND & DATABASE" />
