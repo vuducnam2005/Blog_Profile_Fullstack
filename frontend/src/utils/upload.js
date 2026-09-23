@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 
+const REMOTE_FALLBACK_API_URL = 'https://blog-api-ducnam.onrender.com';
+
 /**
  * Uploads a file for chat attachment with full metadata
  * @param {File} file The file object to upload
@@ -14,13 +16,23 @@ export const uploadChatAttachment = async (file) => {
         const extension = fileName.includes('.') ? fileName.split('.').pop().toLowerCase() : '';
         const isImage = fileType.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(extension);
 
-        // 1. Lấy thông tin chữ ký từ backend
+        // 1. Lấy thông tin chữ ký từ backend (Ưu tiên API hiện tại, fallback sang server remote nếu local không bật)
         let sigData = null;
         try {
-            const sigRes = await axios.get(`${API_BASE_URL}/api/uploads/signature`);
+            const sigRes = await axios.get(`${API_BASE_URL}/api/uploads/signature`, { timeout: 6000 });
             sigData = sigRes.data;
         } catch (sigErr) {
-            console.warn('[uploadChatAttachment] Không thể lấy chữ ký Cloudinary, chuyển sang upload qua server:', sigErr);
+            console.warn('[uploadChatAttachment] Không thể lấy chữ ký Cloudinary từ', API_BASE_URL, sigErr.message);
+            // Nếu đang chạy local (localhost) mà backend C# chưa bật, lấy chữ ký từ server Render production
+            if (API_BASE_URL !== REMOTE_FALLBACK_API_URL) {
+                try {
+                    console.log('[uploadChatAttachment] Thử lấy chữ ký Cloudinary từ máy chủ dự phòng...');
+                    const fallbackSigRes = await axios.get(`${REMOTE_FALLBACK_API_URL}/api/uploads/signature`, { timeout: 12000 });
+                    sigData = fallbackSigRes.data;
+                } catch (fallbackErr) {
+                    console.warn('[uploadChatAttachment] Lấy chữ ký từ máy chủ dự phòng cũng thất bại:', fallbackErr.message);
+                }
+            }
         }
 
         // 2. Thử upload trực tiếp lên Cloudinary nếu có cấu hình
@@ -61,7 +73,19 @@ export const uploadChatAttachment = async (file) => {
         // 3. Fallback: Upload qua endpoint /api/uploads của backend server
         const formData = new FormData();
         formData.append('file', file);
-        const res = await axios.post(`${API_BASE_URL}/api/uploads`, formData);
+
+        let res = null;
+        try {
+            res = await axios.post(`${API_BASE_URL}/api/uploads`, formData);
+        } catch (serverErr) {
+            // Nếu upload lên local server thất bại và có remote fallback, thử upload lên server Render
+            if (API_BASE_URL !== REMOTE_FALLBACK_API_URL) {
+                console.warn('[uploadChatAttachment] Upload lên local thất bại, thử upload lên server Render...');
+                res = await axios.post(`${REMOTE_FALLBACK_API_URL}/api/uploads`, formData);
+            } else {
+                throw serverErr;
+            }
+        }
 
         console.log('[uploadChatAttachment] Upload server thành công:', res.data.url);
         return {

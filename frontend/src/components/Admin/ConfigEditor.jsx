@@ -1,12 +1,13 @@
 import { useState, useEffect, useContext, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import axios from 'axios';
-import { Save, Plus, Trash2, ArrowLeft, GripVertical } from 'lucide-react';
+import { Save, Plus, Trash2, ArrowLeft, GripVertical, Upload, Loader2, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../../config';
 import { PortfolioContext } from '../../context/PortfolioContext';
 import { uploadFile } from '../../utils/upload';
 import OptimizedImage from '../OptimizedImage';
+import fallbackAvatarImg from '../../assets/avatar.png';
 
 export default function ConfigEditor() {
     const navigate = useNavigate();
@@ -15,6 +16,10 @@ export default function ConfigEditor() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [uploadingMedia, setUploadingMedia] = useState(false);
+    const [uploadingAvatar, setUploadingAvatar] = useState(false);
+    const [avatarPreview, setAvatarPreview] = useState(null);
+    const [avatarStatus, setAvatarStatus] = useState(null);
+    const avatarInputRef = useRef(null);
     const [draggedExperienceIndex, setDraggedExperienceIndex] = useState(null);
     const [experienceDropIndex, setExperienceDropIndex] = useState(null);
     const draggedExperienceIndexRef = useRef(null);
@@ -92,6 +97,14 @@ export default function ConfigEditor() {
                 setLoading(false);
             });
     }, []);
+
+    useEffect(() => {
+        return () => {
+            if (avatarPreview && avatarPreview.startsWith('blob:')) {
+                URL.revokeObjectURL(avatarPreview);
+            }
+        };
+    }, [avatarPreview]);
 
     const handleChange = (section, field, value) => {
         setConfig(prev => ({
@@ -332,10 +345,10 @@ export default function ConfigEditor() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white/5 p-6 rounded-2xl border border-white/10">
                         {/* Khu vực Upload Avatar */}
                         <div className="md:col-span-2 flex flex-col md:flex-row items-center gap-6 mb-2 bg-black/40 p-5 rounded-2xl border border-white/5 shadow-inner">
-                            <div className="w-24 h-24 rounded-full border-2 border-[#F1D89E] shadow-[0_0_15px_rgba(241,216,158,0.2)] bg-black overflow-hidden shrink-0 flex items-center justify-center">
-                                {config.hero?.avatar ? (
+                            <div className="w-24 h-24 rounded-full border-2 border-[#F1D89E] shadow-[0_0_15px_rgba(241,216,158,0.2)] bg-black overflow-hidden shrink-0 flex items-center justify-center relative">
+                                {avatarPreview || config.hero?.avatar ? (
                                     <OptimizedImage
-                                        src={config.hero.avatar}
+                                        src={avatarPreview || config.hero.avatar}
                                         alt="Avatar preview"
                                         widths={[96, 192, 288]}
                                         sizes="96px"
@@ -343,29 +356,139 @@ export default function ConfigEditor() {
                                         className="w-full h-full object-cover"
                                     />
                                 ) : (
-                                    <span className="text-[10px] text-gray-500">Trống</span>
+                                    <img 
+                                        src={fallbackAvatarImg} 
+                                        alt="Avatar mặc định" 
+                                        className="w-full h-full object-cover opacity-60"
+                                    />
+                                )}
+                                {uploadingAvatar && (
+                                    <div className="absolute inset-0 bg-black/75 flex flex-col items-center justify-center gap-1 z-10 backdrop-blur-[2px]">
+                                        <Loader2 className="w-6 h-6 text-[#F1D89E] animate-spin" />
+                                        <span className="text-[9px] text-[#F1D89E] font-bold">Đang tải...</span>
+                                    </div>
                                 )}
                             </div>
-                            <div className="flex-1 w-full">
-                                <label className="text-[10px] text-[#F1D89E] font-bold uppercase tracking-wider mb-2 block">Cập Nhật Ảnh Đại Diện Mới (Avatar)</label>
-                                <input 
-                                    type="file" 
-                                    accept="image/*"
-                                    onChange={async (e) => {
-                                        const file = e.target.files[0];
-                                        if (!file) return;
-                                        const formData = new FormData();
-                                        formData.append('file', file);
-                                        try {
-                                            const url = await uploadFile(file);
-                                            handleChange("hero", "avatar", url);
-                                        } catch (err) {
-                                            console.error("Lỗi tải ảnh:", err);
-                                            alert("Lỗi khi tải ảnh lên máy chủ. Bạn nhớ bật Server C# Backend nhé!");
-                                        }
-                                    }}
-                                    className="w-full text-sm text-gray-400 file:mr-4 file:py-2.5 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-black file:bg-[#F1D89E] file:text-black hover:file:bg-white transition-all file:cursor-pointer cursor-pointer bg-black/40 border border-white/10 rounded-xl"
-                                />
+                            <div className="flex-1 w-full space-y-3">
+                                <div>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className="text-[10px] text-[#F1D89E] font-bold uppercase tracking-wider block">
+                                            Cập Nhật Ảnh Đại Diện Mới (Avatar)
+                                        </label>
+                                        {!config.hero?.avatar && !avatarPreview && (
+                                            <span className="text-[10px] text-gray-500 italic">
+                                                (Đang dùng ảnh đại diện mặc định)
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <input 
+                                            ref={avatarInputRef}
+                                            type="file" 
+                                            accept="image/*"
+                                            disabled={uploadingAvatar}
+                                            onChange={async (e) => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+
+                                                if (!file.type.startsWith('image/')) {
+                                                    alert("Vui lòng chọn tệp hình ảnh hợp lệ (jpg, png, webp, gif...)");
+                                                    e.target.value = '';
+                                                    return;
+                                                }
+
+                                                if (file.size > 20 * 1024 * 1024) {
+                                                    alert("Dung lượng ảnh tối đa là 20MB. Vui lòng chọn ảnh nhỏ hơn.");
+                                                    e.target.value = '';
+                                                    return;
+                                                }
+
+                                                // Tạo preview cục bộ ngay lập tức để người dùng thấy ảnh liền
+                                                const localUrl = URL.createObjectURL(file);
+                                                setAvatarPreview(localUrl);
+                                                setUploadingAvatar(true);
+                                                setAvatarStatus(null);
+
+                                                try {
+                                                    const url = await uploadFile(file);
+                                                    handleChange("hero", "avatar", url);
+                                                    setAvatarStatus({ 
+                                                        type: 'success', 
+                                                        message: `Tải ảnh lên đám mây thành công: ${file.name}` 
+                                                    });
+                                                } catch (err) {
+                                                    console.error("Lỗi tải ảnh đại diện:", err);
+                                                    const errorMsg = err.response?.data?.message || err.response?.data || err.message || "Không thể tải ảnh lên máy chủ.";
+                                                    setAvatarStatus({ 
+                                                        type: 'error', 
+                                                        message: typeof errorMsg === 'string' ? errorMsg : "Lỗi khi tải ảnh lên." 
+                                                    });
+                                                    alert(`Lỗi tải ảnh: ${typeof errorMsg === 'string' ? errorMsg : 'Vui lòng thử lại!'}`);
+                                                    setAvatarPreview(null);
+                                                } finally {
+                                                    setUploadingAvatar(false);
+                                                    e.target.value = '';
+                                                }
+                                            }}
+                                            className="flex-1 min-w-[200px] text-sm text-gray-400 file:mr-4 file:py-2.5 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-black file:bg-[#F1D89E] file:text-black hover:file:bg-white transition-all file:cursor-pointer cursor-pointer bg-black/40 border border-white/10 rounded-xl disabled:opacity-50"
+                                        />
+                                        {(avatarPreview || config.hero?.avatar) && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (avatarPreview && avatarPreview.startsWith('blob:')) {
+                                                        URL.revokeObjectURL(avatarPreview);
+                                                    }
+                                                    setAvatarPreview(null);
+                                                    handleChange("hero", "avatar", "");
+                                                    setAvatarStatus(null);
+                                                    if (avatarInputRef.current) avatarInputRef.current.value = '';
+                                                }}
+                                                className="px-3.5 py-2.5 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs font-semibold flex items-center gap-1.5 transition-all"
+                                                title="Xóa ảnh tùy chỉnh, quay về avatar mặc định"
+                                            >
+                                                <X className="w-4 h-4" /> Xóa ảnh
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Đường dẫn ảnh trực tiếp (cho phép xem hoặc dán link nếu muốn) */}
+                                <div>
+                                    <label className="text-[10px] text-gray-400 uppercase tracking-wider block mb-1">
+                                        Hoặc nhập trực tiếp URL ảnh đại diện:
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={config.hero?.avatar || ''}
+                                        onChange={(e) => {
+                                            setAvatarPreview(null);
+                                            handleChange("hero", "avatar", e.target.value);
+                                        }}
+                                        placeholder="https://res.cloudinary.com/... hoặc /assets/avatar.png"
+                                        className="w-full bg-black/50 border border-white/10 px-3 py-2 rounded-lg text-xs text-gray-300 font-mono focus:border-[#F1D89E] outline-none"
+                                    />
+                                </div>
+
+                                {/* Trạng thái thông báo tải ảnh */}
+                                {uploadingAvatar && (
+                                    <p className="text-xs text-[#F1D89E] font-medium flex items-center gap-2 animate-pulse">
+                                        <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                                        Đang tải ảnh lên Cloudinary, vui lòng chờ trong giây lát...
+                                    </p>
+                                )}
+                                {avatarStatus?.type === 'success' && (
+                                    <p className="text-xs text-emerald-400 font-semibold flex items-center gap-1.5">
+                                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                                        {avatarStatus.message}
+                                    </p>
+                                )}
+                                {avatarStatus?.type === 'error' && (
+                                    <p className="text-xs text-red-400 font-medium flex items-center gap-1.5">
+                                        <AlertCircle className="w-4 h-4 shrink-0" />
+                                        {avatarStatus.message}
+                                    </p>
+                                )}
                             </div>
                         </div>
                         {/* Khu vực Upload CV */}
@@ -379,14 +502,14 @@ export default function ConfigEditor() {
                                         onChange={async (e) => {
                                             const file = e.target.files[0];
                                             if (!file) return;
-                                            const formData = new FormData();
-                                            formData.append('file', file);
                                             try {
                                                 const url = await uploadFile(file);
                                                 handleChange("hero", "cvUrl", url);
                                             } catch (err) {
                                                 console.error("Lỗi tải CV:", err);
                                                 alert("Lỗi khi tải CV lên máy chủ.");
+                                            } finally {
+                                                e.target.value = '';
                                             }
                                         }}
                                         className="w-full text-sm text-gray-400 file:mr-4 file:py-2.5 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-black file:bg-[#00D0C8] file:text-black hover:file:bg-white transition-all file:cursor-pointer cursor-pointer bg-black/40 border border-white/10 rounded-xl"
