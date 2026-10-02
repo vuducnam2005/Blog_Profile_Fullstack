@@ -37,15 +37,9 @@ self.onmessage = (event) => {
                     isTablet: message.isTablet,
                     prefersReducedMotion: message.prefersReducedMotion,
                     initialInput: message.input,
-                    onScreenImpact: (data) => {
-                        self.postMessage({ type: 'screen_impact', ...data });
-                    },
                 });
                 engine.start();
                 self.postMessage({ type: 'ready' });
-                break;
-            case 'trigger_screen_meteor':
-                engine?.triggerScreenMeteor?.(message);
                 break;
             case 'input':
                 engine?.updateInput(message.input);

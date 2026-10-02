@@ -3,15 +3,10 @@ import { useState, useEffect, useContext, lazy, Suspense } from 'react';
 import Home from './pages/Home';
 import { PortfolioProvider, PortfolioContext } from './context/PortfolioContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { AudioProvider } from './context/AudioContext';
-import { BackgroundProvider, BackgroundContext } from './context/BackgroundContext';
-import AudioPlayer from './components/AudioPlayer';
-import SplineBackground from './components/SplineBackground';
 import BlackHoleBackground from './components/BlackHoleBackground';
 import ScrollProgressBar from './components/ScrollProgressBar';
 import MaintenanceOverlay from './components/MaintenanceOverlay';
 import AiChatLauncher from './components/AiChatLauncher';
-import BackgroundPrompt from './components/BackgroundPrompt';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 
@@ -23,7 +18,6 @@ const AlbumViewer = lazy(() => import('./pages/AlbumViewer'));
 
 function AppContent() {
   const { data } = useContext(PortfolioContext);
-  const { bgMode } = useContext(BackgroundContext);
   const { isAdmin } = useAuth();
   const [bypassedMaintenance, setBypassedMaintenance] = useState(false);
   const location = useLocation();
@@ -59,12 +53,9 @@ function AppContent() {
   }
 
   return (
-    <div className={`app-shell min-h-screen font-sans tracking-wide relative ${
-      bgMode === 'spline' ? 'theme-nexbot' : 'theme-cosmic'
-    }`}>
-      {isNormalRoute && (bgMode === 'spline' ? <SplineBackground /> : <BlackHoleBackground />)}
+    <div className="app-shell min-h-screen font-sans tracking-wide relative theme-cosmic">
+      {isNormalRoute && <BlackHoleBackground />}
       <ScrollProgressBar />
-      {isNormalRoute && <AudioPlayer />}
       <main className={`w-full ${isNormalRoute ? 'site-main pb-20' : 'admin-main pb-4'}`}>
         <Suspense fallback={<div className="min-h-[50vh]" />}>
           <Routes>
@@ -79,7 +70,6 @@ function AppContent() {
         </Suspense>
       </main>
       {isNormalRoute && <AiChatLauncher />}
-      {isNormalRoute && <BackgroundPrompt />}
     </div>
   );
 }
@@ -88,13 +78,9 @@ function App() {
   return (
     <AuthProvider>
       <PortfolioProvider>
-        <AudioProvider>
-          <BackgroundProvider>
-            <Router>
-              <AppContent />
-            </Router>
-          </BackgroundProvider>
-        </AudioProvider>
+        <Router>
+          <AppContent />
+        </Router>
       </PortfolioProvider>
     </AuthProvider>
   );

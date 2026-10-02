@@ -4,7 +4,6 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { createMeteorSystem } from './meteorSystem.js';
-import { createScreenMeteorSystem } from './screenMeteorSystem.js';
 
 const defaultRequestFrame = (callback) => {
     if (typeof globalThis.requestAnimationFrame === 'function') {
@@ -32,7 +31,6 @@ export function createBlackHoleEngine({
     initialInput = {},
     requestFrame = defaultRequestFrame,
     cancelFrame = defaultCancelFrame,
-    onScreenImpact = null,
 }) {
 if (!canvas) throw new Error('Black hole canvas is required.');
 
@@ -70,23 +68,23 @@ const CONFIG = {
         scrollPunch: prefersReducedMotion ? 0.4 : 2.4,
     },
     bloom: {
-        strength: isMobile ? 0.45 : isTablet ? 0.65 : 0.82,
-        strengthMax: isMobile ? 0.65 : isTablet ? 0.88 : 1.08,
-        radius: isMobile ? 0.18 : isTablet ? 0.26 : 0.32,
-        threshold: isMobile ? 0.92 : 0.9,
+        strength: isMobile ? 0.35 : isTablet ? 0.5 : 0.65,
+        strengthMax: isMobile ? 0.5 : isTablet ? 0.7 : 0.85,
+        radius: isMobile ? 0.15 : isTablet ? 0.22 : 0.28,
+        threshold: isMobile ? 0.94 : 0.92,
     },
     parallax: {
         strength: prefersReducedMotion ? 0.06 : (isMobile ? 0 : 0.3),
         lerp: 0.03,
     },
     particles: {
-        galaxy: isMobile ? 12000 : isTablet ? 60000 : 150000,
-        farStars: isMobile ? 500 : isTablet ? 1200 : 2500,
-        midDust: isMobile ? 250 : isTablet ? 600 : 1500,
-        nearDust: isMobile ? 30 : isTablet ? 150 : 350,
-        orbital: isMobile ? 30 : isTablet ? 80 : 160,
-        lightRays: isMobile ? 4 : isTablet ? 7 : 10,
-        lightRaySegments: isMobile ? 40 : isTablet ? 64 : 96,
+        galaxy: isMobile ? 6000 : isTablet ? 35000 : 90000,
+        farStars: isMobile ? 250 : isTablet ? 800 : 1500,
+        midDust: isMobile ? 120 : isTablet ? 400 : 800,
+        nearDust: isMobile ? 15 : isTablet ? 50 : 100,
+        orbital: isMobile ? 15 : isTablet ? 50 : 90,
+        lightRays: isMobile ? 3 : isTablet ? 5 : 6,
+        lightRaySegments: isMobile ? 24 : isTablet ? 48 : 64,
     },
     galaxy: {
         radius: 17,
@@ -226,7 +224,7 @@ const blackHoleGroup = new THREE.Group();
 scene.add(blackHoleGroup);
 
 /* ----- EVENT HORIZON — Black sphere with light-suction effect ----- */
-const ehSegments = isMobile ? 48 : 96;
+const ehSegments = isMobile ? 32 : 64;
 const eventHorizonGeo = new THREE.SphereGeometry(CONFIG.blackHole.eventHorizonRadius, ehSegments, ehSegments);
 const eventHorizonMat = new THREE.ShaderMaterial({
     uniforms: {
@@ -1030,7 +1028,7 @@ blackHoleGroup.add(swallowedLightRays);
 /* =====================================================================
  * GRAVITATIONAL METEOR - procedural rock, plasma trail and tidal breakup
  * ===================================================================== */
-const meteorSystemCount = prefersReducedMotion ? 1 : (isMobile ? 1 : (isTablet ? 2 : 3));
+const meteorSystemCount = prefersReducedMotion ? 0 : (isMobile ? 1 : (isTablet ? 1 : 2));
 const meteorSystems = Array.from({ length: meteorSystemCount }, (_, index) => createMeteorSystem({
     scene,
     camera,
@@ -1043,15 +1041,6 @@ const meteorSystems = Array.from({ length: meteorSystemCount }, (_, index) => cr
     initialDelay: 0.35 + index * (isMobile ? 3.0 : 1.75),
     allowImpact: true,
 }));
-
-const screenMeteor = createScreenMeteorSystem({
-    scene,
-    camera,
-    starTexture,
-    isMobile,
-    prefersReducedMotion,
-    onScreenImpact,
-});
 
 /* =====================================================================
  * STATE VARIABLES
@@ -1231,9 +1220,6 @@ function tick() {
         meteorSystems[index].update(dt, elapsedTime);
     }
 
-    // --- SCREEN IMPACT METEOR ---
-    screenMeteor.update(dt, elapsedTime);
-
     // --- BLOOM DYNAMIC & RENDER ---
     // Trên di động, luôn render trực tiếp 1 pass (siêu nhẹ, 60-120fps mượt mà, không quá tải GPU)
     // Trên máy tính bàn/tablet, dùng EffectComposer với bloom đầy đủ
@@ -1289,7 +1275,6 @@ function dispose() {
     for (let index = 0; index < meteorSystems.length; index++) {
         meteorSystems[index].dispose();
     }
-    screenMeteor.dispose();
 
     // Dispose texture, composer, renderer
     starTexture.dispose();
@@ -1306,7 +1291,6 @@ return {
     resize,
     updateInput,
     setVisibility,
-    triggerScreenMeteor: (options) => screenMeteor.trigger(typeof options === 'boolean' ? options : (options?.isManual ?? true)),
     dispose,
     config: CONFIG,
 };

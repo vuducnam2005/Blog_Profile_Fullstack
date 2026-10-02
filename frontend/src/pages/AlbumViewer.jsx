@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Camera, X, ChevronLeft, ChevronRight, Play, Image as ImageIcon, Film } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { PortfolioContext } from '../context/PortfolioContext';
-import { AudioContext } from '../context/AudioContext';
 import OptimizedImage from '../components/OptimizedImage';
 import { getCompatibleVideoUrl, resolveMediaUrl } from '../utils/media';
 
@@ -13,7 +12,6 @@ export default function AlbumViewer() {
   const [filter, setFilter] = useState('all');
   const albums = data?.album || [];
   const [lightbox, setLightbox] = useState({ open: false, index: 0 });
-  const { pauseAudioThmporarily, resumeAudioAfterTempPause } = useContext(AudioContext);
 
   const filteredAlbums = albums.filter((item) => {
     if (filter === 'all') return true;
@@ -23,12 +21,10 @@ export default function AlbumViewer() {
   // Lightbox navigation
   const openLightbox = (index) => {
     setLightbox({ open: true, index });
-    // Nếu mở 1 video, có thể pause nhạc ngay, hoặc đợi nó tự play. Tốt nhất để video controls onPlay.
   };
   const closeLightbox = useCallback(() => {
     setLightbox({ open: false, index: 0 });
-    resumeAudioAfterTempPause();
-  }, [resumeAudioAfterTempPause]);
+  }, []);
 
   const goNext = useCallback(() => {
     setLightbox((prev) => ({
@@ -318,9 +314,6 @@ export default function AlbumViewer() {
                 autoPlay
                 playsInline
                 preload="metadata"
-                onPlay={pauseAudioThmporarily}
-                onPause={resumeAudioAfterTempPause}
-                onEnded={resumeAudioAfterTempPause}
                 className="max-w-full max-h-[85vh] rounded-2xl shadow-[0_0_40px_rgba(241,216,158,0.2)]"
               />
             ) : (

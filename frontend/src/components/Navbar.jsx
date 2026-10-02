@@ -1,17 +1,12 @@
-import { useState, useContext, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, FileText, Globe, Menu, X, Camera, Volume2, VolumeX, Bot, Sparkles, Lock } from 'lucide-react';
+import { User, FileText, Globe, Menu, X, Camera, Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { AudioContext } from '../context/AudioContext';
-import { BackgroundContext } from '../context/BackgroundContext';
 import { useAuth } from '../context/AuthContext';
-import MeteorNoticeBanner from './MeteorNoticeBanner';
 
 export default function Navbar() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { isPlaying, toggleAudio, audioUrl } = useContext(AudioContext);
-  const { bgMode, toggleBgMode } = useContext(BackgroundContext);
   const { isAdmin, login } = useAuth();
   
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -108,9 +103,6 @@ export default function Navbar() {
           Vũ Đức Nam
         </div>
 
-        {/* ===== THÔNG BÁO CHẠY GIỮA "VŨ ĐỨC NAM" VÀ "TRANG CHỦ" ===== */}
-        <MeteorNoticeBanner />
-
         {/* ===== DESKTOP NAV ===== */}
         <div className="hidden md:flex items-center gap-3 lg:gap-5 xl:gap-6 text-xs lg:text-sm font-semibold text-gray-300">
           {navItems.map((item) => (
@@ -124,35 +116,11 @@ export default function Navbar() {
           ))}
 
           <div className="flex items-center gap-1.5 lg:gap-2.5 ml-1 lg:ml-3 whitespace-nowrap shrink-0">
-            {audioUrl && (
-              <button
-                onClick={toggleAudio}
-                className="flex items-center justify-center border border-[#F1D89E]/40 text-[#F1D89E] w-7 h-7 lg:w-8 lg:h-8 rounded-full hover:bg-[#F1D89E]/10 transition-colors shadow-sm shrink-0"
-                title={isPlaying ? "Tạm dừng nhạc" : "Phát nhạc"}
-              >
-                {isPlaying ? <Volume2 className="w-3.5 h-3.5 lg:w-4 lg:h-4 animate-pulse text-[#00D0C8]"/> : <VolumeX className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-gray-400"/>}
-              </button>
-            )}
             <button
               onClick={toggleLanguage}
               className="flex items-center gap-1 border border-[#F1D89E]/40 text-[#F1D89E] px-2.5 lg:px-3 py-1 rounded-full hover:bg-[#F1D89E]/10 transition-colors font-bold text-xs shrink-0"
             >
               <Globe className="w-3.5 h-3.5" /> {i18n.language === 'vi' ? 'EN' : 'VI'}
-            </button>
-            <button
-              onClick={toggleBgMode}
-              className="flex items-center gap-1.5 border border-[#F1D89E]/40 text-[#F1D89E] px-2.5 lg:px-3 py-1 rounded-full hover:bg-[#F1D89E]/10 transition-colors font-bold text-xs select-none shrink-0"
-              title={bgMode === 'spline' ? 'Đổi sang nền 3D Hố Đen' : 'Đổi sang nền 3D Nexbot'}
-            >
-              {bgMode === 'spline' ? (
-                <>
-                  <Bot className="w-3.5 h-3.5 text-[#00D0C8]" /> <span>Nexbot</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5 text-[#F1D89E]" /> <span>3D</span>
-                </>
-              )}
             </button>
             <Link
               to="/album"
@@ -209,27 +177,11 @@ export default function Navbar() {
           <div className="w-full h-px bg-gradient-to-r from-transparent via-[#F1D89E]/30 to-transparent my-2"></div>
 
           <div className="flex flex-wrap gap-3 px-4 py-2">
-            {audioUrl && (
-              <button
-                onClick={toggleAudio}
-                className="flex items-center gap-2 border border-[#F1D89E]/40 text-[#F1D89E] px-4 py-2 rounded-full hover:bg-[#F1D89E]/10 transition-colors font-bold text-xs"
-              >
-                {isPlaying ? <Volume2 className="w-4 h-4 text-[#00D0C8] animate-pulse"/> : <VolumeX className="w-4 h-4 text-gray-400"/>}
-                {isPlaying ? "TẮT NHẠC" : "BẬT NHẠC"}
-              </button>
-            )}
             <button
               onClick={() => { toggleLanguage(); setMobileOpen(false); }}
               className="flex items-center gap-2 border border-[#F1D89E]/40 text-[#F1D89E] px-4 py-2 rounded-full hover:bg-[#F1D89E]/10 transition-colors font-bold text-xs"
             >
               <Globe className="w-4 h-4" /> {i18n.language === 'vi' ? 'EN' : 'VI'}
-            </button>
-            <button
-              onClick={() => { toggleBgMode(); setMobileOpen(false); }}
-              className="flex items-center gap-2 border border-[#F1D89E]/40 text-[#F1D89E] px-4 py-2 rounded-full hover:bg-[#F1D89E]/10 transition-colors font-bold text-xs"
-            >
-              {bgMode === 'spline' ? <Bot className="w-4 h-4 text-[#00D0C8]"/> : <Sparkles className="w-4 h-4 text-[#F1D89E]"/>}
-              {bgMode === 'spline' ? 'NỀN 3D NEXBOT' : 'NỀN 3D HỐ ĐEN'}
             </button>
             <Link
               to="/album"
